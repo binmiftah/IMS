@@ -2,6 +2,7 @@ import React from 'react'
 import { useState } from 'react'
 import lawImage from '../assets/images/law.png'
 import { FaEnvelope, FaLock, } from 'react-icons/fa'
+import { Link } from 'react-router-dom'
 
 
 const Login = () => {
@@ -81,9 +82,9 @@ const Login = () => {
                </form>
                <p className="text-sm text-center text-gray-600">
                   Don't have an account?{' '}
-                  <a href="/signup" className="text-blue-500 hover:underline">
+                  <Link to="/signup" className="text-blue-500 hover:underline">
                      Sign up
-                  </a>
+                  </Link>
                </p>
             </div>
          </div>

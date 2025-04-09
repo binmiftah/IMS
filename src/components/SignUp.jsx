@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FaEnvelope, FaLock, FaUser, FaPhone } from 'react-icons/fa';
 import signup from '../assets/images/signup.png'; // Importing the signup image
-// import { Link } from 'react-router-dom'; // Importing Link for navigation
+import { Link } from 'react-router-dom'; // Importing Link for navigation
 
 const SignUp = () => {
    const [fullName, setFullName] = useState(''); // State for username input
@@ -163,9 +163,9 @@ const SignUp = () => {
                </form>
                <p className="text-sm text-center text-gray-600">
                   Already have an account?{' '}
-                  <a href="/login" className="text-blue-500 hover:underline">
+                  <Link to="/login" className="text-blue-500 hover:underline">
                      Login
-                  </a>
+                  </Link>
                </p>
             </div>
          </div>
