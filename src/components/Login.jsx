@@ -1,7 +1,7 @@
 import React from 'react'
 import { useState } from 'react'
 import lawImage from '../assets/images/law.png'
-import { FaEnvelope, FaLock } from 'react-icons/fa'
+import { FaEnvelope, FaLock,  } from 'react-icons/fa'
 
 
 const Login = () => {
@@ -49,7 +49,7 @@ const Login = () => {
                            placeholder="Email"
                            value={email}
                            onChange={(e) => setEmail(e.target.value)}
-                           required
+                           // required
                            className="w-full px-10 py-2 mt-1 text-gray-700 bg-gray-100 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black-500"
                         />
                      </div>
@@ -63,7 +63,7 @@ const Login = () => {
                            placeholder="Password"
                            value={password}
                            onChange={(e) => setPassword(e.target.value)}
-                           required
+                           // required
                            className="w-full px-10 py-2 mt-1 text-gray-700 bg-gray-100 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                      </div>
