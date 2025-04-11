@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Org from '../assets/images/Org.png'; // Importing the organisation image
+import OrgImage from '../assets/images/Org.png'; // Importing the organisation image
 import { Link } from 'react-router-dom'; // Importing Link for navigation
 
 const OrganisationForm = () => {
@@ -27,19 +27,29 @@ const OrganisationForm = () => {
       e.preventDefault();
       console.log('Form Data:', formData);
       // Add your form submission logic here
+      // For example, send formData to your backend API
+      setFormData({
+         organisationName: '',
+         organisationEmail: '',
+         organisationPhone: '',
+         logo: null,
+         industry: '',
+         location: '',
+         country: '',
+         state: '',
+         city: '',
+      });
    };
 
    return (
       <div className="flex min-h-screen">
-         {/* Left Div with Background Image */}
          <div
             className="w-3/5 bg-cover bg-center"
             style={{
-               backgroundImage: `url('${Org}')`, // Replace with your image URL
+               backgroundImage: `url('${OrgImage}')`, 
             }}
          ></div>
 
-         {/* Right Div with Form */}
          <div className="w-2/5 bg-white p-8 flex flex-col justify-center">
             <h2 className="text-3xl font-bold text-center mb-6">Organisation Form</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>

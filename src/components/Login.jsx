@@ -2,13 +2,14 @@ import React from 'react'
 import { useState } from 'react'
 import lawImage from '../assets/images/law.png'
 import { FaEnvelope, FaLock, } from 'react-icons/fa'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 
 const Login = () => {
    const [email, setEmail] = useState('') // State for email input 
    const [password, setPassword] = useState('') // State for password input
    const [error, setError] = useState('') // State for error message
+   const navigate = useNavigate() // Hook for navigation
    const handleSubmit = (e) => {
       e.preventDefault() // Prevent default form submission behavior
 
@@ -24,6 +25,8 @@ const Login = () => {
       // Handle login logic here, e.g., send email and password to the server
       console.log('Email:', email)
       console.log('Password:', password)
+
+      navigate('/organisation') // Navigate to the organisation form after successful login
    }
 
    return (
