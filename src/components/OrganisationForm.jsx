@@ -52,6 +52,7 @@ const OrganisationForm = () => {
 
          <div className="w-2/5 bg-white p-8 flex flex-col justify-center">
             <h2 className="text-3xl font-bold text-center mb-6">Organisation Form</h2>
+            <p className='text-center text-black'>Set up your organisation's profile and core settings.</p>
             <form className="space-y-4" onSubmit={handleSubmit}>
                {/* Organisation Name */}
                <div>
@@ -180,12 +181,12 @@ const OrganisationForm = () => {
                {/* Submit Button */}
                <button
                   type="submit"
-                  className="w-full px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 text-white bg-black rounded-lg hover:bg-black focus:outline-none focus:ring-2 focus:ring-black"
                >
                   Submit
                </button>
             </form>
-            <Link to={'/'} className="text-center text-black-500 hover:underline mt-4">
+            <Link to={'/'} className="text-center text-black hover:underline mt-4">
                <p>Skip</p>
             </Link>
          </div>
