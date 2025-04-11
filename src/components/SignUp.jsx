@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FaEnvelope, FaLock, FaUser, FaPhone } from 'react-icons/fa';
 import signup from '../assets/images/signup.png'; // Importing the signup image
-import { Link } from 'react-router-dom'; // Importing Link for navigation
+import { Link, useNavigate } from 'react-router-dom'; // Importing Link for navigation
 
 const SignUp = () => {
    const [fullName, setFullName] = useState(''); // State for username input
@@ -10,6 +10,7 @@ const SignUp = () => {
    const [password, setPassword] = useState(''); // State for password input
    const [confirmPassword, setConfirmPassword] = useState(''); // State for confirm password input
    const [error, setError] = useState(''); // State for error message
+   const navigate = useNavigate(); // Hook for navigation
 
    const handleSubmit = (e) => {
       e.preventDefault();
@@ -37,10 +38,12 @@ const SignUp = () => {
       setError('');
 
       // Handle sign-up logic here
-      console.log('Full Name:', username);
+      console.log('Full Name:', fullName);
       console.log('Email:', email);
       console.log('Phone Number:', phoneNumber);
       console.log('Password:', password);
+
+      navigate('/organisation'); // Navigate to the organisation form after successful sign-up
    };
 
    return (
