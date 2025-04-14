@@ -3,6 +3,10 @@ import { NavLink } from 'react-router-dom'
 import { MdDashboard, MdPeople, MdGroupWork, MdStorage, MdDelete, MdSettings } from 'react-icons/md'
 
 const Navbar = () => {
+
+    const isActive = ({ isActive }) => `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
+
+
     return (
         <div className="w-1/5 bg-black text-white flex flex-col justify-between">
             {/* Top Section */}
@@ -17,9 +21,7 @@ const Navbar = () => {
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/dashboard" 
-                            className={({ isActive }) => 
-                                `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
-                            }
+                            className={isActive}
                         >
                             <MdDashboard className="mr-3" size={24} />
                             <span>Dashboard</span>
@@ -28,9 +30,7 @@ const Navbar = () => {
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/users" 
-                            className={({ isActive }) => 
-                                `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
-                            }
+                            className={isActive}
                         >
                             <MdPeople className="mr-3" size={24} />
                             <span>User</span>
@@ -39,9 +39,7 @@ const Navbar = () => {
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/groups" 
-                            className={({ isActive }) => 
-                                `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
-                            }
+                            className={isActive}
                         >
                             <MdGroupWork className="mr-3" size={24} />
                             <span>Group</span>
@@ -50,9 +48,7 @@ const Navbar = () => {
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/storage" 
-                            className={({ isActive }) => 
-                                `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
-                            }
+                            className={isActive}
                         >
                             <MdStorage className="mr-3" size={24} />
                             <span>Storage</span>
@@ -61,9 +57,7 @@ const Navbar = () => {
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/trash" 
-                            className={({ isActive }) => 
-                                `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
-                            }
+                            className={isActive}
                         >
                             <MdDelete className="mr-3" size={24} />
                             <span>Trash</span>
@@ -72,9 +66,7 @@ const Navbar = () => {
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/settings" 
-                            className={({ isActive }) => 
-                                `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
-                            }
+                            className={isActive}
                         >
                             <MdSettings className="mr-3" size={24} />
                             <span>Settings</span>
