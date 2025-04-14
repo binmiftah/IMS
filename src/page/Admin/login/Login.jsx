@@ -5,7 +5,7 @@ import { FaEnvelope, FaLock, } from 'react-icons/fa'
 import { Link, useNavigate } from 'react-router-dom'
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import apiCall from "../../../pkg/api/index.js";
+import apiCall from "../../../pkg/api";
 import { AxiosError } from "axios"
 
 
