@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import invite from '../assets/images/invite.png'; // Importing the invite image
+import invite from '../../public/assets/images/invite.png'; // Importing the invite image
 
 const Invite = () => {
   const [members, setMembers] = useState([{ email: '', role: '' }]); // State for multiple members

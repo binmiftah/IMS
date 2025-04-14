@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import OrgImage from '../assets/images/Org.png';
+import OrgImage from '../../public/assets/images/Org.png';
 import { Link, useNavigate } from 'react-router-dom';
 
 const OrganisationForm = () => {

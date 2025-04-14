@@ -1,8 +1,12 @@
 import React from 'react'
 import { useState } from 'react'
-import lawImage from '../assets/images/law.png'
+import lawImage from '/assets/images/law.png'
 import { FaEnvelope, FaLock, } from 'react-icons/fa'
 import { Link, useNavigate } from 'react-router-dom'
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import apiCall from "../../../pkg/api/index.js";
+import { AxiosError } from "axios"
 
 
 const Login = () => {
@@ -10,23 +14,61 @@ const Login = () => {
    const [password, setPassword] = useState('') // State for password input
    const [error, setError] = useState('') // State for error message
    const navigate = useNavigate() // Hook for navigation
-   const handleSubmit = (e) => {
+
+
+   const handleSubmit = async (e) => {
       e.preventDefault() // Prevent default form submission behavior
 
-      // Validate inputs
-      if (!email || !password) {
-         setError('Please fill in all fields'); // Set error message if fields are empty
-         return;
-      }
+     try{
+         const data = await apiCall.login("auth/login", {
+           email: email,
+            password: password
+         })
 
-      //Clear error message if inputs are valid
-      setError('');
+        if (data) {
+                localStorage.setItem("token", data.token) // Store token in local storage
+                localStorage.setItem("user", JSON.stringify(data.user)) // Store user data in local storage
+                  toast.success(data.message,{
+                        position: "top-right",
+                        autoClose: 2000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                        progress: undefined,
+                  })
 
-      // Handle login logic here, e.g., send email and password to the server
-      console.log('Email:', email)
-      console.log('Password:', password)
+           navigate("/") // Redirect to home page
+        }
+     }catch(error){
+         if (error instanceof AxiosError) {
+            toast.error(error.response.data.message,{
+               position: "top-right",
+               autoClose: 2000,
+               hideProgressBar: false,
+               closeOnClick: true,
+               pauseOnHover: true,
+               draggable: true,
+               progress: undefined,
+            })
+            setError(error.response.data.message)
+         }else{
+            toast.error(error.message,{
+               position: "top-right",
+               autoClose: 2000,
+               hideProgressBar: false,
+               closeOnClick: true,
+               pauseOnHover: true,
+               draggable: true,
+               progress: undefined,
+            })
+            setError(error.message)
+         }
 
-      navigate('/organisation') // Navigate to the organisation form after successful login
+
+
+     }
+
    }
 
    return (
@@ -39,7 +81,7 @@ const Login = () => {
             </div>
             <div className="w-full  rounded-r-lg p-8 space-y-6 bg-white  shadow-md">
                <h2 className="text-2xl font-bold text-center text-gray-800">Welcome Back</h2>
-
+               <ToastContainer/>
                {error && <p className="text-red-500 text-center">{error}</p>}
 
                <form className="space-y-4 flex items-center flex-col" onSubmit={handleSubmit}>
