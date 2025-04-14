@@ -1,11 +1,11 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import SignUp from './page/Registration/SignUp.jsx'
+import SignUp from './page/Admin/Registration/SignUp.jsx'
 import Login from './page/login/Login.jsx'
 import Organisation from './components/OrganisationForm'
 import Invite from './components/Invite'
-import Dashboard from './page/AdminDashboard/Dashboard.jsx'
-import Users from './page/AdminDashboard/Users.jsx'
+import Dashboard from './page/Admin/Dashboard/Dashboard.jsx'
+import Users from './page/Admin/Users.js'
 
 import NotFound from './components/NotFound'
 
