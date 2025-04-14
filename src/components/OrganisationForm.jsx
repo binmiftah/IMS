@@ -229,25 +229,6 @@ const OrganisationForm = () => {
                   </select>
                </div>
 
-               {/* City */}
-               <div>
-                  <select
-                     id="city"
-                     name="city"
-                     value={formData.city}
-                     onChange={handleChange}
-                     required
-                     className="w-full px-4 py-2 mt-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                     <option value="">Select City</option>
-                     {cities.map((city) => (
-                        <option key={city.code} value={city.code}>
-                           {city.name}
-                        </option>
-                     ))}
-                  </select>
-               </div>
-
                {/* Submit Button */}
                <button
                   type="submit"
@@ -256,7 +237,7 @@ const OrganisationForm = () => {
                   Submit
                </button>
             </form>
-            <Link to={'/'} className="text-center text-black hover:underline mt-4">
+            <Link to={'/dashboard'} className="text-center text-black hover:underline mt-4">
                <p>Skip</p>
             </Link>
          </div>
