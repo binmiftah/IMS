@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { FaEnvelope, FaLock, FaUser, FaPhone } from 'react-icons/fa';
-import signup from '../assets/images/signup.png'; // Importing the signup image
-import { Link, useNavigate } from 'react-router-dom'; // Importing Link for navigation
+import signup from '/assets/images/signup.png?url';
+import { Link, useNavigate } from 'react-router-dom';
 
 const SignUp = () => {
-   const [fullName, setFullName] = useState(''); // State for username input
-   const [email, setEmail] = useState(''); // State for email input
-   const [phoneNumber, setPhoneNumber] = useState(''); // State for phone number input
-   const [password, setPassword] = useState(''); // State for password input
-   const [confirmPassword, setConfirmPassword] = useState(''); // State for confirm password input
-   const [error, setError] = useState(''); // State for error message
-   const navigate = useNavigate(); // Hook for navigation
+   const [fullName, setFullName] = useState('');
+   const [email, setEmail] = useState('');
+   const [phoneNumber, setPhoneNumber] = useState('');
+   const [password, setPassword] = useState('');
+   const [confirmPassword, setConfirmPassword] = useState('');
+   const [error, setError] = useState('');
+   const navigate = useNavigate();
 
    const handleSubmit = (e) => {
       e.preventDefault();
