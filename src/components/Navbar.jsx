@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { MdDashboard, MdPeople, MdGroupWork, MdStorage, MdDelete, MdSettings } from 'react-icons/md'
+import { MdDashboard, MdPeople, MdGroupWork, MdDelete, MdSettings, MdLogout } from 'react-icons/md'
 import { toast } from "react-toastify";
 
 const Navbar = () => {
@@ -75,7 +75,6 @@ const Navbar = () => {
                             <span>Files</span>
                         </NavLink>
                     </li>
-
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink
                             to="/trash"
