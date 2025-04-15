@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { FaEnvelope, FaLock, FaUser, FaPhone } from 'react-icons/fa';
 import signup from '/assets/images/signup.png?url';
 import { Link, useNavigate } from 'react-router-dom';
+import apiCall  from "../../../pkg/api/internal.js";
+import {handleAxiosError} from "../../../pkg/error/error.js";
+import {toast, ToastContainer} from "react-toastify";
 
 const SignUp = () => {
    const [fullName, setFullName] = useState('');
@@ -12,7 +15,7 @@ const SignUp = () => {
    const [error, setError] = useState('');
    const navigate = useNavigate();
 
-   const handleSubmit = (e) => {
+   const handleSubmit = async (e) => {
       e.preventDefault();
 
       // Validate inputs
@@ -22,7 +25,7 @@ const SignUp = () => {
       }
 
       // Validate phone number (basic example)
-      const phoneRegex = /^[0-9]{10}$/; // Example: 10-digit phone number
+      const phoneRegex = /^[0-9]{11}$/; // Example: 10-digit phone number
       if (!phoneRegex.test(phoneNumber)) {
          setError('Please enter a valid phone number');
          return;
@@ -38,16 +41,44 @@ const SignUp = () => {
       setError('');
 
       // Handle sign-up logic here
-      console.log('Full Name:', fullName);
-      console.log('Email:', email);
-      console.log('Phone Number:', phoneNumber);
-      console.log('Password:', password);
+      const data = {
+            fullName: fullName,
+            email: email,
+            phoneNumber: phoneNumber,
+            password: password,
+      }
 
-      navigate('/organisation'); // Navigate to the organisation form after successful sign-up
+      try{
+         const response =  await apiCall.register('auth/register', data);
+         if (response){
+            toast.success(response.message, {
+               position: "top-right",
+               autoClose: 2000,
+               hideProgressBar: false,
+               closeOnClick: true,
+               pauseOnHover: true,
+               draggable: true,
+               progress: undefined,
+            })
+            // Navigate to user login
+            setTimeout(()=>{
+               navigate('/login')
+            }, 2500)
+         }
+
+      }catch(error){
+         if (error.response.status === 404) {
+            setError("Error Creating User")
+            return;
+         }
+         handleAxiosError(error, setError);
+
+      }
    };
 
    return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
+         <ToastContainer/>
          <div className='grid grid-cols-1 md:grid-cols-2 w-full max-w-4xl p-4'>
             <div
                className="hidden md:block rounded-l-lg bg-cover bg-center h-full"

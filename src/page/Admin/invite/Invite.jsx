@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import invite from '../../public/assets/images/invite.png'; // Importing the invite image
+import invite from '/assets/images/invite.png'; // Importing the invite image
 
 const Invite = () => {
   const [members, setMembers] = useState([{ email: '', role: '' }]); // State for multiple members
@@ -36,13 +36,12 @@ const Invite = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className='grid grid-cols-1 md:grid-cols-2 w-full max-w-4xl p-4'>
-        <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-l-lg">
-          <h2 className="text-2xl font-bold text-center mb-4">Invite Members</h2>
+      <div className='grid grid-cols-1 md:grid-cols-2 w-full max-w-6xl p-4'>
+        <div className="w-full max-w-screen p-8 space-y-6 bg-white rounded-l-lg">
+          <h2 className="text-2xl font-bold text-center mb-4">Invite Other Admins to Organization</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center justify-center mb-4 font-medium">
               <p className="flex-1">Email Address</p>
-              <p>Select Role</p>
             </div>
 
             {members.map((member, index) => (
@@ -54,21 +53,8 @@ const Invite = () => {
                   value={member.email}
                   onChange={(e) => handleInputChange(index, 'email', e.target.value)}
                   required
-                  className="flex-1 px-4 py-2 border-r-2 border-gray-400 focus:outline-none bg-gray-100 rounded-l-lg"
+                  className="flex-1 px-4 py-2 border-gray-400 focus:outline-none bg-gray-100 rounded-l-lg"
                 />
-
-                {/* Role Selector */}
-                <select
-                  value={member.role}
-                  onChange={(e) => handleInputChange(index, 'role', e.target.value)}
-                  required
-                  className="px-4 py-2 border-none focus:outline-none bg-gray-100 rounded-r-lg"
-                >
-                  <option value="">Select Role</option>
-                  <option value="User">User</option>
-                  <option value="Superior User">Superior User</option>
-                  <option value="Admin">Admin</option>
-                </select>
               </div>
             ))}
 
@@ -78,7 +64,7 @@ const Invite = () => {
               className="w-full text-blue-300 hover:text-blue-700 focus:outline-none text-right"
               onClick={handleAddMember}
             >
-              Invite Another Member
+                + Add More Admins
             </button>
 
             {/* Error Message */}

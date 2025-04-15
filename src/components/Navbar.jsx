@@ -1,11 +1,44 @@
-import React from 'react'
-import { NavLink } from 'react-router-dom'
+import React, {useEffect} from 'react'
+import {NavLink, useNavigate} from 'react-router-dom'
 import { MdDashboard, MdPeople, MdGroupWork, MdStorage, MdDelete, MdSettings } from 'react-icons/md'
+import {toast} from "react-toastify";
 
 const Navbar = () => {
-
+    const navigate = useNavigate();
     const isActive = ({ isActive }) => `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
 
+    const [loggedInUser, setLoggedInUser] = React.useState(null);
+
+
+    useEffect(() => {
+        const data = localStorage.getItem('user')
+        if (data) {
+            const user = JSON.parse(data);
+            setLoggedInUser(user);
+        }else{
+            toast.error("Please login to access this page", {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            })
+            // Redirect to login page after 2 seconds
+            setTimeout(() => {
+                navigate("/login")
+            }, 2000);
+            setLoggedInUser(null);
+        }
+
+    }, []);
+
+
+
+    function handleLogout() {
+        navigate('/login')
+    }
 
     return (
         <div className="w-1/5 bg-black text-white flex flex-col justify-between">
@@ -42,18 +75,10 @@ const Navbar = () => {
                             className={isActive}
                         >
                             <MdGroupWork className="mr-3" size={24} />
-                            <span>Group</span>
+                            <span>Files</span>
                         </NavLink>
                     </li>
-                    <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/storage" 
-                            className={isActive}
-                        >
-                            <MdStorage className="mr-3" size={24} />
-                            <span>Storage</span>
-                        </NavLink>
-                    </li>
+
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink 
                             to="/trash" 
@@ -85,13 +110,13 @@ const Navbar = () => {
                         className="w-10 bg- h-10 rounded-full object-cover"
                     />
                     <div>
-                        <p className="font-medium">John Doe</p>
-                        <p className="text-sm text-gray-400">Admin</p>
+                        {loggedInUser && <p className="font-medium">{loggedInUser.fullName}</p>}
+                        {loggedInUser && <p className="text-sm text-gray-400">{loggedInUser.email}</p>}
                     </div>
                 </div>
 
                 {/* Logout Button */}
-                <button className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                <button className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" onClick={handleLogout}>
                     Log Out
                 </button>
             </div>
