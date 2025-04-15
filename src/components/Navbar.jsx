@@ -1,7 +1,7 @@
-import React, {useEffect} from 'react'
-import {NavLink, useNavigate} from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { MdDashboard, MdPeople, MdGroupWork, MdStorage, MdDelete, MdSettings } from 'react-icons/md'
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 
 const Navbar = () => {
     const navigate = useNavigate();
@@ -15,7 +15,7 @@ const Navbar = () => {
         if (data) {
             const user = JSON.parse(data);
             setLoggedInUser(user);
-        }else{
+        } else {
             toast.error("Please login to access this page", {
                 position: "top-right",
                 autoClose: 2000,
@@ -112,8 +112,6 @@ const Navbar = () => {
 
                 <button className="flex justify-center w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" onClick={handleLogout}>
                     <MdLogout className="mr-3" size={24} />
-                {/* Logout Button */}
-                <button className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" onClick={handleLogout}>
                     Log Out
                 </button>
             </div>
