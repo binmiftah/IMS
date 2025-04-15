@@ -1,11 +1,7 @@
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
-import { MdSearch, MdNotifications, MdStorage, MdDeleteSweep } from 'react-icons/md';
-import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, plugins } from 'chart.js';
+import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder } from 'react-icons/md';
 
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 
 const Dashboard = () => {
@@ -16,46 +12,8 @@ const Dashboard = () => {
         isLoading: true,
     });
 
-    const [storageDistribution, setStorageDistribution] = useState({
-        documents: 30,
-        media: 40,
-        others: 20,
-        available: 10,
-    });
-
-    // Chart data
-    const chartData = {
-        labels: ['Documents', 'Media', 'Others', 'Available'],
-        datasets: [
-            {
-                data: [
-                    storageDistribution.documents,
-                    storageDistribution.media,
-                    storageDistribution.others,
-                    storageDistribution.available,
-                ],
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
-                // hoverOffset: 4,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    usePointStyle: true,
-                    padding: 20,
-                    font: {
-                        size: 14,
-                    },
-                },
-            },
-        },
-        cutout: '70%',
-        maintainAspectRatio: false,
-    };
+    // Calculate percentage
+    const percentageUsed = (storageInfo.used / storageInfo.total) * 100;
 
     // Fetch storage info
     useEffect(() => {
@@ -100,9 +58,26 @@ const Dashboard = () => {
         }
     };
 
+    // Sample data for the table (replace with actual data)
+    const tableData = [
+        {
+            email: "admin11@gmail.com",
+            action: "Read",
+            path: "/documents/report.pdf",
+            time: "2024-04-15 10:30 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Read",
+            path: "/media/image.jpg",
+            time: "2024-04-15 09:45 AM"
+        },
+        // Add more items as needed
+    ];
+
+
     return (
         <div className="flex min-h-screen">
-            {/* Sidebar */}
             <Navbar />
 
             {/* Main Content */}
@@ -121,7 +96,6 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    {/* Profile and Notifications */}
                     <div className="flex items-center space-x-4">
                         <button className="relative p-2 text-gray-500 hover:text-gray-700">
                             <MdNotifications size={24} />
@@ -139,60 +113,70 @@ const Dashboard = () => {
 
                 {/* Content Section */}
                 <div className="p-6">
-                    <div className="">
-                        <div className="grid grid-cols-2 border border-gray-200 bg-white p-6 rounded-lg shadow-lg mb-6">
-                            <div>
-                                <h2 className="text-xl font-semibold mb-6 flex items-center">
-                                    <MdStorage className="mr-2" />
-                                    Storage
-                                </h2>
-
-                                {/* Storage Usage */}
-                                <div className="mb-6">
-                                    <div className="flex flex-col justify-between mb-2">
-                                        <h2 className="font-bold text-8xl">
-                                            {storageInfo.isLoading ? (
-                                                "Loading..."
-                                            ) : (
-                                                `${storageInfo.used.toFixed(2)}`
-                                            )}
-                                        </h2>
-                                        <p> {`of ${storageInfo.total}GB used`} </p>
-                                    </div>
-                                </div>
-
-                                {/* Buttons */}
-                                <div className="flex space-x-4">
-                                    <button
-                                        className="flex-1 bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-                                        disabled={storageInfo.isLoading}
-                                    >
-                                        Get More Storage
-                                    </button>
-                                    <button
-                                        className="flex items-center justify-center px-4 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-                                        onClick={handleClearStorage}
-                                        disabled={storageInfo.isLoading || storageInfo.used === 0}
-                                    >
-                                        <MdDeleteSweep className="mr-2" />
-                                        Clear Storage
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="mt-6">
-                                <h3 className="text-lg font-semibold mb-4">Storage Distribution</h3>
-                                <div className="relative h-64 w-full">
-                                    <Doughnut data={chartData} options={chartOptions} />
-                                </div>
-                            </div>
-
-
+                    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                        <div className="flex justify-end items-right">
+                            <span className="flex space-x-4">
+                                <button
+                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                    onClick={() => {/* Handle upload */ }}
+                                >
+                                    <MdUpload className="mr-2" size={20} />
+                                    Upload
+                                </button>
+                                <button
+                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                    onClick={() => {/* Handle folder creation */ }}
+                                >
+                                    <MdCreateNewFolder className="mr-2" size={20} />
+                                    Create Folder
+                                </button>
+                            </span>
                         </div>
+                    </div>
 
-                        {/* Activity Section placeholder */}
-                        <div className="bg-white">
-                            {/* Activity content will go here */}
-                            
+                    {/* Activity Table */}
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Email
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Action
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Path
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Time
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {tableData.map((item, index) => (
+                                        <tr
+                                            key={index}
+                                            className="border-b border-gray-100 mb-2 hover:bg-gray-50"
+                                        >
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {item.email}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {item.action}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {item.path}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {item.time}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
