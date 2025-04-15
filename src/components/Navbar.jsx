@@ -1,14 +1,43 @@
-import React from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { MdDashboard, MdPeople, MdGroupWork, MdStorage, MdDelete, MdSettings, MdLogout } from 'react-icons/md'
+import React, {useEffect} from 'react'
+import {NavLink, useNavigate} from 'react-router-dom'
+import { MdDashboard, MdPeople, MdGroupWork, MdStorage, MdDelete, MdSettings } from 'react-icons/md'
+import {toast} from "react-toastify";
 
 const Navbar = () => {
     const navigate = useNavigate();
     const isActive = ({ isActive }) => `flex items-center ${isActive ? 'text-white' : 'text-gray-txt'}`
 
-    const handleLogout = () => {
-        // Perform logout logic here, e.g., clear tokens, redirect to login
-        navigate('/login');
+    const [loggedInUser, setLoggedInUser] = React.useState(null);
+
+
+    useEffect(() => {
+        const data = localStorage.getItem('user')
+        if (data) {
+            const user = JSON.parse(data);
+            setLoggedInUser(user);
+        }else{
+            toast.error("Please login to access this page", {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            })
+            // Redirect to login page after 2 seconds
+            setTimeout(() => {
+                navigate("/login")
+            }, 2000);
+            setLoggedInUser(null);
+        }
+
+    }, []);
+
+
+
+    function handleLogout() {
+        navigate('/login')
     }
 
     return (
@@ -20,8 +49,8 @@ const Navbar = () => {
 
                 <ul className="mt-8 space-y-4">
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/dashboard" 
+                        <NavLink
+                            to="/dashboard"
                             className={isActive}
                         >
                             <MdDashboard className="mr-3" size={24} />
@@ -29,8 +58,8 @@ const Navbar = () => {
                         </NavLink>
                     </li>
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/users" 
+                        <NavLink
+                            to="/users"
                             className={isActive}
                         >
                             <MdPeople className="mr-3" size={24} />
@@ -38,26 +67,18 @@ const Navbar = () => {
                         </NavLink>
                     </li>
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/groups" 
+                        <NavLink
+                            to="/groups"
                             className={isActive}
                         >
                             <MdGroupWork className="mr-3" size={24} />
-                            <span>Group</span>
+                            <span>Files</span>
                         </NavLink>
                     </li>
+
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/storage" 
-                            className={isActive}
-                        >
-                            <MdStorage className="mr-3" size={24} />
-                            <span>Storage</span>
-                        </NavLink>
-                    </li>
-                    <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/trash" 
+                        <NavLink
+                            to="/trash"
                             className={isActive}
                         >
                             <MdDelete className="mr-3" size={24} />
@@ -65,8 +86,8 @@ const Navbar = () => {
                         </NavLink>
                     </li>
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
-                        <NavLink 
-                            to="/settings" 
+                        <NavLink
+                            to="/settings"
                             className={isActive}
                         >
                             <MdSettings className="mr-3" size={24} />
@@ -84,13 +105,15 @@ const Navbar = () => {
                         className="w-10 bg- h-10 rounded-full object-cover"
                     />
                     <div>
-                        <p className="font-medium">John Doe</p>
-                        <p className="text-sm text-gray-400">Admin</p>
+                        {loggedInUser && <p className="font-medium">{loggedInUser.fullName}</p>}
+                        {loggedInUser && <p className="text-sm text-gray-400">{loggedInUser.email}</p>}
                     </div>
                 </div>
 
                 <button className="flex justify-center w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" onClick={handleLogout}>
                     <MdLogout className="mr-3" size={24} />
+                {/* Logout Button */}
+                <button className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" onClick={handleLogout}>
                     Log Out
                 </button>
             </div>
@@ -98,4 +121,4 @@ const Navbar = () => {
     )
 }
 
-export default Navbar
+export default Navbar;

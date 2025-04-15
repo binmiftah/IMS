@@ -5,8 +5,8 @@ import { FaEnvelope, FaLock, } from 'react-icons/fa'
 import { Link, useNavigate } from 'react-router-dom'
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import apiCall from "../../../pkg/api";
-import { AxiosError } from "axios"
+import apiCall from "../../../pkg/api/internal.js";
+import {handleAxiosError} from "../../../pkg/error/error.js";
 
 
 const Login = () => {
@@ -17,58 +17,34 @@ const Login = () => {
 
 
    const handleSubmit = async (e) => {
-      e.preventDefault() // Prevent default form submission behavior
+       e.preventDefault() // Prevent default form submission behavior
 
-     try{
-         const data = await apiCall.login("auth/login", {
-           email: email,
-            password: password
-         })
+       try {
+           const data = await apiCall.login("auth/login", {
+               email: email,
+               password: password
+           })
 
-        if (data) {
-                localStorage.setItem("token", data.token) // Store token in local storage
-                localStorage.setItem("user", JSON.stringify(data.user)) // Store user data in local storage
-                  toast.success(data.message,{
-                        position: "top-right",
-                        autoClose: 2000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                        progress: undefined,
-                  })
+           if (data) {
+               localStorage.setItem("token", data.data.token) // Store token in local storage
+               localStorage.setItem("user", JSON.stringify(data.data.user)) // Store user data in local storage
+               toast.success(data.message, {
+                   position: "top-right",
+                   autoClose: 2000,
+                   hideProgressBar: false,
+                   closeOnClick: true,
+                   pauseOnHover: true,
+                   draggable: true,
+                   progress: undefined,
+               })
 
-           navigate("/") // Redirect to home page
-        }
-     }catch(error){
-         if (error instanceof AxiosError) {
-            toast.error(error.response.data.message,{
-               position: "top-right",
-               autoClose: 2000,
-               hideProgressBar: false,
-               closeOnClick: true,
-               pauseOnHover: true,
-               draggable: true,
-               progress: undefined,
-            })
-            setError(error.response.data.message)
-         }else{
-            toast.error(error.message,{
-               position: "top-right",
-               autoClose: 2000,
-               hideProgressBar: false,
-               closeOnClick: true,
-               pauseOnHover: true,
-               draggable: true,
-               progress: undefined,
-            })
-            setError(error.message)
-         }
-
-
-
-     }
-
+               setTimeout(() => {
+                   navigate("/") // Redirect to home page
+               }, 2500)
+           }
+       } catch (error) {
+           handleAxiosError(error, setError)
+       }
    }
 
    return (

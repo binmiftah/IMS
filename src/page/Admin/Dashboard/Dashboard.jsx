@@ -1,8 +1,10 @@
-import React from 'react';
+
 import Navbar from '../../../components/Navbar.jsx';
 import { MdSearch, MdNotifications } from 'react-icons/md';
 
+
 const Dashboard = () => {
+
     return (
         <div className="flex min-h-screen">
             {/* Sidebar */}
