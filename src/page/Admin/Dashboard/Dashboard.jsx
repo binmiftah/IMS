@@ -1,60 +1,46 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
-import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder } from 'react-icons/md';
+import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 
 
 
 const Dashboard = () => {
-    // Add state for storage
-    const [storageInfo, setStorageInfo] = useState({
-        used: 0,
-        total: 100, // GB
-        isLoading: true,
-    });
+    const uploadModalRef = useRef(null);
+    const folderModalRef = useRef(null);
 
-    // Calculate percentage
-    const percentageUsed = (storageInfo.used / storageInfo.total) * 100;
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
 
-    // Fetch storage info
-    useEffect(() => {
-        // Simulate API call to get storage info
-        const fetchStorageInfo = async () => {
-            try {
-                // Replace with actual API call
-                const response = await fetch('');
-                const data = await response.json();
-                setStorageInfo({
-                    used: data.used,
-                    total: data.total,
-                    isLoading: false,
-                });
-            } catch (error) {
-                console.error('Error fetching storage info:', error);
-                // Set default values if fetch fails
-                setStorageInfo({
-                    used: 0,
-                    total: 100,
-                    isLoading: false,
-                });
-            }
-        };
 
-        fetchStorageInfo();
-    }, []);
+    // State for modal
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [folderName, setFolderName] = useState('');
 
-    // Handle clear storage
-    const handleClearStorage = async () => {
-        if (window.confirm('Are you sure you want to clear storage?')) {
-            try {
-                // Replace with actual API call
-                await fetch('/api/clear-storage', { method: 'POST' });
-                setStorageInfo(prev => ({
-                    ...prev,
-                    used: 0,
-                }));
-            } catch (error) {
-                console.error('Error clearing storage:', error);
-            }
+    const handleFileChange = (e) => {
+        setSelectedFile(e.target.files[0]);
+    };
+
+    const handleUploadSubmit = async () => {
+        if (!selectedFile) return;
+        // Handle file upload logic here
+        console.log('Uploading file:', selectedFile);
+        setIsUploadModalOpen(false);
+        setSelectedFile(null);
+    };
+
+    const handleFolderSubmit = async () => {
+        if (!folderName.trim()) return;
+        // Handle folder creation logic here
+        console.log('Creating folder:', folderName);
+        setIsFolderModalOpen(false);
+        setFolderName('');
+    };
+
+    const handleOutsideClick = (e, modalRef, closeModal) => {
+        if (modalRef.current && !modalRef.current.contains(e.target)) {
+            closeModal();
         }
     };
 
@@ -72,8 +58,153 @@ const Dashboard = () => {
             path: "/media/image.jpg",
             time: "2024-04-15 09:45 AM"
         },
-        // Add more items as needed
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
     ];
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = tableData.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(tableData.length / itemsPerPage);
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+    };
 
 
     return (
@@ -118,14 +249,14 @@ const Dashboard = () => {
                             <span className="flex space-x-4">
                                 <button
                                     className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    onClick={() => {/* Handle upload */ }}
+                                    onClick={() => setIsUploadModalOpen(true)}
                                 >
                                     <MdUpload className="mr-2" size={20} />
                                     Upload
                                 </button>
                                 <button
                                     className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    onClick={() => {/* Handle folder creation */ }}
+                                    onClick={() => setIsFolderModalOpen(true)}
                                 >
                                     <MdCreateNewFolder className="mr-2" size={20} />
                                     Create Folder
@@ -156,7 +287,7 @@ const Dashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {tableData.map((item, index) => (
+                                    {currentItems.map((item, index) => (
                                         <tr
                                             key={index}
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
@@ -177,10 +308,149 @@ const Dashboard = () => {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {/* Pagination Controls */}
+                            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
+                                <div className="flex flex-1 justify-between sm:hidden">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-700">
+                                            Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
+                                            <span className="font-medium">
+                                                {Math.min(indexOfLastItem, tableData.length)}
+                                            </span>{' '}
+                                            of <span className="font-medium">{tableData.length}</span> results
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                            <button
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:bg-gray-100"
+                                            >
+                                                <MdChevronLeft className="h-5 w-5" />
+                                            </button>
+                                            {[...Array(totalPages)].map((_, index) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => handlePageChange(index + 1)}
+                                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === index + 1
+                                                            ? 'bg-black text-white focus-visible:outline-offset-0'
+                                                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                                                        }`}
+                                                >
+                                                    {index + 1}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage === totalPages}
+                                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:bg-gray-100"
+                                            >
+                                                <MdChevronRight className="h-5 w-5" />
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {isUploadModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={(e) => handleOutsideClick(e, uploadModalRef, () => setIsUploadModalOpen(false))}
+                >
+                    <div
+                        ref={uploadModalRef}
+                        className="bg-white rounded-lg p-6 w-96"
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Upload File</h2>
+                            {/* <button
+                                onClick={() => setIsUploadModalOpen(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <MdClose size={24} />
+                            </button> */}
+                        </div>
+
+                        <div className="mb-4">
+                            <input
+                                type="file"
+                                onChange={handleFileChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleUploadSubmit}
+                            disabled={!selectedFile}
+                            className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            Create
+                        </button>
+                    </div>
+                </div>
+            )}
+            {isFolderModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={(e) => handleOutsideClick(e, folderModalRef, () => setIsFolderModalOpen(false))}
+                >
+                    <div
+                        ref={folderModalRef}
+                        className="bg-white rounded-lg p-6 w-96"
+                    >
+
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Create Folder</h2>
+                            {/* <button
+                                onClick={() => setIsFolderModalOpen(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <MdClose size={24} />
+                            </button> */}
+                        </div>
+
+                        <div className="mb-4">
+                            <input
+                                type="text"
+                                value={folderName}
+                                onChange={(e) => setFolderName(e.target.value)}
+                                placeholder="Enter folder name"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleFolderSubmit}
+                            disabled={!folderName.trim()}
+                            className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            Create
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
