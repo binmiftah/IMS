@@ -1,60 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
-import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder } from 'react-icons/md';
+import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdClose } from 'react-icons/md';
 
 
 
 const Dashboard = () => {
-    // Add state for storage
-    const [storageInfo, setStorageInfo] = useState({
-        used: 0,
-        total: 100, // GB
-        isLoading: true,
-    });
+    const uploadModalRef = useRef(null);
+    const folderModalRef = useRef(null);
 
-    // Calculate percentage
-    const percentageUsed = (storageInfo.used / storageInfo.total) * 100;
 
-    // Fetch storage info
-    useEffect(() => {
-        // Simulate API call to get storage info
-        const fetchStorageInfo = async () => {
-            try {
-                // Replace with actual API call
-                const response = await fetch('');
-                const data = await response.json();
-                setStorageInfo({
-                    used: data.used,
-                    total: data.total,
-                    isLoading: false,
-                });
-            } catch (error) {
-                console.error('Error fetching storage info:', error);
-                // Set default values if fetch fails
-                setStorageInfo({
-                    used: 0,
-                    total: 100,
-                    isLoading: false,
-                });
-            }
-        };
+    // State for modal
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+    const [folderName, setFolderName] = useState('');
 
-        fetchStorageInfo();
-    }, []);
+    const handleFileChange = (e) => {
+        setSelectedFile(e.target.files[0]);
+    };
 
-    // Handle clear storage
-    const handleClearStorage = async () => {
-        if (window.confirm('Are you sure you want to clear storage?')) {
-            try {
-                // Replace with actual API call
-                await fetch('/api/clear-storage', { method: 'POST' });
-                setStorageInfo(prev => ({
-                    ...prev,
-                    used: 0,
-                }));
-            } catch (error) {
-                console.error('Error clearing storage:', error);
-            }
+    const handleUploadSubmit = async () => {
+        if (!selectedFile) return;
+        // Handle file upload logic here
+        console.log('Uploading file:', selectedFile);
+        setIsUploadModalOpen(false);
+        setSelectedFile(null);
+    };
+
+    const handleFolderSubmit = async () => {
+        if (!folderName.trim()) return;
+        // Handle folder creation logic here
+        console.log('Creating folder:', folderName);
+        setIsFolderModalOpen(false);
+        setFolderName('');
+    };
+
+    const handleOutsideClick = (e, modalRef, closeModal) => {
+        if (modalRef.current && !modalRef.current.contains(e.target)) {
+            closeModal();
         }
     };
 
@@ -72,7 +55,12 @@ const Dashboard = () => {
             path: "/media/image.jpg",
             time: "2024-04-15 09:45 AM"
         },
-        // Add more items as needed
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
     ];
 
 
@@ -118,14 +106,14 @@ const Dashboard = () => {
                             <span className="flex space-x-4">
                                 <button
                                     className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    onClick={() => {/* Handle upload */ }}
+                                    onClick={() => setIsUploadModalOpen(true)}
                                 >
                                     <MdUpload className="mr-2" size={20} />
                                     Upload
                                 </button>
                                 <button
                                     className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    onClick={() => {/* Handle folder creation */ }}
+                                    onClick={() => setIsFolderModalOpen(true)}
                                 >
                                     <MdCreateNewFolder className="mr-2" size={20} />
                                     Create Folder
@@ -181,6 +169,84 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+
+            {isUploadModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={(e) => handleOutsideClick(e, uploadModalRef, () => setIsUploadModalOpen(false))}
+                >
+                    <div
+                        ref={uploadModalRef}
+                        className="bg-white rounded-lg p-6 w-96"
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Upload File</h2>
+                            {/* <button
+                                onClick={() => setIsUploadModalOpen(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <MdClose size={24} />
+                            </button> */}
+                        </div>
+
+                        <div className="mb-4">
+                            <input
+                                type="file"
+                                onChange={handleFileChange}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleUploadSubmit}
+                            disabled={!selectedFile}
+                            className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            Create
+                        </button>
+                    </div>
+                </div>
+            )}
+            {isFolderModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={(e) => handleOutsideClick(e, folderModalRef, () => setIsFolderModalOpen(false))}
+                >
+                    <div
+                        ref={folderModalRef}
+                        className="bg-white rounded-lg p-6 w-96"
+                    >
+
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Create Folder</h2>
+                            {/* <button
+                                onClick={() => setIsFolderModalOpen(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <MdClose size={24} />
+                            </button> */}
+                        </div>
+
+                        <div className="mb-4">
+                            <input
+                                type="text"
+                                value={folderName}
+                                onChange={(e) => setFolderName(e.target.value)}
+                                placeholder="Enter folder name"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleFolderSubmit}
+                            disabled={!folderName.trim()}
+                            className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            Create
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
