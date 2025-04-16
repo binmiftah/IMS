@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
-import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdClose } from 'react-icons/md';
+import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 
 
 
 const Dashboard = () => {
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
 
 
     // State for modal
@@ -61,7 +64,147 @@ const Dashboard = () => {
             path: "/media/image.jpg",
             time: "2024-04-15 08:27 AM"
         },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
+        {
+            email: "admin11@gmail.com",
+            action: "Write",
+            path: "/media/image.jpg",
+            time: "2024-04-15 08:27 AM"
+        },
     ];
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = tableData.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(tableData.length / itemsPerPage);
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+    };
 
 
     return (
@@ -144,7 +287,7 @@ const Dashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {tableData.map((item, index) => (
+                                    {currentItems.map((item, index) => (
                                         <tr
                                             key={index}
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
@@ -165,6 +308,67 @@ const Dashboard = () => {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {/* Pagination Controls */}
+                            <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
+                                <div className="flex flex-1 justify-between sm:hidden">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-700">
+                                            Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
+                                            <span className="font-medium">
+                                                {Math.min(indexOfLastItem, tableData.length)}
+                                            </span>{' '}
+                                            of <span className="font-medium">{tableData.length}</span> results
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                            <button
+                                                onClick={() => handlePageChange(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:bg-gray-100"
+                                            >
+                                                <MdChevronLeft className="h-5 w-5" />
+                                            </button>
+                                            {[...Array(totalPages)].map((_, index) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => handlePageChange(index + 1)}
+                                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === index + 1
+                                                            ? 'bg-black text-white focus-visible:outline-offset-0'
+                                                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                                                        }`}
+                                                >
+                                                    {index + 1}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => handlePageChange(currentPage + 1)}
+                                                disabled={currentPage === totalPages}
+                                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:bg-gray-100"
+                                            >
+                                                <MdChevronRight className="h-5 w-5" />
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
