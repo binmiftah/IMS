@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
 import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
+import Button from '../../../components/Button.jsx';
 
 
 
@@ -221,19 +222,24 @@ const Dashboard = () => {
                                 placeholder="Search..."
                                 className="w-96 px-4 py-2 pr-10 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-200"
                             />
-                            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
-                                <MdSearch size={20} />
-                            </button>
+                            <Button
+                                variant="icon"
+                                className="absolute right-3 top-1/2 -translate-y-1/2"
+                                icon={<MdSearch size={20} />}
+                            />
                         </div>
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <button className="relative p-2 text-gray-500 hover:text-gray-700">
+                        <Button
+                            variant="icon"
+                            className="relative p-2"
+                        >
                             <MdNotifications size={24} />
                             <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
                                 3
                             </span>
-                        </button>
+                        </Button>
                         <img
                             src="https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?q=80&w=1856&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                             alt="Profile"
@@ -247,20 +253,20 @@ const Dashboard = () => {
                     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                         <div className="flex justify-end items-right">
                             <span className="flex space-x-4">
-                                <button
-                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                <Button
                                     onClick={() => setIsUploadModalOpen(true)}
-                                >
-                                    <MdUpload className="mr-2" size={20} />
-                                    Upload
-                                </button>
-                                <button
                                     className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    onClick={() => setIsFolderModalOpen(true)}
+                                    icon={<MdUpload className='mr-2' size={20} />}
                                 >
-                                    <MdCreateNewFolder className="mr-2" size={20} />
+                                    Upload
+                                </Button>
+                                <Button
+                                    onClick={() => setIsFolderModalOpen(true)}
+                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                    icon={<MdCreateNewFolder className='mr-2' size={20} />}
+                                >
                                     Create Folder
-                                </button>
+                                </Button>
                             </span>
                         </div>
                     </div>
@@ -312,20 +318,22 @@ const Dashboard = () => {
                             {/* Pagination Controls */}
                             <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
                                 <div className="flex flex-1 justify-between sm:hidden">
-                                    <button
+                                    <Button
+                                        variant="secondary"
                                         onClick={() => handlePageChange(currentPage - 1)}
                                         disabled={currentPage === 1}
                                         className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                                     >
                                         Previous
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
                                         onClick={() => handlePageChange(currentPage + 1)}
                                         disabled={currentPage === totalPages}
                                         className="relative ml-3 inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
                                     >
                                         Next
-                                    </button>
+                                    </Button>
                                 </div>
                                 <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                                     <div>
@@ -339,32 +347,31 @@ const Dashboard = () => {
                                     </div>
                                     <div>
                                         <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                                            <button
+
+                                            <Button
+                                                variant="secondary"
                                                 onClick={() => handlePageChange(currentPage - 1)}
                                                 disabled={currentPage === 1}
-                                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:bg-gray-100"
-                                            >
-                                                <MdChevronLeft className="h-5 w-5" />
-                                            </button>
+                                                className="relative inline-flex rounded-l-md px-2 py-2"
+                                                icon={<MdChevronLeft className="h-5 w-5" />}
+                                            />
                                             {[...Array(totalPages)].map((_, index) => (
-                                                <button
+                                                <Button
                                                     key={index}
+                                                    variant={currentPage === index + 1 ? 'primary' : 'secondary'}
                                                     onClick={() => handlePageChange(index + 1)}
-                                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === index + 1
-                                                            ? 'bg-black text-white focus-visible:outline-offset-0'
-                                                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
-                                                        }`}
+                                                    className="px-4 py-2"
                                                 >
                                                     {index + 1}
-                                                </button>
+                                                </Button>
                                             ))}
-                                            <button
+                                            <Button
+                                                variant="secondary"
                                                 onClick={() => handlePageChange(currentPage + 1)}
                                                 disabled={currentPage === totalPages}
-                                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:bg-gray-100"
-                                            >
-                                                <MdChevronRight className="h-5 w-5" />
-                                            </button>
+                                                className="relative inline-flex rounded-r-md px-2 py-2"
+                                                icon={<MdChevronRight className="mr-0 h-5 w-5" />}
+                                            />
                                         </nav>
                                     </div>
                                 </div>
@@ -401,13 +408,13 @@ const Dashboard = () => {
                             />
                         </div>
 
-                        <button
+                        <Button
                             onClick={handleUploadSubmit}
                             disabled={!selectedFile}
-                            className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="w-full px-4 py-2 rounded-lg"
                         >
                             Create
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -441,13 +448,13 @@ const Dashboard = () => {
                             />
                         </div>
 
-                        <button
+                        <Button
                             onClick={handleFolderSubmit}
                             disabled={!folderName.trim()}
-                            className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="w-full px-4 py-2 rounded-lg"
                         >
                             Create
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}

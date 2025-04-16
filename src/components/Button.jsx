@@ -9,7 +9,7 @@ const Button = ({
     icon = null,
     type = 'button'
 }) => {
-    const baseStyles = "flex items-center justify-center rounded-lg transition-colors";
+    const baseStyles = "flex items-center justify-center transition-colors";
     
     const variants = {
         primary: "bg-black text-white hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed",
@@ -24,7 +24,7 @@ const Button = ({
             disabled={disabled}
             className={`${baseStyles} ${variants[variant]} ${className}`}
         >
-            {icon && <span className="mr-2">{icon}</span>}
+            {icon && <span>{icon}</span>}
             {children}
         </button>
     );
