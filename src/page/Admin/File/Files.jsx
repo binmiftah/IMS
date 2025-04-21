@@ -3,7 +3,7 @@ import { MdSearch, MdNotifications, MdFolder, MdInsertDriveFile, MdArrowBack, Md
 import Navbar from '../../../components/Navbar';
 import Button from '../../../components/Button';
 
-const File = () => {
+const Files = () => {
     const [currentPath, setCurrentPath] = useState('/');
     const [items, setItems] = useState([
         { type: 'folder', name: 'Documents', path: '/Documents' },
@@ -109,4 +109,4 @@ const File = () => {
     );
 };
 
-export default File;
+export default Files;
