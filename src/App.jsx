@@ -6,6 +6,7 @@ import Organisation from './page/Admin/organization-form/OrganisationForm.jsx'
 import Invite from './page/Admin/invite/Invite.jsx'
 import Dashboard from './page/Admin/Dashboard/Dashboard.jsx'
 import Users from './page/Admin/UserManagement/Users.jsx'
+import File from './page/Admin/File/File.jsx'
 
 
 import NotFound from './components/NotFound'
@@ -20,6 +21,7 @@ const App = () => {
         <Route path="/invite" element={<Invite />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/file" element={<File />} />
 
         {/* Redirect to login if no path is matched */}
         <Route path="/" element={<Dashboard />} />
