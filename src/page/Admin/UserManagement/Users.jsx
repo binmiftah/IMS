@@ -103,7 +103,7 @@ const Users = () => {
                     >
                         <div
                             ref={modalRef}
-                            className="bg-white rounded-lg p-6 w-96"
+                            className="bg-white rounded-lg p-6 w-200"
                         >
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-semibold">Add User</h2>
