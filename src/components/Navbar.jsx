@@ -68,7 +68,7 @@ const Navbar = () => {
                     </li>
                     <li className="px-4 py-2 hover:bg-gray-700 cursor-pointer">
                         <NavLink
-                            to="/groups"
+                            to="/files"
                             className={isActive}
                         >
                             <MdGroupWork className="mr-3" size={24} />
