@@ -43,6 +43,7 @@ const Login = () => {
                }, 2500)
            }
        } catch (error) {
+           console.log(error)
            handleAxiosError(error, setError)
        }
    }

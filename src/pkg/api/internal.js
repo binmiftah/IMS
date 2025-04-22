@@ -1,6 +1,6 @@
 import axios, {AxiosError} from "axios";
 
-const BaseUrl =  "http://18.208.155.254/api/v1/";
+// const BaseUrl =  "http://18.208.155.254/api/v1/";
 const BaseUrlTesting = "http://localhost:3002/api/v1/";
 
 class ApiCall {
@@ -83,5 +83,5 @@ class ApiCall {
 }
 
 
-const apiCall = new ApiCall(BaseUrl)
+const apiCall = new ApiCall(BaseUrlTesting)
 export default apiCall;

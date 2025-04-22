@@ -23,10 +23,9 @@ const Dashboard = () => {
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [folderName, setFolderName] = useState('');
 
-    // Fetch Aaudit Logs
+    // Fetch Audit Logs
     const fetchAuditLog = async () => {
         const result = await apiCall.allAuditLogs("/auditlog")
-        console.log(result.data.logs)
         setAuditLogs(result.data.logs);
     }
 
@@ -192,12 +191,14 @@ const Dashboard = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.file ? item.file.filePath : item.folder ? item.folder.fullPath : ''}
-                                            </td>02:17 PM
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {new Date(item.createdAt).toLocaleDateString()}:{new Date(item.createdAt).toLocaleTimeString()}
+                                                {new Date(item.createdAt).toLocaleDateString()}   {new Date(item.createdAt).toLocaleTimeString()}
                                             </td>
                                         </tr>
-                                    )) : <td colSpan={4} className="text-center w-full p-5" >No Data Found</td>}
+                                    )) : <tr>
+                                        <td colSpan={4} className="text-center w-full p-5" >No Data Found</td>
+                                    </tr>}
                                 </tbody>
                             </table>
 
