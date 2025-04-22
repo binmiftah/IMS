@@ -22,7 +22,7 @@ const App = () => {
         <Route path="/users" element={<Users />} />
 
         {/* Redirect to login if no path is matched */}
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Login />} />
 
         {/* 404 Not Found Route */}
         <Route path="*" element={<NotFound />} />
