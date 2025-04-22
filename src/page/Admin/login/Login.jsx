@@ -39,7 +39,7 @@ const Login = () => {
                })
 
                setTimeout(() => {
-                   navigate("/") // Redirect to home page
+                   navigate("/dashboard") // Redirect to home page
                }, 2500)
            }
        } catch (error) {

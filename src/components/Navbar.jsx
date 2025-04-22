@@ -30,7 +30,7 @@ const Navbar = () => {
                 navigate("/login")
             }, 2000);
             setLoggedInUser(null);
-        }
+        }k
 
     }, []);
 

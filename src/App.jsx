@@ -23,7 +23,8 @@ const App = () => {
         <Route path="/users" element={<Users />} />
         <Route path="/files" element={<Files />} />
 
-        <Route path="/" element={<Dashboard />} />
+        {/* Redirect to login if no path is matched */}
+        <Route path="/" element={<Login />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -15,7 +15,7 @@ const handleAxiosError = (error, setError) => {
             progress: undefined,
         })
 
-        setError(error.response.data.message)
+        if (setError) setError(error.response.data.message)
     } else {
         toast.error(error.message, {
             position: "top-right",
@@ -26,7 +26,7 @@ const handleAxiosError = (error, setError) => {
             draggable: true,
             progress: undefined,
         })
-        setError(error.message)
+        if (setError) setError(error.message)
     }
 
 }

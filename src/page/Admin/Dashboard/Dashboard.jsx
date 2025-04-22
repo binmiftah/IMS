@@ -2,10 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
 import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
+import apiCall from "../../../pkg/api/internal.js";
+import {toast, ToastContainer} from "react-toastify";
+import {handleAxiosError} from "../../../pkg/error/error.js";
 
 
 
 const Dashboard = () => {
+    const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
 
@@ -19,6 +23,18 @@ const Dashboard = () => {
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [folderName, setFolderName] = useState('');
 
+    // Fetch Aaudit Logs
+    const fetchAuditLog = async () => {
+        const result = await apiCall.allAuditLogs("/auditlog")
+        console.log(result.data.logs)
+        setAuditLogs(result.data.logs);
+    }
+
+    useEffect(()=>{
+        fetchAuditLog();
+    }, [])
+
+
     const handleFileChange = (e) => {
         setSelectedFile(e.target.files[0]);
     };
@@ -26,17 +42,37 @@ const Dashboard = () => {
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
         // Handle file upload logic here
-        console.log('Uploading file:', selectedFile);
-        setIsUploadModalOpen(false);
-        setSelectedFile(null);
+        try{
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            const res = await apiCall.uploadFile("files/upload/file", formData)
+            toast.success(res.message);
+
+        }catch (error){
+           handleAxiosError(error)
+        }finally {
+            fetchAuditLog()
+            setIsUploadModalOpen(false);
+            setSelectedFile(null);
+        }
+
+
     };
 
     const handleFolderSubmit = async () => {
         if (!folderName.trim()) return;
         // Handle folder creation logic here
-        console.log('Creating folder:', folderName);
-        setIsFolderModalOpen(false);
-        setFolderName('');
+        try{
+            const res = await apiCall.createFolder("files/create/folder", {folderName})
+            toast.success(res.message);
+        }catch(error){
+           handleAxiosError(error)
+        }finally {
+            fetchAuditLog()
+            setIsFolderModalOpen(false);
+            setFolderName('');
+        }
+
     };
 
     const handleOutsideClick = (e, modalRef, closeModal) => {
@@ -45,164 +81,12 @@ const Dashboard = () => {
         }
     };
 
-    // Sample data for the table (replace with actual data)
-    const tableData = [
-        {
-            email: "admin11@gmail.com",
-            action: "Read",
-            path: "/documents/report.pdf",
-            time: "2024-04-15 10:30 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Read",
-            path: "/media/image.jpg",
-            time: "2024-04-15 09:45 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-        {
-            email: "admin11@gmail.com",
-            action: "Write",
-            path: "/media/image.jpg",
-            time: "2024-04-15 08:27 AM"
-        },
-    ];
+
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = tableData.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(tableData.length / itemsPerPage);
+    const currentItems = auditLogs.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(auditLogs.length / itemsPerPage);
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
     };
@@ -252,6 +136,7 @@ const Dashboard = () => {
                 <div className="p-6">
                     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                         <div className="flex justify-end items-right">
+                            <ToastContainer/>
                             <span className="flex space-x-4">
                                 <Button
                                     onClick={() => setIsUploadModalOpen(true)}
@@ -288,30 +173,31 @@ const Dashboard = () => {
                                             Path
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Time
+                                            Date/Time
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {currentItems.map((item, index) => (
+
+                                    {currentItems.length >0 ? currentItems.map((item, index) => (
                                         <tr
                                             key={index}
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.email}
+                                                {item.users.email}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.action}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.path}
-                                            </td>
+                                                {item.file ? item.file.filePath : item.folder ? item.folder.fullPath : ''}
+                                            </td>02:17 PM
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.time}
+                                                {new Date(item.createdAt).toLocaleDateString()}:{new Date(item.createdAt).toLocaleTimeString()}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : <td colSpan={4} className="text-center w-full p-5" >No Data Found</td>}
                                 </tbody>
                             </table>
 
@@ -340,9 +226,9 @@ const Dashboard = () => {
                                         <p className="text-sm text-gray-700">
                                             Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
                                             <span className="font-medium">
-                                                {Math.min(indexOfLastItem, tableData.length)}
+                                                {Math.min(indexOfLastItem, auditLogs.length)}
                                             </span>{' '}
-                                            of <span className="font-medium">{tableData.length}</span> results
+                                            of <span className="font-medium">{auditLogs.length}</span> results
                                         </p>
                                     </div>
                                     <div>
@@ -381,6 +267,8 @@ const Dashboard = () => {
                 </div>
             </div>
 
+
+            {/* Modals */}
             {isUploadModalOpen && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"

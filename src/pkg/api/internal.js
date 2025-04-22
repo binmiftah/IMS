@@ -1,6 +1,7 @@
 import axios, {AxiosError} from "axios";
 
 const BaseUrl =  "http://18.208.155.254/api/v1/";
+const BaseUrlTesting = "http://localhost:3002/api/v1/";
 
 class ApiCall {
     constructor(url) {
@@ -46,8 +47,41 @@ class ApiCall {
         return response.data;
     }
 
+
+    async createFolder(path, data) {
+        const response = await this.instance.post(path, {
+            folderName: data.folderName,
+        }, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async uploadFile(path, data) {
+        console.log(data)
+        const response = await this.instance.post(path, data, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+
+    async allAuditLogs(path) {
+        const response = await this.instance.get(path, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
 }
 
 
-const apiCall = new ApiCall(BaseUrl);
+const apiCall = new ApiCall(BaseUrl)
 export default apiCall;
