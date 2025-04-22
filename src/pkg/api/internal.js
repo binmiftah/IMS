@@ -12,12 +12,12 @@ class ApiCall {
     }
 
 
-    async login(path, data) {
+    async login(urlPath, data) {
         // Validate inputs
         if (!data.email || !data.password) {
             throw new Error("email and password must be provided");
         }
-        const response = await this.instance.post(path, {
+        const response = await this.instance.post(urlPath, {
             email: data.email,
             password: data.password
         })
@@ -25,8 +25,8 @@ class ApiCall {
     }
 
 
-    async register(path, data) {
-        const response = await this.instance.post(path, {
+    async register(urlPath, data) {
+        const response = await this.instance.post(urlPath, {
             fullName: data.fullName,
             email: data.email,
             phoneNumber: data.phoneNumber,
@@ -36,8 +36,8 @@ class ApiCall {
     }
 
 
-    async logout(path) {
-        const response = await this.instance.post(path, {
+    async logout(urlPath) {
+        const response = await this.instance.post(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -48,8 +48,8 @@ class ApiCall {
     }
 
 
-    async createFolder(path, data) {
-        const response = await this.instance.post(path, {
+    async createFolder(urlPath, data) {
+        const response = await this.instance.post(urlPath, {
             folderName: data.folderName,
         }, {
             headers: {
@@ -59,9 +59,9 @@ class ApiCall {
         return response.data;
     }
 
-    async uploadFile(path, data) {
+    async uploadFile(urlPath, data) {
         console.log(data)
-        const response = await this.instance.post(path, data, {
+        const response = await this.instance.post(urlPath, data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -71,13 +71,46 @@ class ApiCall {
     }
 
 
-    async allAuditLogs(path) {
-        const response = await this.instance.get(path, {
+    async allAuditLogs(urlPath) {
+        const response = await this.instance.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
         return response.data;
+    }
+
+
+    //NOTES: FILES API CALL
+    async getFile(urlPath){
+        // GET root file
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+
+        return response.data.data.files
+    }
+
+
+    async getFolder(urlPath) {
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data.data.folders
+    }
+
+
+    async getFolderById(urlPath) {
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data.data
     }
 
 }

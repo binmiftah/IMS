@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MdSearch, MdNotifications, MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove } from 'react-icons/md';
 import Navbar from '../../../components/Navbar';
 import Button from '../../../components/Button';
+import apiCall from '../../../pkg/api/internal.js';
+import { ToastContainer } from "react-toastify";
+import {handleAxiosError} from "../../../pkg/error/error.js";
 
 const Files = () => {
     const [currentPath, setCurrentPath] = useState('/');
-    const [items, setItems] = useState([
-        { type: 'folder', name: 'Documents', path: '/Documents' },
-        { type: 'folder', name: 'Images', path: '/Images' },
-        { type: 'file', name: 'report.pdf', path: '/report.pdf' },
-        { type: 'file', name: 'data.xlsx', path: '/data.xlsx' },
-    ]);
+    const [items, setItems] = useState([]);
 
     const [sortBy, setSortBy] = useState({
         modified: "newest",
@@ -18,18 +16,37 @@ const Files = () => {
         type: "all",
     })
 
+
+    const getRootFiles = async () =>{
+        try{
+
+            const result = await Promise.all([apiCall.getFolder("files/folders"), apiCall.getFile("/files")])
+            let allResult = [...result[0], ...result[1]];
+            setItems(allResult);
+        }catch(error){
+            console.log(error);
+            handleAxiosError(error)
+        }
+    }
+
     const [activeDropdown, setActiveDropdown] = useState(null);
 
     const handleSort = (sortType) => {
         setSortBy((prev) => ({
             ...prev,
-            [type]: value
+            [sortType]: value
         }))
     }
 
-    const handleNavigate = (path) => {
-        setCurrentPath(path);
+
+
+    const handleNavigate = async (item) => {
+        setCurrentPath(item.fullPath);
+
         // Here you would fetch the contents of the new path
+        const result = await apiCall.getFolderById(`files/folders/${item.id}`)
+        const allResult = [...result.children, ...result.files];
+        setItems(allResult);
     };
 
     const handleBack = () => {
@@ -64,10 +81,12 @@ const Files = () => {
         setActiveDropdown(null);
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
+        getRootFiles();
         const handleClickOutside = () => setActiveDropdown(null);
-        document.addEventListener('click', handleClickOutside);
+        document.addEventListener('click', handleClickOutside)
         return () => document.removeEventListener('click', handleClickOutside);
+
     }, []);
 
 
@@ -77,6 +96,7 @@ const Files = () => {
 
             {/* Main Content */}
             <div className="w-4/5 bg-white">
+                <ToastContainer/>
                 <div className="flex justify-between items-center p-6 border-b border-gray-200">
                     <div className="flex items-center">
                         <div className="relative">
@@ -112,6 +132,8 @@ const Files = () => {
                 </div>
 
                 <div className="p-6">
+
+                    {/*FILTERS AND CURRENT PATH*/}
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-2">
@@ -122,6 +144,7 @@ const Files = () => {
                                     className="p-2 hover:bg-gray-100 rounded-lg"
                                     icon={<MdArrowBack size={20} />}
                                 />
+                                {/*<span className="text-gray-600">Current Path: {currentPath == null ? "/" : currentPath}</span>*/}
                                 <span className="text-gray-600">Current Path: {currentPath}</span>
                             </div>
 
@@ -168,71 +191,76 @@ const Files = () => {
                     </div>
 
                     {/* Files and Folders Grid */}
-                    <div className="grid grid-cols-4 gap-4">
-                        {items.map((item, index) => (
-                            <div
-                                key={index}
-                                onClick={() => item.type === 'folder' && handleNavigate(item.path)}
-                                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        {item.type === 'folder' ? (
-                                            <MdFolder size={24} className="text-yellow-500" />
-                                        ) : (
-                                            <MdInsertDriveFile size={24} className="text-blue-500" />
-                                        )}
-                                        <span className="text-gray-700">{item.name}</span>
-                                    </div>
-                                    <div className="relative">
-                                        <Button
-                                            variant="icon"
-                                            className="p-2 hover:bg-gray-200 rounded-full"
-                                            icon={<MdMoreVert size={20} />}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveDropdown(activeDropdown === index ? null : index);
-                                            }}
-                                        />
-                                        {activeDropdown === index && (
-                                            <div
-                                                className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
-                                                onClick={(e) => e.stopPropagation()}
+                    <div className="grid grid-cols-4 gap-4 ">
+                        {items.length > 0 ? items.map((item, index) => (
+                                <div
+                                    key={index}
+                                    onClick={() => item.type === 'folder' && handleNavigate(item)}
+                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            {item.type === 'folder' ? (
+                                                <MdFolder size={24} className="text-yellow-500" />
+                                            ) : (
+                                                <MdInsertDriveFile size={24} className="text-blue-500" />
+                                            )}
+                                            <span
+                                                className="text-gray-700 truncate max-w-[150px] block"
+                                                title={item.name || item.fileName}
                                             >
-                                                <button
-                                                    onClick={(e) => handleActionClick(e, 'open', item)}
-                                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                          {item.name || item.fileName}
+                                        </span>
+                                        </div>
+                                        <div className="relative">
+                                            <Button
+                                                variant="icon"
+                                                className="p-2 hover:bg-gray-200 rounded-full"
+                                                icon={<MdMoreVert size={20} />}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveDropdown(activeDropdown === index ? null : index);
+                                                }}
+                                            />
+                                            {activeDropdown === index && (
+                                                <div
+                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                    onClick={(e) => e.stopPropagation()}
                                                 >
-                                                    <MdOpenInNew className="mr-2" size={18} />
-                                                    Open
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleActionClick(e, 'copy', item)}
-                                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    <MdContentCopy className="mr-2" size={18} />
-                                                    Copy
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleActionClick(e, 'move', item)}
-                                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                >
-                                                    <MdDriveFileMove className="mr-2" size={18} />
-                                                    Move
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleActionClick(e, 'delete', item)}
-                                                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
-                                                >
-                                                    <MdDelete className="mr-2" size={18} />
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        )}
+                                                    <button
+                                                        onClick={(e) => handleActionClick(e, 'open', item)}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                                    >
+                                                        <MdOpenInNew className="mr-2" size={18} />
+                                                        Open
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleActionClick(e, 'copy', item)}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        <MdContentCopy className="mr-2" size={18} />
+                                                        Copy
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleActionClick(e, 'move', item)}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        <MdDriveFileMove className="mr-2" size={18} />
+                                                        Move
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleActionClick(e, 'delete', item)}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
+                                                    >
+                                                        <MdDelete className="mr-2" size={18} />
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            )):<p className="items-center">No Items Create A File or Folder</p>}
                     </div>
                 </div>
             </div>
