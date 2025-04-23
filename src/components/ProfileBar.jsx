@@ -1,4 +1,6 @@
 import React from 'react'
+import { MdSearch, MdNotifications } from 'react-icons/md'
+import Button from './Button'
 
 const ProfileBar = () => {
     return (
