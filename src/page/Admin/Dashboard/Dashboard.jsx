@@ -25,8 +25,13 @@ const Dashboard = () => {
 
     // Fetch Audit Logs
     const fetchAuditLog = async () => {
-        const result = await apiCall.allAuditLogs("/auditlog")
-        setAuditLogs(result.data.logs);
+      try{
+          const result = await apiCall.allAuditLogs("/auditlog")
+          setAuditLogs(result.data.logs);
+      }catch (error) {
+          console.error(error);
+          handleAxiosError(error);
+      }
     }
 
     useEffect(()=>{
@@ -45,6 +50,7 @@ const Dashboard = () => {
             const formData = new FormData();
             formData.append('file', selectedFile);
             const res = await apiCall.uploadFile("files/upload/file", formData)
+            console.log("resppnse", res)
             toast.success(res.message);
 
         }catch (error){

@@ -67,6 +67,12 @@ const SignUp = () => {
          }
 
       }catch(error){
+         if (!error.response){
+            error["response"] = {
+               data: "Network Error",
+            }
+            setError("Network Error")
+         }
          if (error.response.status === 404) {
             setError("Error Creating User")
             return;
