@@ -97,6 +97,17 @@ const Dashboard = () => {
         setCurrentPage(pageNumber);
     };
 
+    const handleSearch = (searchTerm) => {
+        if (searchTerm) {
+            const filteredLogs = auditLogs.filter((log) =>
+                log.users.email.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            setAuditLogs(filteredLogs);
+        } else {
+            fetchAuditLog();
+        }
+    }
+
 
     return (
         <div className="flex min-h-screen">
@@ -104,7 +115,7 @@ const Dashboard = () => {
 
             {/* Main Content */}
             <div className="w-4/5 bg-white">
-                <ProfileBar />
+                <ProfileBar onSearch={handleSearch} />
 
                 {/* Content Section */}
                 <div className="p-6">
