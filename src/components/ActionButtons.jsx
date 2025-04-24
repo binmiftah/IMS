@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { MdUpload, MdCreateNewFolder } from 'react-icons/md';
-import Button from '../Button';
+import Button from './Button.jsx';
 import { ToastContainer, toast } from "react-toastify";
-import apiCall from "../../pkg/api/internal.js";
-import { handleAxiosError } from "../../pkg/error/error.js";
+import apiCall from "../pkg/api/internal.js";
+import { handleAxiosError } from "../pkg/error/error.js";
 
 const ActionButtons = ({ onActionComplete }) => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
