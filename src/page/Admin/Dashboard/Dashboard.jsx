@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
 import ProfileBar from '../../../components/ProfileBar.jsx';
+import ActionButtons from '../../../components/ActionButtons.jsx';
 import { MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
@@ -119,7 +120,8 @@ const Dashboard = () => {
 
                 {/* Content Section */}
                 <div className="p-6">
-                    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <ActionButtons />
+                    {/* <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                         <div className="flex justify-end items-right">
                             <ToastContainer/>
                             <span className="flex space-x-4">
@@ -139,7 +141,7 @@ const Dashboard = () => {
                                 </Button>
                             </span>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Activity Table */}
                     <div className="bg-white rounded-lg shadow-lg p-6">
