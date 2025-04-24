@@ -2,7 +2,7 @@ import React from 'react'
 import { MdSearch, MdNotifications } from 'react-icons/md'
 import Button from './Button'
 
-const ProfileBar = () => {
+const ProfileBar = ({ onSearch }) => {
     return (
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
             <div className="flex items-center">
@@ -10,6 +10,7 @@ const ProfileBar = () => {
                     <input
                         type="text"
                         placeholder="Search..."
+                        onChange={(e) => onSearch && onSearch(e.target.value)}  
                         className="w-96 px-4 py-2 pr-10 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-200"
                     />
                     <Button
