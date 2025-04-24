@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
 import ProfileBar from '../../../components/ProfileBar.jsx';
-import { MdSearch, MdNotifications, MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
+import { MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
 import {toast, ToastContainer} from "react-toastify";
