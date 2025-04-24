@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MdSearch, MdNotifications, MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove } from 'react-icons/md';
 import Navbar from '../../../components/Navbar';
 import Button from '../../../components/Button';
+import ActionButtons from '../../../components/ActionButtons.jsx';
 import ProfileBar from '../../../components/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
@@ -133,6 +134,8 @@ const Files = () => {
                 <ProfileBar onSearch={(value) => console.log(value)} />
 
                 <div className="p-6">
+
+                    <ActionButtons />
 
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
