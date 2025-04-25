@@ -8,6 +8,8 @@ import Dashboard from './page/Admin/Dashboard/Dashboard.jsx'
 import Users from './page/Admin/UserManagement/Users.jsx'
 import Files from './page/Admin/File/Files.jsx'
 
+import UserDashboard from './page/User/UserDashboard/UserDashboard.jsx'
+
 
 import NotFound from './components/NotFound'
 
@@ -22,6 +24,8 @@ const App = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
         <Route path="/files" element={<Files />} />
+
+        <Route path="/user/dashboard" element={<UserDashboard />} />
 
         {/* Redirect to login if no path is matched */}
         <Route path="/" element={<Login />} />
