@@ -98,6 +98,7 @@ const UserDashboard = () => {
 
                 <div className="p-6">
                     <ActionButtons onActionComplete={getRootFiles} />
+
                     <div className="p-6">
                         <div className="flex items-center space-x-2 mb-6">
                             <Button
@@ -119,7 +120,30 @@ const UserDashboard = () => {
                                             onClick={() => item.type === 'folder' && handleNavigate(item)}
                                             className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                                         >
-                                            {/* ...existing item content... */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    {item.type === 'folder' ? (
+                                                        <MdFolder size={24} className="text-yellow-500" />
+                                                    ) : (
+                                                        <MdInsertDriveFile size={24} className="text-blue-500" />
+                                                    )}
+                                                    <span
+                                                        className="text-gray-700 truncate max-w-[150px] block"
+                                                        title={item.name || item.fileName}
+                                                    >
+                                                        {item.name || item.fileName}
+                                                    </span>
+                                                </div>
+                                                <Button
+                                                    variant="icon"
+                                                    className="p-2 hover:bg-gray-200 rounded-full"
+                                                    icon={<MdMoreVert size={20} />}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveDropdown(activeDropdown === index ? null : index);
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     ))}
                                 </>
@@ -129,7 +153,6 @@ const UserDashboard = () => {
                                 </p>
                             )}
                         </div>
-
                         {!showAll && items.length > displayLimit && (
                             <div className="mt-6 text-center">
                                 <Button
