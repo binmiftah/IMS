@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert } from 'react-icons/md';
 import UserNavbar from '../../../components/UserNavbar';
 import ProfileBar from '../../../components/ProfileBar';
@@ -9,13 +10,13 @@ import apiCall from '../../../pkg/api/internal';
 import { handleAxiosError } from '../../../pkg/error/error';
 
 const UserDashboard = () => {
+    const navigate = useNavigate();
     const [currentPath, setCurrentPath] = useState('/');
     const [items, setItems] = useState([]);
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [displayLimit, setDisplayLimit] = useState(8);
-    const [showAll, setShowAll] = useState(false);
 
 
     useEffect(() => {
@@ -84,8 +85,7 @@ const UserDashboard = () => {
     };
 
     const handleShowAll = () => {
-        setShowAll(!showAll);
-        // setDisplayLimit(showAll ? 8 : items.length);
+        navigate('/user/files');
     }
 
     return (
@@ -114,7 +114,7 @@ const UserDashboard = () => {
                         <div className="grid grid-cols-4 gap-4">
                             {items.length > 0 ? (
                                 <>
-                                    {(showAll ? items : items.slice(0, displayLimit)).map((item, index) => (
+                                    {items.slice(0, displayLimit).map((item, index) => (
                                         <div
                                             key={index}
                                             onClick={() => item.type === 'folder' && handleNavigate(item)}
@@ -153,13 +153,13 @@ const UserDashboard = () => {
                                 </p>
                             )}
                         </div>
-                        {!showAll && items.length > displayLimit && (
+                        {items.length > displayLimit && (
                             <div className="mt-6 text-center">
                                 <Button
-                                    onClick={handleShowMore}
-                                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                    onClick={handleShowAll}
+                                    className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
                                 >
-                                    Show More
+                                    View All Files
                                 </Button>
                             </div>
                         )}
