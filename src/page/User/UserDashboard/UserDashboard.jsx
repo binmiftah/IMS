@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert } from 'react-icons/md';
-import Navbar from '../../../components/Navbar';
+import UserNavbar from '../../../components/UserNavbar';
 import ProfileBar from '../../../components/ProfileBar';
 import ActionButtons from '../../../components/ActionButtons';
 import Button from '../../../components/Button';
@@ -82,7 +82,7 @@ const UserDashboard = () => {
 
     return (
         <div className="flex min-h-screen">
-            <Navbar />
+            <UserNavbar />
 
             <div className="w-4/5 bg-white">
                 <ToastContainer />
