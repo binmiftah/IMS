@@ -14,6 +14,9 @@ const UserDashboard = () => {
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
+    const [displayLimit, setDisplayLimit] = useState(8);
+    const [showAll, setShowAll] = useState(false);
+
 
     useEffect(() => {
         getRootFiles();
@@ -22,7 +25,7 @@ const UserDashboard = () => {
     const getRootFiles = async () => {
         try {
             const result = await Promise.all([
-                apiCall.getFolder("files/folders"), 
+                apiCall.getFolder("files/folders"),
                 apiCall.getFile("/files")
             ]);
             let allResult = [...result[0], ...result[1]];
@@ -34,11 +37,11 @@ const UserDashboard = () => {
 
     const handleNavigate = async (item) => {
         try {
-            setNavigationHistory(prev => [...prev, { 
-                path: currentPath, 
-                id: currentFolderId 
+            setNavigationHistory(prev => [...prev, {
+                path: currentPath,
+                id: currentFolderId
             }]);
-            
+
             setCurrentPath(item.fullPath);
             setCurrentFolderId(item.id);
 
@@ -80,6 +83,11 @@ const UserDashboard = () => {
         // Implement search functionality
     };
 
+    const handleShowAll = () => {
+        setShowAll(!showAll);
+        // setDisplayLimit(showAll ? 8 : items.length);
+    }
+
     return (
         <div className="flex min-h-screen">
             <UserNavbar />
@@ -90,7 +98,6 @@ const UserDashboard = () => {
 
                 <div className="p-6">
                     <ActionButtons onActionComplete={getRootFiles} />
-
                     <div className="p-6">
                         <div className="flex items-center space-x-2 mb-6">
                             <Button
@@ -104,43 +111,35 @@ const UserDashboard = () => {
                         </div>
 
                         <div className="grid grid-cols-4 gap-4">
-                            {items.length > 0 ? items.map((item, index) => (
-                                <div
-                                    key={index}
-                                    onClick={() => item.type === 'folder' && handleNavigate(item)}
-                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-3">
-                                            {item.type === 'folder' ? (
-                                                <MdFolder size={24} className="text-yellow-500" />
-                                            ) : (
-                                                <MdInsertDriveFile size={24} className="text-blue-500" />
-                                            )}
-                                            <span 
-                                                className="text-gray-700 truncate max-w-[150px] block"
-                                                title={item.name || item.fileName}
-                                            >
-                                                {item.name || item.fileName}
-                                            </span>
+                            {items.length > 0 ? (
+                                <>
+                                    {(showAll ? items : items.slice(0, displayLimit)).map((item, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => item.type === 'folder' && handleNavigate(item)}
+                                            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                        >
+                                            {/* ...existing item content... */}
                                         </div>
-                                        <Button
-                                            variant="icon"
-                                            className="p-2 hover:bg-gray-200 rounded-full"
-                                            icon={<MdMoreVert size={20} />}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setActiveDropdown(activeDropdown === index ? null : index);
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            )) : (
+                                    ))}
+                                </>
+                            ) : (
                                 <p className="col-span-4 text-center text-gray-500">
                                     No files or folders. Create or upload something!
                                 </p>
                             )}
                         </div>
+
+                        {!showAll && items.length > displayLimit && (
+                            <div className="mt-6 text-center">
+                                <Button
+                                    onClick={handleShowMore}
+                                    className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                                >
+                                    Show More
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
