@@ -26,10 +26,18 @@ const UserFiles = () => {
     const getRootFiles = async () => {
         try {
             const result = await Promise.all([
-                apiCall.getFolder("files/folders"), 
+                apiCall.getFolder("files/folders"),
                 apiCall.getFile("/files")
             ]);
             let allResult = [...result[0], ...result[1]];
+
+            // Sort by date, newest first
+            allResult.sort((a, b) => {
+                const dateA = new Date(a.createdAt || a.updatedAt);
+                const dateB = new Date(b.createdAt || b.updatedAt);
+                return dateB - dateA;
+            });
+
             setItems(allResult);
         } catch (error) {
             handleAxiosError(error);
@@ -38,11 +46,11 @@ const UserFiles = () => {
 
     const handleNavigate = async (item) => {
         try {
-            setNavigationHistory(prev => [...prev, { 
-                path: currentPath, 
-                id: currentFolderId 
+            setNavigationHistory(prev => [...prev, {
+                path: currentPath,
+                id: currentFolderId
             }]);
-            
+
             setCurrentPath(item.fullPath);
             setCurrentFolderId(item.id);
 
@@ -151,7 +159,7 @@ const UserFiles = () => {
                                             ) : (
                                                 <MdInsertDriveFile size={24} className="text-blue-500" />
                                             )}
-                                            <span 
+                                            <span
                                                 className="text-gray-700 truncate max-w-[150px] block"
                                                 title={item.name || item.fileName}
                                             >
