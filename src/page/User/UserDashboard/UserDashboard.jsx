@@ -30,6 +30,14 @@ const UserDashboard = () => {
                 apiCall.getFile("/files")
             ]);
             let allResult = [...result[0], ...result[1]];
+            
+            // Sort by date, newest first
+            allResult.sort((a, b) => {
+                const dateA = new Date(a.createdAt || a.updatedAt);
+                const dateB = new Date(b.createdAt || b.updatedAt);
+                return dateB - dateA;
+            });
+            
             setItems(allResult);
         } catch (error) {
             handleAxiosError(error);
