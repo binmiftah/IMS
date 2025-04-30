@@ -16,7 +16,7 @@ const UserDashboard = () => {
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
-    const [displayLimit, setDisplayLimit] = useState(8);
+    const displayLimit = 8;
 
 
     useEffect(() => {
@@ -30,14 +30,14 @@ const UserDashboard = () => {
                 apiCall.getFile("/files")
             ]);
             let allResult = [...result[0], ...result[1]];
-            
+
             // Sort by date, newest first
             allResult.sort((a, b) => {
                 const dateA = new Date(a.createdAt || a.updatedAt);
                 const dateB = new Date(b.createdAt || b.updatedAt);
                 return dateB - dateA;
             });
-            
+
             setItems(allResult);
         } catch (error) {
             handleAxiosError(error);
@@ -142,15 +142,65 @@ const UserDashboard = () => {
                                                         {item.name || item.fileName}
                                                     </span>
                                                 </div>
-                                                <Button
-                                                    variant="icon"
-                                                    className="p-2 hover:bg-gray-200 rounded-full"
-                                                    icon={<MdMoreVert size={20} />}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setActiveDropdown(activeDropdown === index ? null : index);
-                                                    }}
-                                                />
+                                                <div className="relative">
+                                                    <Button
+                                                        variant="icon"
+                                                        className="p-2 hover:bg-gray-200 rounded-full"
+                                                        icon={<MdMoreVert size={20} />}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveDropdown(activeDropdown === index ? null : index);
+                                                        }}
+                                                    />
+                                                    {activeDropdown === index && (
+                                                        <div
+                                                            className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (item.type === 'folder') handleNavigate(item);
+                                                                    // Add file open logic here if needed
+                                                                    setActiveDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                                            >
+                                                                Open
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // Add copy logic here
+                                                                    setActiveDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                Copy
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // Add move logic here
+                                                                    setActiveDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            >
+                                                                Move
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    // Add delete logic here
+                                                                    setActiveDropdown(null);
+                                                                }}
+                                                                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
