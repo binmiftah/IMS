@@ -8,6 +8,7 @@ import Dashboard from './page/Admin/Dashboard/Dashboard.jsx'
 import Users from './page/Admin/UserManagement/Users.jsx'
 import Files from './page/Admin/File/Files.jsx'
 import Trash from './page/Admin/Trash/Trash.jsx'
+import Settings from './page/Admin/Settings/Settings.jsx'
 
 import UserDashboard from './page/User/UserDashboard/UserDashboard.jsx'
 import UserFiles from './page/User/UserFiles/UserFiles.jsx'
@@ -27,6 +28,7 @@ const App = () => {
         <Route path="/users" element={<Users />} />
         <Route path="/files" element={<Files />} />
         <Route path="/trash" element={<Trash />} />
+        <Route path="/settings" element={<Settings />} />
 
         {/* User Routes */} 
 
