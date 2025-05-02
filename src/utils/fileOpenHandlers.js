@@ -1,4 +1,3 @@
-
 export function sanitizeUrl(url) {
     try {
         const parsed = new URL(url, window.location.origin);
@@ -13,7 +12,7 @@ export function sanitizeUrl(url) {
 }
 
 // Utility: Open file in new tab with security
-export async function handleFileClick(file) {
+export async function handleFileClick(file, options = {}) {
     const safeUrl = sanitizeUrl(file.url);
     if (!safeUrl) {
         alert('Invalid file URL.');
@@ -53,7 +52,12 @@ export async function handleFileClick(file) {
                 URL.revokeObjectURL(objectUrl);
             }
         } else {
-            // Trigger download for other types
+            // For users, do NOT trigger download
+            if (options.restrictDownload) {
+                alert('This file type cannot be previewed.');
+                return;
+            }
+            // (Admins can still download if needed)
             const link = document.createElement('a');
             link.href = safeUrl;
             link.download = file.name;
