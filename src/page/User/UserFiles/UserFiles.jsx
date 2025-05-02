@@ -7,6 +7,7 @@ import Button from '../../../components/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
 import { handleAxiosError } from '../../../pkg/error/error';
+import { handleFileClick } from '../../../utils/fileOpenHandlers';
 
 const UserFiles = () => {
     const [currentPath, setCurrentPath] = useState('/');
@@ -90,7 +91,6 @@ const UserFiles = () => {
 
     const handleSort = (type, value) => {
         setSortBy(prev => ({ ...prev, [type]: value }));
-        // Implement sorting logic here
     };
 
     return (
@@ -149,8 +149,12 @@ const UserFiles = () => {
                             {items.length > 0 ? items.map((item, index) => (
                                 <div
                                     key={index}
-                                    onClick={() => item.type === 'folder' && handleNavigate(item)}
-                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
+                                    onClick={() => {
+                                        if (item.type === 'folder') {
+                                            handleNavigate(item);
+                                        }
+                                    }}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
@@ -166,6 +170,70 @@ const UserFiles = () => {
                                                 {item.name || item.fileName}
                                             </span>
                                         </div>
+                                        {item.type !== 'folder' && (
+                                            <div className="relative">
+                                                <Button
+                                                    variant="icon"
+                                                    className="p-2 hover:bg-gray-200 rounded-full"
+                                                    icon={<MdMoreVert size={20} />}
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        setActiveDropdown(activeDropdown === index ? null : index);
+                                                    }}
+                                                />
+                                                {activeDropdown === index && (
+                                                    <div
+                                                        className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                        onClick={e => e.stopPropagation()}
+                                                    >
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                handleFileClick({
+                                                                    name: item.name || item.fileName,
+                                                                    url: item.url,
+                                                                    type: item.mimeType || item.type
+                                                                });
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                // TODO: Implement copy logic
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            Copy
+                                                        </button>
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                // TODO: Implement move logic
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            Move
+                                                        </button>
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                // TODO: Implement delete logic
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )) : (
