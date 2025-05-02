@@ -193,7 +193,7 @@ const UserFiles = () => {
                                                                     name: item.name || item.fileName,
                                                                     url: item.url,
                                                                     type: item.mimeType || item.type
-                                                                }, { restrictDownload: true }); // Optionally pass a flag to restrict download
+                                                                }, { restrictDownload: true });
                                                                 setActiveDropdown(null);
                                                             }}
                                                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
