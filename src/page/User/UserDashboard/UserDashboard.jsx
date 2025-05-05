@@ -8,16 +8,17 @@ import Button from '../../../components/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
 import { handleAxiosError } from '../../../pkg/error/error';
+import { useAuth } from '../../../context/AuthContext';
 
 const UserDashboard = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [currentPath, setCurrentPath] = useState('/');
     const [items, setItems] = useState([]);
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const displayLimit = 8;
-
 
     useEffect(() => {
         getRootFiles();
@@ -103,6 +104,13 @@ const UserDashboard = () => {
             <div className="w-4/5 bg-white">
                 <ToastContainer />
                 <ProfileBar onSearch={handleSearch} />
+
+                {/* Welcome message */}
+                {user && (
+                  <div className="mb-6 text-xl font-semibold text-gray-700">
+                    Welcome, {user.fullName || user.email}!
+                  </div>
+                )}
 
                 <div className="p-6">
                     <ActionButtons onActionComplete={getRootFiles} />
