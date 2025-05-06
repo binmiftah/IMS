@@ -10,8 +10,8 @@ import { handleAxiosError } from "../../../pkg/error/error.js";
 import { useAuth } from '../../../context/AuthContext.jsx';
 
 
-const { user } = useAuth();
 const Dashboard = () => {
+    const { user } = useAuth();
     const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
@@ -121,7 +121,7 @@ const Dashboard = () => {
                 <ProfileBar onSearch={handleSearch} />
 
                 {user && (
-                    <div className="mb-6 text-xl font-semibold text-gray-700">
+                    <div className="m-6 text-3xl font-semibold text-gray-700">
                         Welcome, {user.fullName || user.email}!
                     </div>
                 )}
