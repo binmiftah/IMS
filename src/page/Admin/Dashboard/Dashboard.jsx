@@ -2,15 +2,16 @@ import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
 import ProfileBar from '../../../components/ProfileBar.jsx';
 import ActionButtons from '../../../components/ActionButtons.jsx';
-import { MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'react-icons/md';
+import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
-import {toast, ToastContainer} from "react-toastify";
-import {handleAxiosError} from "../../../pkg/error/error.js";
-
+import { toast, ToastContainer } from "react-toastify";
+import { handleAxiosError } from "../../../pkg/error/error.js";
+import { useAuth } from '../../../context/AuthContext.jsx';
 
 
 const Dashboard = () => {
+    const { user } = useAuth();
     const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
@@ -27,16 +28,16 @@ const Dashboard = () => {
 
     // Fetch Audit Logs
     const fetchAuditLog = async () => {
-      try{
-          const result = await apiCall.allAuditLogs("/auditlog")
-          setAuditLogs(result.data.logs);
-      }catch (error) {
-          console.error(error);
-          handleAxiosError(error);
-      }
+        try {
+            const result = await apiCall.allAuditLogs("/auditlog")
+            setAuditLogs(result.data.logs);
+        } catch (error) {
+            console.error(error);
+            handleAxiosError(error);
+        }
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         fetchAuditLog();
     }, [])
 
@@ -48,16 +49,16 @@ const Dashboard = () => {
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
         // Handle file upload logic here
-        try{
+        try {
             const formData = new FormData();
             formData.append('file', selectedFile);
             const res = await apiCall.uploadFile("files/upload/file", formData)
             console.log("resppnse", res)
             toast.success(res.message);
 
-        }catch (error){
-           handleAxiosError(error)
-        }finally {
+        } catch (error) {
+            handleAxiosError(error)
+        } finally {
             fetchAuditLog()
             setIsUploadModalOpen(false);
             setSelectedFile(null);
@@ -69,12 +70,12 @@ const Dashboard = () => {
     const handleFolderSubmit = async () => {
         if (!folderName.trim()) return;
         // Handle folder creation logic here
-        try{
-            const res = await apiCall.createFolder("files/create/folder", {folderName})
+        try {
+            const res = await apiCall.createFolder("files/create/folder", { folderName })
             toast.success(res.message);
-        }catch(error){
-           handleAxiosError(error)
-        }finally {
+        } catch (error) {
+            handleAxiosError(error)
+        } finally {
             fetchAuditLog()
             setIsFolderModalOpen(false);
             setFolderName('');
@@ -116,7 +117,14 @@ const Dashboard = () => {
 
             {/* Main Content */}
             <div className="w-4/5 bg-white">
+                <ToastContainer />
                 <ProfileBar onSearch={handleSearch} />
+
+                {user && (
+                    <div className="m-6 text-3xl font-semibold text-gray-700">
+                        Welcome, {user.fullName || user.email}!
+                    </div>
+                )}
 
                 {/* Content Section */}
                 <div className="p-6">
@@ -166,7 +174,7 @@ const Dashboard = () => {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
 
-                                    {currentItems.length >0 ? currentItems.map((item, index) => (
+                                    {currentItems.length > 0 ? currentItems.map((item, index) => (
                                         <tr
                                             key={index}
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
