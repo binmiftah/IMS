@@ -8,7 +8,6 @@ import apiCall from "../../../pkg/api/internal.js";
 import {toast, ToastContainer} from "react-toastify";
 import {handleError} from "../../../pkg/error/error.js";
 import {useNavigate} from "react-router-dom";
-import {useAuth} from "../../../context/AuthContext.jsx";
 
 
 
@@ -17,6 +16,7 @@ const Dashboard = () => {
     const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
+    const navigate = useNavigate();
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -102,7 +102,7 @@ const Dashboard = () => {
     const handleSearch = (searchTerm) => {
         if (searchTerm) {
             const filteredLogs = auditLogs.filter((log) =>
-                log.actor.email.toLowerCase().includes(searchTerm.toLowerCase())
+                log.users.email.toLowerCase().includes(searchTerm.toLowerCase())
             );
             setAuditLogs(filteredLogs);
         } else {
@@ -129,6 +129,28 @@ const Dashboard = () => {
                 {/* Content Section */}
                 <div className="p-6">
                     <ActionButtons />
+                    {/* <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                        <div className="flex justify-end items-right">
+                            <ToastContainer/>
+                            <span className="flex space-x-4">
+                                <Button
+                                    onClick={() => setIsUploadModalOpen(true)}
+                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                    icon={<MdUpload className='mr-2' size={20} />}
+                                >
+                                    Upload
+                                </Button>
+                                <Button
+                                    onClick={() => setIsFolderModalOpen(true)}
+                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                    icon={<MdCreateNewFolder className='mr-2' size={20} />}
+                                >
+                                    Create Folder
+                                </Button>
+                            </span>
+                        </div>
+                    </div> */}
+
                     {/* Activity Table */}
                     <div className="bg-white rounded-lg shadow-lg p-6">
                         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
@@ -158,7 +180,7 @@ const Dashboard = () => {
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.actor.email}
+                                                {item.users.email}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.action}
