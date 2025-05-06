@@ -5,9 +5,10 @@ import ActionButtons from '../../../components/ActionButtons.jsx';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
-import { toast, ToastContainer } from "react-toastify";
-import { handleAxiosError } from "../../../pkg/error/error.js";
-import { useAuth } from '../../../context/AuthContext.jsx';
+import {toast, ToastContainer} from "react-toastify";
+import {handleError} from "../../../pkg/error/error.js";
+import {useNavigate} from "react-router-dom";
+
 
 
 const Dashboard = () => {
@@ -15,6 +16,7 @@ const Dashboard = () => {
     const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
+    const navigate = useNavigate();
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -28,16 +30,15 @@ const Dashboard = () => {
 
     // Fetch Audit Logs
     const fetchAuditLog = async () => {
-        try {
-            const result = await apiCall.allAuditLogs("/auditlog")
-            setAuditLogs(result.data.logs);
-        } catch (error) {
-            console.error(error);
-            handleAxiosError(error);
-        }
+      try{
+          const result = await apiCall.allAuditLogs("/auditlog")
+          setAuditLogs(result.data.logs);
+      }catch (error) {
+          handleError(error);
+      }
     }
 
-    useEffect(() => {
+    useEffect(()=>{
         fetchAuditLog();
     }, [])
 
@@ -49,17 +50,16 @@ const Dashboard = () => {
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
         // Handle file upload logic here
-        try {
+        try{
             const formData = new FormData();
             formData.append('file', selectedFile);
             const res = await apiCall.uploadFile("files/upload/file", formData)
-            console.log("resppnse", res)
             toast.success(res.message);
 
-        } catch (error) {
-            handleAxiosError(error)
-        } finally {
-            fetchAuditLog()
+        }catch (error){
+           handleError(error)
+        }finally {
+            await fetchAuditLog()
             setIsUploadModalOpen(false);
             setSelectedFile(null);
         }
@@ -70,13 +70,13 @@ const Dashboard = () => {
     const handleFolderSubmit = async () => {
         if (!folderName.trim()) return;
         // Handle folder creation logic here
-        try {
-            const res = await apiCall.createFolder("files/create/folder", { folderName })
+        try{
+            const res = await apiCall.createFolder("files/create/folder", {folderName})
             toast.success(res.message);
-        } catch (error) {
-            handleAxiosError(error)
-        } finally {
-            fetchAuditLog()
+        }catch(error){
+           handleError(error)
+        }finally {
+            await fetchAuditLog()
             setIsFolderModalOpen(false);
             setFolderName('');
         }

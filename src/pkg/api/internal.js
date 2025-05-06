@@ -1,18 +1,30 @@
 import axios, {AxiosError} from "axios";
 
-const BaseUrl =  "http://18.208.155.254/api/v1/";
-// const BaseUrlTesting = "http://localhost:3002/api/v1/";
+// const BaseUrl =  "http://18.208.155.254/api/v1/";
+const BaseUrlTesting = "http://localhost:3002/api/v1/";
 
 class ApiCall {
     constructor(url) {
         this.instance = axios.create({
             baseURL: url,
-            timeout: 1000,
+            timeout: 10000,
         });
     }
 
 
-    async login(urlPath, data) {
+    async adminLogin(urlPath, data) {
+        // Validate inputs
+        if (!data.email || !data.password) {
+            throw new Error("email and password must be provided");
+        }
+        const response = await this.instance.post(urlPath, {
+            email: data.email,
+            password: data.password
+        })
+        return response.data;
+    }
+
+    async memberLogin(urlPath, data) {
         // Validate inputs
         if (!data.email || !data.password) {
             throw new Error("email and password must be provided");
@@ -105,6 +117,16 @@ class ApiCall {
         return response.data.data.folders
     }
 
+    async getRootLevelFiles(urlPath){
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+
+        return response.data.data.folders
+    }
+
 
     async getFolderById(urlPath) {
         const response = await this.instance.get(urlPath, {
@@ -115,8 +137,78 @@ class ApiCall {
         return response.data.data
     }
 
+
+    //NOTES: USER API CALL
+    async createNewMember(urlPath, data) {
+        const response = await this.instance.post(urlPath,data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async getAllUsers(urlPath) {
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async getAllMembers(urlPath) {
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+
+     checkRole(navigate, toast)  {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user){
+            localStorage.clear()
+            navigate("/login")
+        }
+        if (user.loggedInAs !== "ADMIN"){
+            toast.error("You are not authorized to access this page", {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            })
+            localStorage.clear()
+            navigate("/login")
+        }
+    }
+
+
+//     PERMISSIONS
+    async getAllPermissions(urlPath) {
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async createPermission(urlPath, data) {
+        const response = await this.instance.post(urlPath, data, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
 }
 
 
-const apiCall = new ApiCall(BaseUrl)
+const apiCall = new ApiCall(BaseUrlTesting);
 export default apiCall;

@@ -4,7 +4,7 @@ import ProfileBar from '../../../components/ProfileBar';
 import Button from '../../../components/Button';
 import { MdRestore, MdDeleteForever, MdFolder } from 'react-icons/md';
 import apiCall from '../../../pkg/api/internal';
-import { handleAxiosError } from '../../../pkg/error/error';
+import { handleError } from '../../../pkg/error/error';
 
 const Trash = () => {
     const [trashedItems, setTrashedItems] = useState([]);
@@ -18,7 +18,7 @@ const Trash = () => {
             const result = await apiCall.getTrashed('files/trashed');
             setTrashedItems(result);
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -27,7 +27,7 @@ const Trash = () => {
             await apiCall.restoreItem(`files/restore/${item.id}`);
             fetchTrashedItems();
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -36,7 +36,7 @@ const Trash = () => {
             await apiCall.deleteItem(`files/delete/${item.id}`);
             fetchTrashedItems();
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 

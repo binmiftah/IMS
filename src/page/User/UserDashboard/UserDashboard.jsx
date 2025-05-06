@@ -7,7 +7,7 @@ import ActionButtons from '../../../components/ActionButtons';
 import Button from '../../../components/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
-import { handleAxiosError } from '../../../pkg/error/error';
+import {handleError} from "../../../pkg/error/error.js";
 import { useAuth } from '../../../context/AuthContext';
 
 const UserDashboard = () => {
@@ -20,28 +20,30 @@ const UserDashboard = () => {
     const [activeDropdown, setActiveDropdown] = useState(null);
     const displayLimit = 8;
 
+
     useEffect(() => {
         getRootFiles();
     }, []);
 
+
+    const getFolderId = () =>{
+        return currentFolderId;
+    }
+
     const getRootFiles = async () => {
         try {
-            const result = await Promise.all([
-                apiCall.getFolder("files/folders"),
-                apiCall.getFile("/files")
-            ]);
-            let allResult = [...result[0], ...result[1]];
+            const result = await apiCall.getRootLevelFiles("files/folders/root")
 
             // Sort by date, newest first
-            allResult.sort((a, b) => {
+            result.sort((a, b) => {
                 const dateA = new Date(a.createdAt || a.updatedAt);
                 const dateB = new Date(b.createdAt || b.updatedAt);
                 return dateB - dateA;
             });
 
-            setItems(allResult);
+            setItems(result);
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -59,7 +61,7 @@ const UserDashboard = () => {
             const allResult = [...result.children, ...result.files];
             setItems(allResult);
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -85,7 +87,7 @@ const UserDashboard = () => {
                 getRootFiles();
             }
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -113,7 +115,7 @@ const UserDashboard = () => {
                 )}
 
                 <div className="p-6">
-                    <ActionButtons onActionComplete={getRootFiles} />
+                    <ActionButtons onActionComplete={getRootFiles} getFolderId={getFolderId} />
 
                     <div className="p-6">
                         <div className="flex items-center space-x-2 mb-6">

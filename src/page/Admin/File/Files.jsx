@@ -6,7 +6,7 @@ import ActionButtons from '../../../components/ActionButtons.jsx';
 import ProfileBar from '../../../components/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
-import { handleAxiosError } from "../../../pkg/error/error.js";
+import { handleError } from "../../../pkg/error/error.js";
 
 const Files = () => {
     const [currentPath, setCurrentPath] = useState('/');
@@ -22,6 +22,11 @@ const Files = () => {
     })
 
 
+    // get folder id
+    const getFolderId = () => {
+        return currentFolderId
+    }
+
     const getRootFiles = async () => {
         try {
 
@@ -30,7 +35,7 @@ const Files = () => {
             setItems(allResult);
         } catch (error) {
             console.log(error);
-            handleAxiosError(error)
+            handleError(error)
         }
     }
 
@@ -55,9 +60,19 @@ const Files = () => {
             const allResult = [...result.children, ...result.files];
             setItems(allResult);
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
+
+    const handleRefresh = async () =>{
+        console.log("i am here", currentFolderId)
+        if (currentFolderId){
+
+            const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
+            const allResult = [...result.children, ...result.files];
+            setItems(allResult);
+        }
+    }
 
     const handleBack = async () => {
         try {
@@ -85,9 +100,11 @@ const Files = () => {
                 getRootFiles();
             }
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
+
+
 
     const handleActionClick = (e, action, item) => {
         e.stopPropagation(); // Prevent folder navigation when clicking actions
@@ -135,7 +152,7 @@ const Files = () => {
 
                 <div className="p-6">
 
-                    <ActionButtons />
+                    <ActionButtons onActionComplete={handleRefresh} getFolderId={getFolderId} />
 
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
