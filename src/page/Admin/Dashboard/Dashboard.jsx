@@ -6,7 +6,8 @@ import { MdUpload, MdCreateNewFolder, MdChevronLeft, MdChevronRight } from 'reac
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
 import {toast, ToastContainer} from "react-toastify";
-import {handleAxiosError} from "../../../pkg/error/error.js";
+import {handleError} from "../../../pkg/error/error.js";
+import {useNavigate} from "react-router-dom";
 
 
 
@@ -14,6 +15,7 @@ const Dashboard = () => {
     const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
+    const navigate = useNavigate();
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -25,18 +27,22 @@ const Dashboard = () => {
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [folderName, setFolderName] = useState('');
 
+    // check role
+
+
+
     // Fetch Audit Logs
     const fetchAuditLog = async () => {
       try{
           const result = await apiCall.allAuditLogs("/auditlog")
           setAuditLogs(result.data.logs);
       }catch (error) {
-          console.error(error);
-          handleAxiosError(error);
+          handleError(error);
       }
     }
 
     useEffect(()=>{
+        // apiCall.checkRole(navigate, toast)
         fetchAuditLog();
     }, [])
 
@@ -52,13 +58,12 @@ const Dashboard = () => {
             const formData = new FormData();
             formData.append('file', selectedFile);
             const res = await apiCall.uploadFile("files/upload/file", formData)
-            console.log("resppnse", res)
             toast.success(res.message);
 
         }catch (error){
-           handleAxiosError(error)
+           handleError(error)
         }finally {
-            fetchAuditLog()
+            await fetchAuditLog()
             setIsUploadModalOpen(false);
             setSelectedFile(null);
         }
@@ -73,9 +78,9 @@ const Dashboard = () => {
             const res = await apiCall.createFolder("files/create/folder", {folderName})
             toast.success(res.message);
         }catch(error){
-           handleAxiosError(error)
+           handleError(error)
         }finally {
-            fetchAuditLog()
+            await fetchAuditLog()
             setIsFolderModalOpen(false);
             setFolderName('');
         }
@@ -120,7 +125,8 @@ const Dashboard = () => {
 
                 {/* Content Section */}
                 <div className="p-6">
-                    <ActionButtons />
+                    <ToastContainer/>
+                    <ActionButtons onActionComplete={fetchAuditLog}  />
                     {/* <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                         <div className="flex justify-end items-right">
                             <ToastContainer/>
@@ -172,13 +178,13 @@ const Dashboard = () => {
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.users.email}
+                                                {item?.actor && item.actor.email}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.action}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.file ? item.file.filePath : item.folder ? item.folder.fullPath : ''}
+                                                {item.File ? item.File.filePath : item.Folder ? item.Folder.fullPath : ''}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {new Date(item.createdAt).toLocaleDateString()}   {new Date(item.createdAt).toLocaleTimeString()}

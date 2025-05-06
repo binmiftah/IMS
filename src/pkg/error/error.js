@@ -3,9 +3,9 @@ import { AxiosError } from "axios"
 
 
 
-const handleAxiosError = (error, setError) => {
-    if (error instanceof AxiosError) {
-        toast.error(error.message, {
+const handleError = (error, setError) => {
+    if (error.response?.data?.message) {
+        toast.error(error?.response?.data?.message, {
             position: "top-right",
             autoClose: 2000,
             hideProgressBar: false,
@@ -14,10 +14,10 @@ const handleAxiosError = (error, setError) => {
             draggable: true,
             progress: undefined,
         })
-        if (setError) setError(error.message)
+        if (setError) setError(error.response.data.message)
 
     } else {
-        toast.error(error.response.data.message, {
+        toast.error(error.message, {
             position: "top-right",
             autoClose: 2000,
             hideProgressBar: false,
@@ -34,5 +34,5 @@ const handleAxiosError = (error, setError) => {
 
 
 export {
-    handleAxiosError
+    handleError
 }

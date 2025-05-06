@@ -6,8 +6,8 @@ import ActionButtons from '../../../components/ActionButtons';
 import Button from '../../../components/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
-import { handleAxiosError } from '../../../pkg/error/error';
-import { handleFileClick } from '../../../utils/fileOpenHandlers';
+import {handleError} from "../../../pkg/error/error.js";
+// import { handleFileClick } from '../../../utils/fileOpenHandlers';
 
 const UserFiles = () => {
     const [currentPath, setCurrentPath] = useState('/');
@@ -24,24 +24,26 @@ const UserFiles = () => {
         getRootFiles();
     }, []);
 
+
+    const getFolderId = () =>{
+        return currentFolderId;
+    }
+
+
     const getRootFiles = async () => {
         try {
-            const result = await Promise.all([
-                apiCall.getFolder("files/folders"),
-                apiCall.getFile("/files")
-            ]);
-            let allResult = [...result[0], ...result[1]];
+            const result = await apiCall.getRootLevelFiles("files/folders/root")
 
             // Sort by date, newest first
-            allResult.sort((a, b) => {
+            result.sort((a, b) => {
                 const dateA = new Date(a.createdAt || a.updatedAt);
                 const dateB = new Date(b.createdAt || b.updatedAt);
                 return dateB - dateA;
             });
 
-            setItems(allResult);
+            setItems(result);
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -59,7 +61,7 @@ const UserFiles = () => {
             const allResult = [...result.children, ...result.files];
             setItems(allResult);
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
@@ -85,12 +87,25 @@ const UserFiles = () => {
                 getRootFiles();
             }
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         }
     };
 
+    const handleRefresh = async () =>{
+        console.log("i am here", currentFolderId)
+        if (currentFolderId){
+
+            const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
+            const allResult = [...result.children, ...result.files];
+            console.log(allResult)
+            setItems(allResult);
+        }
+    }
+
+
     const handleSort = (type, value) => {
         setSortBy(prev => ({ ...prev, [type]: value }));
+        // Implement sorting logic here
     };
 
     return (
@@ -102,7 +117,7 @@ const UserFiles = () => {
                 <ProfileBar onSearch={(value) => console.log(value)} />
 
                 <div className="p-6">
-                    <ActionButtons onActionComplete={getRootFiles} />
+                    <ActionButtons onActionComplete={handleRefresh} getFolderId={getFolderId} />
 
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
@@ -149,12 +164,8 @@ const UserFiles = () => {
                             {items.length > 0 ? items.map((item, index) => (
                                 <div
                                     key={index}
-                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer"
-                                    onClick={() => {
-                                        if (item.type === 'folder') {
-                                            handleNavigate(item);
-                                        }
-                                    }}
+                                    onClick={() => item.type === 'folder' && handleNavigate(item)}
+                                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
@@ -170,70 +181,6 @@ const UserFiles = () => {
                                                 {item.name || item.fileName}
                                             </span>
                                         </div>
-                                        {item.type !== 'folder' && (
-                                            <div className="relative">
-                                                <Button
-                                                    variant="icon"
-                                                    className="p-2 hover:bg-gray-200 rounded-full"
-                                                    icon={<MdMoreVert size={20} />}
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        setActiveDropdown(activeDropdown === index ? null : index);
-                                                    }}
-                                                />
-                                                {activeDropdown === index && (
-                                                    <div
-                                                        className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
-                                                        onClick={e => e.stopPropagation()}
-                                                    >
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                handleFileClick({
-                                                                    name: item.name || item.fileName,
-                                                                    url: item.url,
-                                                                    type: item.mimeType || item.type
-                                                                }, { restrictDownload: true });
-                                                                setActiveDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
-                                                        >
-                                                            Open
-                                                        </button>
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                // TODO: Implement internal copy logic (e.g., open a modal to select destination)
-                                                                setActiveDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            Copy
-                                                        </button>
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                // TODO: Implement internal move logic
-                                                                setActiveDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                        >
-                                                            Move
-                                                        </button>
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                // TODO: Implement delete logic
-                                                                setActiveDropdown(null);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             )) : (

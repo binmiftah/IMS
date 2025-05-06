@@ -1,65 +1,130 @@
-import React from 'react'
-import Navbar from '../../../components/Navbar.jsx'
-import ProfileBar from '../../../components/ProfileBar.jsx'
-import { MdSearch, MdNotifications, MdAdd } from 'react-icons/md'
-import Button from '../../../components/Button.jsx'
+import React, { useEffect, useState, useRef } from 'react';
+import Navbar from '../../../components/Navbar.jsx';
+import ProfileBar from '../../../components/ProfileBar.jsx';
+import { MdSearch, MdNotifications, MdAdd, MdClose } from 'react-icons/md';
+import Button from '../../../components/Button.jsx';
+import apiCall from "../../../pkg/api/internal.js";
+import { handleError } from "../../../pkg/error/error.js";
+import {toast, ToastContainer} from "react-toastify";
 
 const Users = () => {
-    const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
-    const [newUser, setNewUser] = React.useState({
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isPermissionModal, setIsPermissionModal] = useState(false);
+    const [permissionForm, setPermissionForm] = useState({
+        type: '',
+        folderPath: '',
+        targetType: 'FOLDER',
+    })
+    const [newUser, setNewUser] = useState({
+        fullName: '',
         email: '',
         password: '',
-        rootDir: '',
-        dirPath: '',
-        permission: ''
+        role: '',
     });
 
-    const modalRef = React.useRef(null);
+    const [selectedUser, setSelectedUser] = useState(null)
+
+
+
+    const [users, setUsers] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+    const modalRef = useRef(null);
+
+
+
     const handleOutsideClick = (e) => {
         if (modalRef.current && !modalRef.current.contains(e.target)) {
             setIsAddModalOpen(false);
         }
     };
 
+    const handlePermissionModel = (user) =>{
+        setSelectedUser(user);
+        setIsPermissionModal(true);
+
+    }
+
+    const handlePermissionSubmit = async () =>{
+
+            console.log('Submitting permission:', permissionForm);
+            console.log('Selected User:', selectedUser);
+            try {
+                await apiCall.createPermission("/permissions", {
+                    ...permissionForm,
+                    accountId: selectedUser.id,
+                });
+                setIsPermissionModal(false);
+                setPermissionForm({ type: '', folderPath: '', targetType: 'FOLDER' });
+                toast.success('Permission successfully created!');
+            } catch (err) {
+                handleError(err)
+            }
+    }
+
+
+    const fetchUsers = async () => {
+        try {
+            const res = await apiCall.getAllUsers("users");
+
+            const allUsers =  res.data.users;
+
+            // You should sort by email or id for deterministic ordering
+            // allUsers.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+            allUsers.reverse()
+            setUsers(allUsers);
+        } catch (error) {
+            handleError(error);
+        }
+    };
+
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setNewUser((prevUser) => ({
-            ...prevUser,
+        setNewUser(prev => ({
+            ...prev,
             [name]: value
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle form submission logic here
-        console.log('New User:', newUser);
+        console.log('Submitting new user:', newUser);
+
+        // TODO: Implement API call to save user
+
+        const user = await apiCall.createNewMember("users/add-user", newUser)
+        console.log(user)
+
         setIsAddModalOpen(false);
         setNewUser({
             email: '',
             password: '',
-            rootDir: ''
+            role: '',
+            rootDir: '/',
+            dirPath: '',
+            permission: ''
         });
-    }
+    };
 
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    const paginatedUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <div className="flex min-h-screen">
             <Navbar />
 
-            {/* Main Content */}
             <div className="w-4/5 bg-white">
-                <ProfileBar onSearch={(value) => console.log(value)} />
+                <ProfileBar onSearch={(value) => console.log('Search:', value)} />
 
-                {/* Content Section */}
                 <div className="p-6">
+                    <ToastContainer/>
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-2xl font-bold text-gray-800">View and Manage Users</h1>
-                        {/* <button className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
-                            <MdAdd size={20} className="mr-2" />
-                            Add
-                        </button> */}
                         <Button
-                            // text="Add User"
                             onClick={() => setIsAddModalOpen(true)}
                             className="bg-black text-white px-4 py-2 rounded-lg flex items-center"
                         >
@@ -75,171 +140,215 @@ const Users = () => {
                         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
                         onClick={handleOutsideClick}
                     >
-                        <div
-                            ref={modalRef}
-                            className="bg-white rounded-lg p-6 w-200"
-                        >
+                        <div ref={modalRef} className="bg-white rounded-lg p-6  relative">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-semibold">Add User</h2>
-                                {/* <button
+                                <button
                                     onClick={() => setIsAddModalOpen(false)}
                                     className="text-gray-500 hover:text-gray-700"
                                 >
                                     <MdClose size={24} />
-                                </button> */}
+                                </button>
                             </div>
 
-                            <div className="mb-6 border border-gray-200 rounded-lg p-4">
+                            <form onSubmit={handleSubmit}>
+                                {/* Full Name */}
                                 <div className="mb-4">
-                                    <label
-                                        htmlFor="email"
-                                        className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                        Email
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">FullName</label>
+                                    <input
+                                        type="text"
+                                        name="fullName"
+                                        value={newUser.fullName}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        required
+                                    />
+                                </div>
+                                {/* Email */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                     <input
                                         type="email"
-                                        id="email"
                                         name="email"
                                         value={newUser.email}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                                        className="w-full px-3 py-2 border rounded-lg"
                                         required
                                     />
                                 </div>
+
+                                {/* Password */}
                                 <div className="mb-4">
-                                    <label
-                                        htmlFor="password"
-                                        className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                        Password
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                                     <input
                                         type="password"
-                                        id="password"
                                         name="password"
                                         value={newUser.password}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                                        className="w-full px-3 py-2 border rounded-lg"
                                         required
                                     />
                                 </div>
-                            </div>
 
-                            {/* Root Directory Section */}
-                            <div className="mb-6 border border-gray-200 rounded-lg p-4">
-                                <label
-                                    htmlFor="rootDir"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Root Directory
-                                </label>
-                                <input
-                                    type="text"
-                                    id="rootDir"
-                                    name="rootDir"
-                                    value={newUser.rootDir}
-                                    onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-                                    required
-                                    placeholder='Absolute directory path'
-                                />
-                                <p className='mt-3 text-gray-600'>Leave blank for default directory.</p>
-                            </div>
-
-                            <div className="mb-6 border border-gray-200 rounded-lg p-4">
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">File Access Control Level</h3>
-                                <div className="flex space-x-4">
-                                    <div className="flex-1">
-                                        <label
-                                            htmlFor="dirPath"
-                                            className="block text-sm font-medium text-gray-700 mb-1"
-                                        >
-                                            Directory Path
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="dirPath"
-                                            name="dirPath"
-                                            placeholder="/path/to/directory"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <label
-                                            htmlFor="permission"
-                                            className="block text-sm font-medium text-gray-700 mb-1"
-                                        >
-                                            Permission
-                                        </label>
-                                        <select
-                                            id="permission"
-                                            name="permission"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200 bg-white"
-                                        >
-                                            <option value="">Select permission</option>
-                                            <option value="read">Read</option>
-                                            <option value="write">Write</option>
-                                            <option value="readwrite">Read & Write</option>
-                                        </select>
-                                    </div>
+                                {/* Role */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                    <select
+                                        name="role"
+                                        value={newUser.role}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border rounded-lg"
+                                        required
+                                    >
+                                        <option value="">Select Role</option>
+                                        <option value="MEMBER">User</option>
+                                        <option value="ADMIN">Admin</option>
+                                    </select>
                                 </div>
-                                <Button
-                                    text="Add"
-                                    className="mt-4 bg-black text-white px-4 py-2 rounded-lg flex items-center"
-                                >
-                                    <MdAdd size={20} className="mr-2" />
-                                    Add
-                                </Button>   
-                            </div>
-                            <Button
-                                text="Save"
-                                onClick={handleSubmit}
-                                className="bg-black text-white px-4 py-2 rounded-lg flex items-center float-right"
-                            >
-                                Save
-                            </Button>
+
+                                <div className="flex justify-end">
+                                    <Button
+                                        type="submit"
+                                        className="bg-black text-white px-4 py-2 rounded-lg flex items-center"
+                                    >
+                                        Save
+                                    </Button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 )}
 
-                {/* Table Section */}
+
+                {isPermissionModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div ref={modalRef} className="bg-white rounded-lg p-6 relative">
+                            <h2 className="text-xl font-semibold mb-4">Assign Permission</h2>
+
+                            <div className="mb-4">
+                                <label className="block mb-1">Permission Type</label>
+                                <select
+                                    className="w-full border px-3 py-2 rounded"
+                                    value={permissionForm.type}
+                                    onChange={(e) =>
+                                        setPermissionForm({ ...permissionForm, type: e.target.value })
+                                    }
+                                >
+                                    <option value="">Select</option>
+                                    <option value="ReadOnly">Read</option>
+                                    <option value="ReadAndWrite">Read & Write</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block mb-1">Target Folder Path</label>
+                                <input
+                                    className="w-full border px-3 py-2 rounded"
+                                    value={permissionForm.folderPath}
+                                    onChange={(e) =>
+                                        setPermissionForm({ ...permissionForm, folderPath: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            {/*<div className="mb-4">*/}
+                            {/*    /!*<label className="block mb-1">Target ID (Folder/File ID)</label>*!/*/}
+                            {/*    <select*/}
+                            {/*        className="w-full border px-3 py-2 rounded"*/}
+                            {/*        // value={permissionForm.targetId}*/}
+                            {/*        // onChange={(e) =>*/}
+                            {/*        //     setPermissionForm({ ...permissionForm, targetId: e.target.value })*/}
+                            {/*        // }*/}
+                            {/*    >*/}
+                            {/*        <option></option>*/}
+                            {/*        <select/>*/}
+
+                            {/*</div>*/}
+
+                            <div className="mb-4">
+                                <label className="block mb-1">Target Type</label>
+                                <select
+                                    className="w-full border px-3 py-2 rounded"
+                                    value={permissionForm.targetType}
+                                    onChange={(e) =>
+                                        setPermissionForm({ ...permissionForm, targetType: e.target.value })
+                                    }
+                                >
+                                    <option value="FOLDER">Folder</option>
+                                    {/*<option value="FILE">File</option>*/}
+                                </select>
+                            </div>
+
+                            <div className="flex justify-end space-x-2">
+                                <button
+                                    className="bg-gray-200 px-4 py-2 rounded"
+                                    onClick={() => setIsPermissionModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    className="bg-black text-white px-4 py-2 rounded"
+                                    onClick={handlePermissionSubmit}
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+
+                {/* Table */}
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Username
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Last Login
-                                </th>
-                            </tr>
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Permission</th>
+                        </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-
-                            <tr className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">John Doe</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        Active
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    2024-04-14 10:30 AM
-                                </td>
+                        {paginatedUsers.length > 0 ? (
+                            paginatedUsers.map((user, idx) => (
+                                <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handlePermissionModel(user)}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm ">{user.role || 'N/A'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{user.role == 'ADMIN' ? 'Admin Level': 'Member Level'}</td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="3" className="px-6 py-4 text-center text-gray-500">No users found.</td>
                             </tr>
+                        )}
                         </tbody>
                     </table>
+                    {/* Pagination */}
+                    <div className="flex justify-between items-center p-4">
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50"
+                        >
+                            Previous
+                        </button>
+                        <span className="text-gray-700">
+                            Page {currentPage} of {Math.ceil(users.length / itemsPerPage)}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(users.length / itemsPerPage)))}
+                            disabled={currentPage === Math.ceil(users.length / itemsPerPage)}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
+
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default Users;

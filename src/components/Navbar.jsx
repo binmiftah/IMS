@@ -37,6 +37,7 @@ const Navbar = () => {
 
 
     function handleLogout() {
+        localStorage.clear()
         navigate('/login')
     }
 

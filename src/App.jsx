@@ -15,11 +15,14 @@ import UserFiles from './page/User/UserFiles/UserFiles.jsx'
 
 
 import NotFound from './components/NotFound'
+import UserLogin from "./page/User/login/Login.jsx";
 
 const App = () => {
   return (
     <Router>
       <Routes>
+        <Route path="/" element={<Login />} />
+        {/* Admin Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/organisation" element={<Organisation />} />
@@ -32,12 +35,12 @@ const App = () => {
 
         {/* User Routes */} 
 
+        {/* User Routes */}
+        <Route path="/user/login" element={<UserLogin/>}/>
         <Route path="/user/dashboard" element={<UserDashboard />} />
         <Route path="/user/files" element={<UserFiles />} />
 
-        {/* Redirect to login if no path is matched */}
-        <Route path="/" element={<Login />} />
-
+        {/* Redirect to 404 page if no path is matched */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
