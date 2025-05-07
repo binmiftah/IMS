@@ -19,6 +19,7 @@ const Files = () => {
         modified: "newest",
         uploadedBy: "all",
         type: "all",
+    });
     })
 
 
@@ -39,15 +40,13 @@ const Files = () => {
         }
     }
 
-    const [activeDropdown, setActiveDropdown] = useState(null);
-
-    const handleSort = (sortType) => {
+    // Dummy handlers for sort
+    const handleSort = (sortType, value) => {
         setSortBy((prev) => ({
             ...prev,
             [sortType]: value
-        }))
-    }
-
+        }));
+    };
 
 
     const handleNavigate = async (item) => {
@@ -215,7 +214,10 @@ const Files = () => {
                         {items.length > 0 ? items.map((item, index) => (
                             <div
                                 key={index}
-                                onClick={() => item.type === 'folder' && handleNavigate(item)}
+                                onClick={() => {
+                                    if (item.type === 'folder') handleNavigate(item);
+                                    else handleFileOpen(item);
+                                }}
                                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                             >
                                 <div className="flex items-center justify-between">
@@ -227,9 +229,9 @@ const Files = () => {
                                         )}
                                         <span
                                             className="text-gray-700 truncate max-w-[150px] block"
-                                            title={item.name || item.fileName}
+                                            title={item.name}
                                         >
-                                            {item.name || item.fileName}
+                                            {item.name}
                                         </span>
                                     </div>
                                     <div className="relative">
@@ -248,28 +250,48 @@ const Files = () => {
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'open', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (item.type === 'folder') {
+                                                            handleNavigate(item);
+                                                        } else {
+                                                            handleFileOpen(item);
+                                                        }
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
                                                 >
                                                     <MdOpenInNew className="mr-2" size={18} />
                                                     Open
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'copy', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCopy(item);
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 >
                                                     <MdContentCopy className="mr-2" size={18} />
                                                     Copy
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'move', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleMove(item);
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 >
                                                     <MdDriveFileMove className="mr-2" size={18} />
                                                     Move
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'delete', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(item);
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
                                                 >
                                                     <MdDelete className="mr-2" size={18} />
