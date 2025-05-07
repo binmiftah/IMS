@@ -4,14 +4,61 @@ import Navbar from '../../../components/Navbar';
 import Button from '../../../components/Button';
 import ActionButtons from '../../../components/ActionButtons.jsx';
 import ProfileBar from '../../../components/ProfileBar';
-import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
-import { handleAxiosError } from "../../../pkg/error/error.js";
+
+const initialFolders = {
+    '/': [
+        {
+            id: 1,
+            name: "Admin Project Plan.pdf",
+            url: "/AdminProjectPlan.pdf",
+            type: "application/pdf",
+        },
+        {
+            id: 2,
+            name: "Admin Vacation.jpg",
+            url: "/AdminVacation.jpg",
+            type: "image/jpeg",
+        },
+        {
+            id: 3,
+            name: "Admin Notes.txt",
+            url: "/AdminNotes.txt",
+            type: "text/plain",
+        },
+        {
+            id: 4,
+            name: "Admin Work Folder",
+            type: "folder",
+            fullPath: "/Admin Work Folder",
+        },
+        {
+            id: 7,
+            name: "Admin Test Folder",
+            type: "folder",
+            fullPath: "/Admin Test Folder",
+        },
+    ],
+    '/Admin Work Folder': [
+        {
+            id: 5,
+            name: "Admin Subfile.txt",
+            url: "/AdminSubfile.txt",
+            type: "text/plain",
+        },
+        {
+            id: 6,
+            name: "Admin Another Image.png",
+            url: "/AdminAnotherImage.png",
+            type: "image/png",
+        },
+    ],
+    '/admin-trash': [],
+};
 
 const Files = () => {
     const [currentPath, setCurrentPath] = useState('/');
-    const [items, setItems] = useState([]);
-
+    const [items, setItems] = useState(initialFolders['/']);
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
 
@@ -19,124 +66,70 @@ const Files = () => {
         modified: "newest",
         uploadedBy: "all",
         type: "all",
-    })
+    });
 
-
-    const getRootFiles = async () => {
-        try {
-
-            const result = await Promise.all([apiCall.getFolder("files/folders"), apiCall.getFile("/files")])
-            let allResult = [...result[0], ...result[1]];
-            setItems(allResult);
-        } catch (error) {
-            console.log(error);
-            handleAxiosError(error)
-        }
-    }
-
-    const [activeDropdown, setActiveDropdown] = useState(null);
-
-    const handleSort = (sortType) => {
+    // Dummy handlers for sort
+    const handleSort = (sortType, value) => {
         setSortBy((prev) => ({
             ...prev,
             [sortType]: value
-        }))
-    }
-
-
-
-    const handleNavigate = async (item) => {
-        try {
-            setNavigationHistory(prev => [...prev, { path: currentPath, id: currentFolderId }]);
-            setCurrentPath(item.fullPath);
-            setCurrentFolderId(item.id);
-
-            const result = await apiCall.getFolderById(`files/folders/${item.id}`);
-            const allResult = [...result.children, ...result.files];
-            setItems(allResult);
-        } catch (error) {
-            handleAxiosError(error);
-        }
+        }));
     };
 
-    const handleBack = async () => {
-        try {
-            if (navigationHistory.length === 0) {
-                // If we're at root, get root files
-                setCurrentPath('/');
-                setCurrentFolderId(null);
-                getRootFiles();
-                return;
-            }
-
-            const lastNav = navigationHistory[navigationHistory.length - 1];
-
-            setCurrentPath(lastNav.path);
-            setCurrentFolderId(lastNav.id);
-
-            setNavigationHistory(prev => prev.slice(0, -1));
-
-            if (lastNav.id) {
-                const result = await apiCall.getFolderById(`files/folders/${lastNav.id}`);
-                const allResult = [...result.children, ...result.files];
-                setItems(allResult);
-            } else {
-                // If we're going back to root
-                getRootFiles();
-            }
-        } catch (error) {
-            handleAxiosError(error);
-        }
+    // Dummy navigation
+    const handleNavigate = (item) => {
+        setNavigationHistory(prev => [...prev, { path: currentPath, id: currentFolderId }]);
+        setCurrentPath(item.fullPath);
+        setCurrentFolderId(item.id);
+        setItems(initialFolders[item.fullPath] || []);
     };
 
-    const handleActionClick = (e, action, item) => {
-        e.stopPropagation(); // Prevent folder navigation when clicking actions
-        switch (action) {
-            case 'open':
-                if (item.type === 'folder') {
-                    handleNavigate(item.path);
-                } else {
-                    // Handle file opening logic
-                }
-                break;
-            case 'delete':
-                // Handle delete logic
-                console.log('Delete:', item);
-                break;
-            case 'copy':
-                // Handle copy logic
-                console.log('Copy:', item);
-                break;
-            case 'move':
-                // Handle move logic
-                console.log('Move:', item);
-                break;
+    const handleBack = () => {
+        if (navigationHistory.length === 0) {
+            setCurrentPath('/');
+            setCurrentFolderId(null);
+            setItems(initialFolders['/']);
+            return;
         }
-        setActiveDropdown(null);
+        const lastNav = navigationHistory[navigationHistory.length - 1];
+        setCurrentPath(lastNav.path);
+        setCurrentFolderId(lastNav.id);
+        setNavigationHistory(prev => prev.slice(0, -1));
+        setItems(initialFolders[lastNav.path] || []);
     };
+
+    // Dummy actions
+    const handleCopy = (item) => {
+        alert(`Copy: ${item.name}`);
+    };
+    const handleMove = (item) => {
+        alert(`Move: ${item.name}`);
+    };
+    const handleDelete = (item) => {
+        alert(`Delete: ${item.name}`);
+    };
+    const handleFileOpen = (item) => {
+        alert(`Open file: ${item.name}`);
+        // window.open(item.url, '_blank');
+    };
+
+    const [activeDropdown, setActiveDropdown] = useState(null);
 
     useEffect(() => {
-        getRootFiles();
-        const handleClickOutside = () => setActiveDropdown(null);
-        document.addEventListener('click', handleClickOutside)
-        return () => document.removeEventListener('click', handleClickOutside);
-
+        // getRootFiles();
+        // const handleClickOutside = () => setActiveDropdown(null);
+        // document.addEventListener('click', handleClickOutside)
+        // return () => document.removeEventListener('click', handleClickOutside);
     }, []);
-
 
     return (
         <div className="flex min-h-screen">
             <Navbar />
-
-            {/* Main Content */}
             <div className="w-4/5 bg-white">
                 <ToastContainer />
                 <ProfileBar onSearch={(value) => console.log(value)} />
-
                 <div className="p-6">
-
                     <ActionButtons />
-
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-2">
@@ -147,10 +140,8 @@ const Files = () => {
                                     className="p-2 hover:bg-gray-100 rounded-lg"
                                     icon={<MdArrowBack size={20} />}
                                 />
-                                {/*<span className="text-gray-600">Current Path: {currentPath == null ? "/" : currentPath}</span>*/}
                                 <span className="text-gray-600">Current Path: {currentPath}</span>
                             </div>
-
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                     <label className="text-sm text-gray-600">Modified:</label>
@@ -163,7 +154,6 @@ const Files = () => {
                                         <option value="oldest">Oldest</option>
                                     </select>
                                 </div>
-
                                 <div className="flex items-center space-x-2">
                                     <label className="text-sm text-gray-600">Uploaded by:</label>
                                     <select
@@ -176,7 +166,6 @@ const Files = () => {
                                         <option value="others">Others</option>
                                     </select>
                                 </div>
-
                                 <div className="flex items-center space-x-2">
                                     <label className="text-sm text-gray-600">Type:</label>
                                     <select
@@ -192,13 +181,15 @@ const Files = () => {
                             </div>
                         </div>
                     </div>
-
                     {/* Files and Folders Grid */}
                     <div className="grid grid-cols-4 gap-4 ">
                         {items.length > 0 ? items.map((item, index) => (
                             <div
                                 key={index}
-                                onClick={() => item.type === 'folder' && handleNavigate(item)}
+                                onClick={() => {
+                                    if (item.type === 'folder') handleNavigate(item);
+                                    else handleFileOpen(item);
+                                }}
                                 className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                             >
                                 <div className="flex items-center justify-between">
@@ -210,9 +201,9 @@ const Files = () => {
                                         )}
                                         <span
                                             className="text-gray-700 truncate max-w-[150px] block"
-                                            title={item.name || item.fileName}
+                                            title={item.name}
                                         >
-                                            {item.name || item.fileName}
+                                            {item.name}
                                         </span>
                                     </div>
                                     <div className="relative">
@@ -231,28 +222,48 @@ const Files = () => {
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'open', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (item.type === 'folder') {
+                                                            handleNavigate(item);
+                                                        } else {
+                                                            handleFileOpen(item);
+                                                        }
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
                                                 >
                                                     <MdOpenInNew className="mr-2" size={18} />
                                                     Open
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'copy', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCopy(item);
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 >
                                                     <MdContentCopy className="mr-2" size={18} />
                                                     Copy
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'move', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleMove(item);
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                 >
                                                     <MdDriveFileMove className="mr-2" size={18} />
                                                     Move
                                                 </button>
                                                 <button
-                                                    onClick={(e) => handleActionClick(e, 'delete', item)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(item);
+                                                        setActiveDropdown(null);
+                                                    }}
                                                     className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
                                                 >
                                                     <MdDelete className="mr-2" size={18} />
