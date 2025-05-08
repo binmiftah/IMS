@@ -109,9 +109,9 @@ const UserDashboard = () => {
 
                 {/* Welcome message */}
                 {user && (
-                  <div className="mb-6 text-xl font-semibold text-gray-700">
-                    Welcome, {user.fullName || user.email}!
-                  </div>
+                    <div className="m-6 text-3xl font-semibold text-gray-700">
+                        Welcome, {user.fullName || user.email}!
+                    </div>
                 )}
 
                 <div className="p-6">

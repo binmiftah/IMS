@@ -49,7 +49,7 @@ const Trash = () => {
     };
 
     // Combine demo folder with actual trashed items for display
-    const displayItems = [demoFolder, ...trashedItems];
+    const displayItems = [demoFolder];
 
     return (
         <div className="flex min-h-screen">

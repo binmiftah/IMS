@@ -67,6 +67,7 @@ export async function handleFileClick(file, options = {}) {
             document.body.removeChild(link);
         }
     } catch (err) {
+        console.error(err)
         alert('Failed to open file.');
     }
 }

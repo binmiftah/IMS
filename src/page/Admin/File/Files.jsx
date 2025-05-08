@@ -7,10 +7,13 @@ import ProfileBar from '../../../components/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
+import {handleError} from "../../../pkg/error/error.js";
+import {useAuth} from "../../../context/AuthContext.jsx";
 
 const Files = () => {
+    const {user} = useAuth()
     const [currentPath, setCurrentPath] = useState('/');
-    const [folders, setFolders] = useState([]);
+    const [folders, setFolders] = useState(null);
     const [items, setItems] = useState([]);
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
@@ -142,8 +145,8 @@ const Files = () => {
         });
     };
 
-    const handleFileOpen = (item) => {
-        handleFileClick({
+    const handleFileOpen = async (item) => {
+        await handleFileClick({
             name: item.name,
             url: item.url,
             type: item.type

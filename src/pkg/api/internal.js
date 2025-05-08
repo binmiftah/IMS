@@ -12,6 +12,10 @@ class ApiCall {
     }
 
 
+    /**
+     *  AUTHENTICATION API CALL
+     * */
+
     async adminLogin(urlPath, data) {
         // Validate inputs
         if (!data.email || !data.password) {
@@ -59,6 +63,9 @@ class ApiCall {
         return response.data;
     }
 
+    /**
+     * FOLDER AND FILES API CALL
+     * */
 
     async createFolder(urlPath, data) {
         const response = await this.instance.post(urlPath, {
@@ -80,22 +87,9 @@ class ApiCall {
             }
         })
 
-        console.log(response)
         return response.data;
     }
 
-
-    async allAuditLogs(urlPath) {
-        const response = await this.instance.get(urlPath, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        return response.data;
-    }
-
-
-    //NOTES: FILES API CALL
     async getFile(urlPath){
         // GET root file
         const response = await this.instance.get(urlPath, {
@@ -106,7 +100,6 @@ class ApiCall {
 
         return response.data.data.files
     }
-
 
     async getFolder(urlPath) {
         const response = await this.instance.get(urlPath, {
@@ -137,8 +130,33 @@ class ApiCall {
         return response.data.data
     }
 
+    async deleteFolder(urlPath) {
+        const response = await this.instance.delete(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        console.log(response)
+        return response.data.data
+    }
 
-    //NOTES: USER API CALL
+
+    /**
+     * AUDITLOG API CALL
+     * */
+    async allAuditLogs(urlPath) {
+        const response = await this.instance.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+
+    /**
+     * MEMBERS API CALLS
+     * */
     async createNewMember(urlPath, data) {
         const response = await this.instance.post(urlPath,data, {
             headers: {
@@ -167,29 +185,9 @@ class ApiCall {
     }
 
 
-     checkRole(navigate, toast)  {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user){
-            localStorage.clear()
-            navigate("/login")
-        }
-        if (user.loggedInAs !== "ADMIN"){
-            toast.error("You are not authorized to access this page", {
-                position: "top-right",
-                autoClose: 2000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-            })
-            localStorage.clear()
-            navigate("/login")
-        }
-    }
-
-
-//     PERMISSIONS
+    /**
+     * PERMISSIONS API CALLS
+      */
     async getAllPermissions(urlPath) {
         const response = await this.instance.get(urlPath, {
             headers: {
@@ -206,6 +204,11 @@ class ApiCall {
             }
         })
         return response.data;
+    }
+
+    // TRASH ITEMS
+    async getTrashed(url) {
+
     }
 }
 
