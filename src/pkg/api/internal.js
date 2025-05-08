@@ -208,7 +208,24 @@ class ApiCall {
 
     // TRASH ITEMS
     async getTrashed(url) {
+        const response = await this.instance.get(url, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data.data.trashedItems
+    }
 
+    async restoreItem(url, item){
+        const response = await this.instance.put(url, {
+            type: item.itemType
+        }, {
+            headers:{
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+
+        return response
     }
 }
 

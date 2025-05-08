@@ -131,18 +131,14 @@ const Files = () => {
         setMoveModal({ open: true, file: item });
     };
 
-    const handleDelete = (item) => {
-        setFolders(prev => {
-            const updated = { ...prev };
-            // Remove from current folder
-            updated[currentPath] = (updated[currentPath] || []).filter(f => f.id !== item.id);
-            // Add to admin trash
-            updated['/admin-trash'] = [
-                ...(updated['/admin-trash'] || []),
-                { ...item, deletedBy: 'admin', deletedAt: Date.now() }
-            ];
-            return updated;
-        });
+    const handleDelete = async (item) => {
+        if (item.type === 'folder') {
+            await apiCall.deleteFolder(`files/folders/${item.id}`);
+        }
+
+        // refresh folder
+        await getRootFiles();
+
     };
 
     const handleFileOpen = async (item) => {
