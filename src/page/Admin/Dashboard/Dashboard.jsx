@@ -8,6 +8,7 @@ import apiCall from "../../../pkg/api/internal.js";
 import {toast, ToastContainer} from "react-toastify";
 import {handleError} from "../../../pkg/error/error.js";
 import {useNavigate} from "react-router-dom";
+import {useAuth} from "../../../context/AuthContext.jsx";
 
 
 
@@ -180,13 +181,13 @@ const Dashboard = () => {
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.users.email}
+                                                {item.actor.email}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.action}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.file ? item.file.filePath : item.folder ? item.folder.fullPath : ''}
+                                                {item.file ? item.File.filePath : item.Folder ? item.Folder.fullPath : ''}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {new Date(item.createdAt).toLocaleDateString()}   {new Date(item.createdAt).toLocaleTimeString()}

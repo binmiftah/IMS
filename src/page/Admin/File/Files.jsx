@@ -7,12 +7,11 @@ import ProfileBar from '../../../components/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
-import { handleAxiosError } from "../../../pkg/error/error.js";
 
 const Files = () => {
     const [currentPath, setCurrentPath] = useState('/');
-    const [folders, setFolders] = useState(initialFolders);
-    const [items, setItems] = useState(initialFolders['/']);
+    const [folders, setFolders] = useState([]);
+    const [items, setItems] = useState([]);
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
