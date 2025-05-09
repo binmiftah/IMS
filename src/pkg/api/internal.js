@@ -1,13 +1,13 @@
 import axios, {AxiosError} from "axios";
 
-// const BaseUrl =  "http://18.208.155.254/api/v1/";
-const BaseUrlTesting = "http://localhost:3002/api/v1/";
+const BaseUrl =  "http://20.80.82.90/api/v1/";
+// const BaseUrlTesting = "http://localhost:3000/api/v1/";
 
 class ApiCall {
     constructor(url) {
         this.instance = axios.create({
             baseURL: url,
-            timeout: 10000,
+            timeout: 0,
         });
     }
 
@@ -79,7 +79,6 @@ class ApiCall {
     }
 
     async uploadFile(urlPath, data) {
-        console.log(data)
         const response = await this.instance.post(urlPath, data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
@@ -218,17 +217,17 @@ class ApiCall {
 
     async restoreItem(url, item){
         const response = await this.instance.put(url, {
-            type: item.itemType
+            type: item.itemType,
+            folderId: item.folderId
         }, {
             headers:{
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
-
         return response
     }
 }
 
 
-const apiCall = new ApiCall(BaseUrlTesting);
+const apiCall = new ApiCall(BaseUrl);
 export default apiCall;

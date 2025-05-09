@@ -93,9 +93,7 @@ const UserFiles = () => {
     };
 
     const handleRefresh = async () =>{
-        console.log("i am here", currentFolderId)
         if (currentFolderId){
-
             const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
             const allResult = [...result.children, ...result.files];
             console.log(allResult)

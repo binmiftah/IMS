@@ -50,7 +50,6 @@ const SignUp = () => {
 
       try{
          const response =  await apiCall.register('auth/register', data);
-         console.log(response)
          if (response){
             localStorage.setItem("token", response.data.token) // Store token in local storage
             localStorage.setItem("user", JSON.stringify(response.data.user)) // Store user data in local storage

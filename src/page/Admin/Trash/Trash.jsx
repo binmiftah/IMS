@@ -5,13 +5,14 @@ import Button from '../../../components/Button';
 import { MdRestore, MdDeleteForever, MdFolder } from 'react-icons/md';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from '../../../pkg/error/error';
+import {toast, ToastContainer} from "react-toastify";
 
 const Trash = () => {
     const [trashedGroups, setTrashedGroups] = useState([]);
     const [trashModalOpen, setTrashModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState(null);
 
-    useEffect(() => {
+    useEffect( () => {
         fetchTrashedItems();
     }, []);
 
@@ -33,9 +34,20 @@ const Trash = () => {
     const handleRestore = async (item) => {
         try {
             console.log(item)
-            const res = await apiCall.restoreItem(`files/restore/${item.id}`);
+            const res = await apiCall.restoreItem(`trash/restore/${item.id}`, item);
+            await fetchTrashedItems();
             console.log(res)
-            fetchTrashedItems();
+            toast.success(res.message,{
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            })
+            setTrashModalOpen(false);
+
         } catch (error) {
             handleError(error);
         }
@@ -44,7 +56,7 @@ const Trash = () => {
     const handlePermanentDelete = async (item) => {
         try {
             await apiCall.deleteItem(`files/delete/${item.id}`);
-            fetchTrashedItems();
+            await fetchTrashedItems();
         } catch (error) {
             handleError(error);
         }
@@ -54,6 +66,7 @@ const Trash = () => {
         <div className="flex min-h-screen">
             <Navbar />
             <div className="w-4/5 bg-white flex flex-col">
+                <ToastContainer/>
                 <ProfileBar />
                 <div className="flex-1 p-8">
                     <h2 className="text-2xl font-bold mb-6">Trash</h2>
@@ -92,6 +105,8 @@ const Trash = () => {
                                     {item.itemType === 'FOLDER' && (
                                         <MdFolder size={32} className="text-yellow-500 mb-2" />
                                     )}
+
+                                    {item.itemType === 'FILE' && (<div></div>)}
                                     <span className="font-medium">
 										{item.file?.name || item.folder?.name || 'Unnamed'}
 									</span>

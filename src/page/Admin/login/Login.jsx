@@ -43,7 +43,6 @@ const Login = () => {
                }, 2500)
            }
        } catch (error) {
-           console.log(error)
            handleError(error, setError)
        }
    }
