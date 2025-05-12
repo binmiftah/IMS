@@ -7,11 +7,11 @@ import ProfileBar from '../../../components/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
-import {handleError} from "../../../pkg/error/error.js";
-import {useAuth} from "../../../context/AuthContext.jsx";
+import { handleError } from "../../../pkg/error/error.js";
+import { useAuth } from "../../../context/AuthContext.jsx";
 
 const Files = () => {
-    const {user} = useAuth()
+    const { user } = useAuth()
     const [currentPath, setCurrentPath] = useState('/');
     const [folders, setFolders] = useState(null);
     const [items, setItems] = useState([]);
@@ -70,15 +70,16 @@ const Files = () => {
         }
     };
 
-    const handleRefresh = async () =>{
-        console.log("i am here", currentFolderId)
-        if (currentFolderId){
-
+    const handleRefresh = async () => {
+        if (currentFolderId) {
             const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
             const allResult = [...result.children, ...result.files];
             setItems(allResult);
+        } else {
+            // At root, refresh root files
+            await getRootFiles();
         }
-    }
+    };
 
     const handleBack = async () => {
         try {

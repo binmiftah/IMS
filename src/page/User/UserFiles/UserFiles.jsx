@@ -6,8 +6,7 @@ import ActionButtons from '../../../components/ActionButtons';
 import Button from '../../../components/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
-import {handleError} from "../../../pkg/error/error.js";
-// import { handleFileClick } from '../../../utils/fileOpenHandlers';
+import { handleError } from "../../../pkg/error/error.js";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
 
 const UserFiles = () => {
@@ -26,7 +25,7 @@ const UserFiles = () => {
     }, []);
 
 
-    const getFolderId = () =>{
+    const getFolderId = () => {
         return currentFolderId;
     }
 
@@ -41,6 +40,7 @@ const UserFiles = () => {
                 const dateB = new Date(b.createdAt || b.updatedAt);
                 return dateB - dateA;
             });
+            console.log("Root Files:", result);
 
             setItems(result);
         } catch (error) {
@@ -92,14 +92,15 @@ const UserFiles = () => {
         }
     };
 
-    const handleRefresh = async () =>{
-        if (currentFolderId){
+    const handleRefresh = async () => {
+        if (currentFolderId) {
             const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
             const allResult = [...result.children, ...result.files];
-            console.log(allResult)
             setItems(allResult);
+        } else {
+            await getRootFiles();
         }
-    }
+    };
 
 
     const handleSort = (type, value) => {
