@@ -4,7 +4,6 @@ import Navbar from '../../../components/Navbar';
 import Button from '../../../components/Button';
 import ActionButtons from '../../../components/ActionButtons.jsx';
 import ProfileBar from '../../../components/ProfileBar';
-import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
 import { handleError } from "../../../pkg/error/error.js";
@@ -47,6 +46,7 @@ const Files = () => {
             handleError(error)
         }
     }
+    });
 
     const handleSort = (sortType, value) => {
         setSortBy((prev) => ({
