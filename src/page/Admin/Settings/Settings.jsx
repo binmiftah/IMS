@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Navbar from '../../../components/Navbar';
-import ProfileBar from '../../../components/ProfileBar';
-import Button from '../../../components/Button';
+import Navbar from '../../../component/Navbar';
+import ProfileBar from '../../../component/ProfileBar';
+import Button from '../../../component/Button';
 
 const Settings = () => {
     const [fullName, setFullName] = useState('');

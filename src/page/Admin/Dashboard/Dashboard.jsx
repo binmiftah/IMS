@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Navbar from '../../../components/Navbar.jsx';
-import ProfileBar from '../../../components/ProfileBar.jsx';
-import ActionButtons from '../../../components/ActionButtons.jsx';
+import Navbar from '../../../component/Navbar.jsx';
+import ProfileBar from '../../../component/ProfileBar.jsx';
+import ActionButtons from '../../../component/ActionButtons.jsx';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
-import Button from '../../../components/Button.jsx';
+import Button from '../../../component/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
 import {toast, ToastContainer} from "react-toastify";
 import {handleError} from "../../../pkg/error/error.js";

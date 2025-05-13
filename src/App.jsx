@@ -17,7 +17,7 @@ import UserDashboard from './page/User/UserDashboard/UserDashboard.jsx'
 import UserFiles from './page/User/UserFiles/UserFiles.jsx'
 
 
-import NotFound from './components/NotFound'
+import NotFound from './component/NotFound'
 import UserLogin from "./page/User/login/Login.jsx";
 
 const App = () => {
