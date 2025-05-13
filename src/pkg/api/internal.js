@@ -1,8 +1,8 @@
 import axios, {AxiosError} from "axios";
 
 // const BaseUrl =  "https://api.yareyare.software/api/v1/";
-const BaseUrl = "http://localhost:3002/api/v1/";
-// const BaseUrl = "http://dev.yareyare.software/api/v1/"
+// const BaseUrl = "http://localhost:3002/api/v1/";
+const BaseUrl = "http://dev.yareyare.software/api/v1/"
 
 class ApiCall {
     constructor(url) {
