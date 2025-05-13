@@ -6,10 +6,10 @@ import ActionButtons from '../../../component/ActionButtons.jsx';
 import ProfileBar from '../../../component/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
-import { handleFileClick } from '../../../utils/fileOpenHandlers';
+// import { handleFileClick } from '../../../utils/fileOpenHandlers';
 import {handleError} from "../../../pkg/error/error.js";
 import {useAuth} from "../../../context/AuthContext.jsx";
-import {FileItem} from "../../../component/FileItem.jsx"
+import FileItem from "../../../component/FileItem.jsx"
 
 const Files = () => {
     const {user} = useAuth()

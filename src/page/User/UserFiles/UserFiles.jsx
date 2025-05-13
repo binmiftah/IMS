@@ -7,7 +7,7 @@ import Button from '../../../component/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";
-import { handleFileClick } from '../../../utils/fileOpenHandlers';
+// import handleFileClick  from '../../../utils/fileOpenHandlers';
 
 const UserFiles = () => {
     const [currentPath, setCurrentPath] = useState('/');
