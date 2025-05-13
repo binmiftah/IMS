@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Navbar from '../../../components/Navbar.jsx';
 import ProfileBar from '../../../components/ProfileBar.jsx';
-import { MdSearch, MdNotifications, MdAdd, MdClose } from 'react-icons/md';
+import { MdAdd, MdClose } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
 import { handleError } from "../../../pkg/error/error.js";
-import {toast, ToastContainer} from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import { SiSetapp } from 'react-icons/si';
 
 const Users = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -23,6 +24,10 @@ const Users = () => {
     });
 
     const [selectedUser, setSelectedUser] = useState(null)
+    const [sortBy, setSortBy] = useState({
+        field: 'email',
+        order: 'asc',
+    })
 
 
 
@@ -39,27 +44,27 @@ const Users = () => {
         }
     };
 
-    const handlePermissionModel = (user) =>{
+    const handlePermissionModel = (user) => {
         setSelectedUser(user);
         setIsPermissionModal(true);
 
     }
 
-    const handlePermissionSubmit = async () =>{
+    const handlePermissionSubmit = async () => {
 
-            console.log('Submitting permission:', permissionForm);
-            console.log('Selected User:', selectedUser);
-            try {
-                await apiCall.createPermission("/permissions", {
-                    ...permissionForm,
-                    accountId: selectedUser.id,
-                });
-                setIsPermissionModal(false);
-                setPermissionForm({ type: '', folderPath: '', targetType: 'FOLDER' });
-                toast.success('Permission successfully created!');
-            } catch (err) {
-                handleError(err)
-            }
+        console.log('Submitting permission:', permissionForm);
+        console.log('Selected User:', selectedUser);
+        try {
+            await apiCall.createPermission("/permissions", {
+                ...permissionForm,
+                accountId: selectedUser.id,
+            });
+            setIsPermissionModal(false);
+            setPermissionForm({ type: '', folderPath: '', targetType: 'FOLDER' });
+            toast.success('Permission successfully created!');
+        } catch (err) {
+            handleError(err)
+        }
     }
 
 
@@ -67,7 +72,7 @@ const Users = () => {
         try {
             const res = await apiCall.getAllUsers("users");
 
-            const allUsers =  res.data.users;
+            const allUsers = res.data.users;
 
             // You should sort by email or id for deterministic ordering
             // allUsers.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
@@ -86,6 +91,15 @@ const Users = () => {
             [name]: value
         }));
     };
+
+    const handleSort = (field) => {
+        setSortBy(prev => ({
+            field,
+            order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -111,7 +125,25 @@ const Users = () => {
         fetchUsers();
     }, []);
 
-    const paginatedUsers = users.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const sortedUsers = [...users].sort((a, b) => {
+        let aValue = a[sortBy.field] || '';
+        let bValue = b[sortBy.field] || '';
+        if (sortBy.field === 'email' || sortBy.field === 'role') {
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+            if (aValue < bValue) return sortBy.order === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortBy.order === 'asc' ? 1 : -1;
+            return 0;
+        }
+        // For date fields
+        if (sortBy.field === 'updatedAt' || sortBy.field === 'lastActive') {
+            return sortBy.order === 'asc'
+                ? new Date(aValue) - new Date(bValue)
+                : new Date(bValue) - new Date(aValue);
+        }
+        return 0;
+    });
+    const paginatedUsers = sortedUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
         <div className="flex min-h-screen">
@@ -121,7 +153,7 @@ const Users = () => {
                 <ProfileBar onSearch={(value) => console.log('Search:', value)} />
 
                 <div className="p-6">
-                    <ToastContainer/>
+                    <ToastContainer />
                     <div className="flex justify-between items-center mb-6">
                         <h1 className="text-2xl font-bold text-gray-800">View and Manage Users</h1>
                         <Button
@@ -302,26 +334,43 @@ const Users = () => {
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Permission</th>
-                        </tr>
+                            <tr>
+                                <th
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                                    onClick={() => handleSort('email')}
+                                >
+                                    Email {sortBy.field === 'email' && (sortBy.order === 'asc' ? '▲' : '▼')}
+                                </th>
+                                <th
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                                    onClick={() => handleSort('role')}
+                                >
+                                    Role {sortBy.field === 'role' && (sortBy.order === 'asc' ? '▲' : '▼')}
+                                </th>
+                                <th
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                                    onClick={() => handleSort('updatedAt')}
+                                >
+                                    Recently Active {sortBy.field === 'updatedAt' && (sortBy.order === 'asc' ? '▲' : '▼')}
+                                </th>
+                            </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                        {paginatedUsers.length > 0 ? (
-                            paginatedUsers.map((user, idx) => (
-                                <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handlePermissionModel(user)}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm ">{user.role || 'N/A'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">{user.role == 'ADMIN' ? 'Admin Level': 'Member Level'}</td>
+                            {paginatedUsers.length > 0 ? (
+                                paginatedUsers.map((user, idx) => (
+                                    <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handlePermissionModel(user)}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm ">{user.role || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            {user.updatedAt ? new Date(user.updatedAt).toLocaleString() : 'N/A'}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">No users found.</td>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan="3" className="px-6 py-4 text-center text-gray-500">No users found.</td>
-                            </tr>
-                        )}
+                            )}
                         </tbody>
                     </table>
                     {/* Pagination */}
