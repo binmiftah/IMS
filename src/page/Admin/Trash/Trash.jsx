@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import Navbar from '../../../components/Navbar';
-import ProfileBar from '../../../components/ProfileBar';
-import Button from '../../../components/Button';
+import Navbar from '../../../component/Navbar';
+import ProfileBar from '../../../component/ProfileBar';
+import Button from '../../../component/Button';
 import { MdRestore, MdDeleteForever, MdFolder } from 'react-icons/md';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from '../../../pkg/error/error';

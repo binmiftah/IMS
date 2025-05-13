@@ -1,12 +1,18 @@
 import axios, {AxiosError} from "axios";
 
-const BaseUrl =  "https://api.yareyare.software/api/v1/";
-// const BaseUrlTesting = "http://localhost:3000/api/v1/";
+// const BaseUrl =  "https://api.yareyare.software/api/v1/";
+const BaseUrl = "http://localhost:3002/api/v1/";
+// const BaseUrl = "http://dev.yareyare.software/api/v1/"
 
 class ApiCall {
     constructor(url) {
-        this.instance = axios.create({
+        this.instance1 = axios.create({
             baseURL: url,
+            timeout: 0,
+        });
+
+        this.instance2 = axios.create({
+            baseURL: 'http://localhost:3002/api/v2/',
             timeout: 0,
         });
     }
@@ -21,7 +27,7 @@ class ApiCall {
         if (!data.email || !data.password) {
             throw new Error("email and password must be provided");
         }
-        const response = await this.instance.post(urlPath, {
+        const response = await this.instance1.post(urlPath, {
             email: data.email,
             password: data.password
         })
@@ -33,7 +39,7 @@ class ApiCall {
         if (!data.email || !data.password) {
             throw new Error("email and password must be provided");
         }
-        const response = await this.instance.post(urlPath, {
+        const response = await this.instance1.post(urlPath, {
             email: data.email,
             password: data.password
         })
@@ -42,7 +48,7 @@ class ApiCall {
 
 
     async register(urlPath, data) {
-        const response = await this.instance.post(urlPath, {
+        const response = await this.instance1.post(urlPath, {
             fullName: data.fullName,
             email: data.email,
             phoneNumber: data.phoneNumber,
@@ -53,7 +59,7 @@ class ApiCall {
 
 
     async logout(urlPath) {
-        const response = await this.instance.post(urlPath, {
+        const response = await this.instance1.post(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -68,7 +74,8 @@ class ApiCall {
      * */
 
     async createFolder(urlPath, data) {
-        const response = await this.instance.post(urlPath, {
+
+        const response = await this.instance2.post(urlPath, {
             folderName: data.folderName,
         }, {
             headers: {
@@ -79,7 +86,7 @@ class ApiCall {
     }
 
     async uploadFile(urlPath, data) {
-        const response = await this.instance.post(urlPath, data, {
+        const response = await this.instance2.post(urlPath, data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -91,7 +98,7 @@ class ApiCall {
 
     async getFile(urlPath){
         // GET root file
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -101,7 +108,7 @@ class ApiCall {
     }
 
     async getFolder(urlPath) {
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -110,7 +117,7 @@ class ApiCall {
     }
 
     async getRootLevelFiles(urlPath){
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -121,7 +128,7 @@ class ApiCall {
 
 
     async getFolderById(urlPath) {
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -130,7 +137,7 @@ class ApiCall {
     }
 
     async deleteFolder(urlPath) {
-        const response = await this.instance.delete(urlPath, {
+        const response = await this.instance1.delete(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -144,7 +151,7 @@ class ApiCall {
      * AUDITLOG API CALL
      * */
     async allAuditLogs(urlPath) {
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -157,7 +164,7 @@ class ApiCall {
      * MEMBERS API CALLS
      * */
     async createNewMember(urlPath, data) {
-        const response = await this.instance.post(urlPath,data, {
+        const response = await this.instance1.post(urlPath,data, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -166,7 +173,7 @@ class ApiCall {
     }
 
     async getAllUsers(urlPath) {
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -175,7 +182,7 @@ class ApiCall {
     }
 
     async getAllMembers(urlPath) {
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -188,7 +195,7 @@ class ApiCall {
      * PERMISSIONS API CALLS
       */
     async getAllPermissions(urlPath) {
-        const response = await this.instance.get(urlPath, {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -197,7 +204,7 @@ class ApiCall {
     }
 
     async createPermission(urlPath, data) {
-        const response = await this.instance.post(urlPath, data, {
+        const response = await this.instance1.post(urlPath, data, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -207,7 +214,7 @@ class ApiCall {
 
     // TRASH ITEMS
     async getTrashed(url) {
-        const response = await this.instance.get(url, {
+        const response = await this.instance1.get(url, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -216,7 +223,7 @@ class ApiCall {
     }
 
     async restoreItem(url, item){
-        const response = await this.instance.put(url, {
+        const response = await this.instance1.put(url, {
             type: item.itemType,
             folderId: item.folderId
         }, {

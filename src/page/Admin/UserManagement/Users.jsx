@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import Navbar from '../../../components/Navbar.jsx';
-import ProfileBar from '../../../components/ProfileBar.jsx';
-import { MdAdd, MdClose } from 'react-icons/md';
-import Button from '../../../components/Button.jsx';
+import Navbar from '../../../component/Navbar.jsx';
+import ProfileBar from '../../../component/ProfileBar.jsx';
+import { MdSearch, MdNotifications, MdAdd, MdClose } from 'react-icons/md';
+import Button from '../../../component/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
 import { handleError } from "../../../pkg/error/error.js";
 import { toast, ToastContainer } from "react-toastify";

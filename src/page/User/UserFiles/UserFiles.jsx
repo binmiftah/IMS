@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert } from 'react-icons/md';
-import UserNavbar from '../../../components/UserNavbar';
-import ProfileBar from '../../../components/ProfileBar';
-import ActionButtons from '../../../components/ActionButtons';
-import Button from '../../../components/Button';
+import UserNavbar from '../../../component/UserNavbar';
+import ProfileBar from '../../../component/ProfileBar';
+import ActionButtons from '../../../component/ActionButtons';
+import Button from '../../../component/Button';
 import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";

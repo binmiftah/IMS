@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove } from 'react-icons/md';
-import Navbar from '../../../components/Navbar';
-import Button from '../../../components/Button';
-import ActionButtons from '../../../components/ActionButtons.jsx';
-import ProfileBar from '../../../components/ProfileBar';
+import Navbar from '../../../component/Navbar';
+import Button from '../../../component/Button';
+import ActionButtons from '../../../component/ActionButtons.jsx';
+import ProfileBar from '../../../component/ProfileBar';
+import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
-import { handleError } from "../../../pkg/error/error.js";
-import { useAuth } from "../../../context/AuthContext.jsx";
+import {handleError} from "../../../pkg/error/error.js";
+import {useAuth} from "../../../context/AuthContext.jsx";
+import {FileItem} from "../../../component/FileItem.jsx"
 
 const Files = () => {
-    const { user } = useAuth()
+    const {user} = useAuth()
     const [currentPath, setCurrentPath] = useState('/');
     const [folders, setFolders] = useState(null);
     const [items, setItems] = useState([]);
@@ -20,6 +22,8 @@ const Files = () => {
     const [moveModal, setMoveModal] = useState({ open: false, file: null });
     const [selectedMovePath, setSelectedMovePath] = useState(null);
     const [clipboard, setClipboard] = useState(null);
+    const [clickedItem, setClickedItem] = useState(null)
+    const [isOpenFile, setIsOpenFile] = useState(false)
 
     const dropdownRef = useRef(null);
 
@@ -46,7 +50,6 @@ const Files = () => {
             handleError(error)
         }
     }
-    });
 
     const handleSort = (sortType, value) => {
         setSortBy((prev) => ({
@@ -70,16 +73,15 @@ const Files = () => {
         }
     };
 
-    const handleRefresh = async () => {
-        if (currentFolderId) {
+    const handleRefresh = async () =>{
+        console.log("i am here", currentFolderId)
+        if (currentFolderId){
+
             const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
             const allResult = [...result.children, ...result.files];
             setItems(allResult);
-        } else {
-            // At root, refresh root files
-            await getRootFiles();
         }
-    };
+    }
 
     const handleBack = async () => {
         try {
@@ -143,11 +145,8 @@ const Files = () => {
     };
 
     const handleFileOpen = async (item) => {
-        await handleFileClick({
-            name: item.name,
-            url: item.url,
-            type: item.type
-        }, { restrictDownload: true });
+       setClickedItem(item);
+       setIsOpenFile((s) => !s);
     };
 
     useEffect(() => {
@@ -280,7 +279,7 @@ const Files = () => {
                                                 className="text-gray-700 truncate max-w-[150px] block"
                                                 title={item.name}
                                             >
-                                                {item.name}
+                                                {item.name || item.fileName}
                                             </span>
                                         </div>
                                         <div className="relative">
@@ -422,6 +421,23 @@ const Files = () => {
                     </div>
                 </div>
             )}
+
+
+            {/*Open file*/}
+            {isOpenFile && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6 relative">
+                        <button
+                            className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+                            onClick={() => setIsOpenFile(false)}
+                        >
+                            ✕
+                        </button>
+                        <FileItem file={clickedItem} />
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
