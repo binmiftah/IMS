@@ -6,61 +6,14 @@ import ActionButtons from '../../../components/ActionButtons.jsx';
 import ProfileBar from '../../../components/ProfileBar';
 import { ToastContainer } from "react-toastify";
 import { handleFileClick } from '../../../utils/fileOpenHandlers';
-
-const initialFolders = {
-    '/': [
-        {
-            id: 1,
-            name: "Admin Project Plan.pdf",
-            url: "/AdminProjectPlan.pdf",
-            type: "application/pdf",
-        },
-        {
-            id: 2,
-            name: "Admin Vacation.jpg",
-            url: "/AdminVacation.jpg",
-            type: "image/jpeg",
-        },
-        {
-            id: 3,
-            name: "Admin Notes.txt",
-            url: "/AdminNotes.txt",
-            type: "text/plain",
-        },
-        {
-            id: 4,
-            name: "Admin Work Folder",
-            type: "folder",
-            fullPath: "/Admin Work Folder",
-        },
-        {
-            id: 7,
-            name: "Admin Test Folder",
-            type: "folder",
-            fullPath: "/Admin Test Folder",
-        },
-    ],
-    '/Admin Work Folder': [
-        {
-            id: 5,
-            name: "Admin Subfile.txt",
-            url: "/AdminSubfile.txt",
-            type: "text/plain",
-        },
-        {
-            id: 6,
-            name: "Admin Another Image.png",
-            url: "/AdminAnotherImage.png",
-            type: "image/png",
-        },
-    ],
-    '/admin-trash': [],
-};
+import { handleError } from "../../../pkg/error/error.js";
+import { useAuth } from "../../../context/AuthContext.jsx";
 
 const Files = () => {
+    const { user } = useAuth()
     const [currentPath, setCurrentPath] = useState('/');
-    const [folders, setFolders] = useState(initialFolders);
-    const [items, setItems] = useState(initialFolders['/']);
+    const [folders, setFolders] = useState(null);
+    const [items, setItems] = useState([]);
     const [navigationHistory, setNavigationHistory] = useState([]);
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -74,6 +27,25 @@ const Files = () => {
         modified: "newest",
         uploadedBy: "all",
         type: "all",
+    })
+
+
+    // get folder id
+    const getFolderId = () => {
+        return currentFolderId
+    }
+
+    const getRootFiles = async () => {
+        try {
+
+            const result = await Promise.all([apiCall.getFolder("files/folders"), apiCall.getFile("/files")])
+            let allResult = [...result[0], ...result[1]];
+            setItems(allResult);
+        } catch (error) {
+            console.log(error);
+            handleError(error)
+        }
+    }
     });
 
     const handleSort = (sortType, value) => {
@@ -83,27 +55,66 @@ const Files = () => {
         }));
     };
 
-    const handleNavigate = (item) => {
-        setNavigationHistory(prev => [...prev, { path: currentPath, id: currentFolderId }]);
-        setCurrentPath(item.fullPath);
-        setCurrentFolderId(item.id);
+
+    const handleNavigate = async (item) => {
+        try {
+            setNavigationHistory(prev => [...prev, { path: currentPath, id: currentFolderId }]);
+            setCurrentPath(item.fullPath);
+            setCurrentFolderId(item.id);
+
+            const result = await apiCall.getFolderById(`files/folders/${item.id}`);
+            const allResult = [...result.children, ...result.files];
+            setItems(allResult);
+        } catch (error) {
+            handleError(error);
+        }
     };
 
-    const handleBack = () => {
-        if (navigationHistory.length === 0) {
-            setCurrentPath('/');
-            setCurrentFolderId(null);
-            return;
+    const handleRefresh = async () => {
+        if (currentFolderId) {
+            const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
+            const allResult = [...result.children, ...result.files];
+            setItems(allResult);
+        } else {
+            // At root, refresh root files
+            await getRootFiles();
         }
-        const lastNav = navigationHistory[navigationHistory.length - 1];
-        setCurrentPath(lastNav.path);
-        setCurrentFolderId(lastNav.id);
-        setNavigationHistory(prev => prev.slice(0, -1));
+    };
+
+    const handleBack = async () => {
+        try {
+            if (navigationHistory.length === 0) {
+                // If we're at root, get root files
+                setCurrentPath('/');
+                setCurrentFolderId(null);
+                getRootFiles();
+                return;
+            }
+
+            const lastNav = navigationHistory[navigationHistory.length - 1];
+
+            setCurrentPath(lastNav.path);
+            setCurrentFolderId(lastNav.id);
+
+            setNavigationHistory(prev => prev.slice(0, -1));
+
+            if (lastNav.id) {
+                const result = await apiCall.getFolderById(`files/folders/${lastNav.id}`);
+                const allResult = [...result.children, ...result.files];
+                setItems(allResult);
+            } else {
+                // If we're going back to root
+                getRootFiles();
+            }
+        } catch (error) {
+            handleError(error);
+        }
     };
 
     const handleCopy = (item) => {
         setClipboard({ ...item, from: currentPath })
     };
+
 
     const handlePaste = () => {
         if (!clipboard) return;
@@ -121,22 +132,18 @@ const Files = () => {
         setMoveModal({ open: true, file: item });
     };
 
-    const handleDelete = (item) => {
-        setFolders(prev => {
-            const updated = { ...prev };
-            // Remove from current folder
-            updated[currentPath] = (updated[currentPath] || []).filter(f => f.id !== item.id);
-            // Add to admin trash
-            updated['/admin-trash'] = [
-                ...(updated['/admin-trash'] || []),
-                { ...item, deletedBy: 'admin', deletedAt: Date.now() }
-            ];
-            return updated;
-        });
+    const handleDelete = async (item) => {
+        if (item.type === 'folder') {
+            await apiCall.deleteFolder(`files/folders/${item.id}`);
+        }
+
+        // refresh folder
+        await getRootFiles();
+
     };
 
-    const handleFileOpen = (item) => {
-        handleFileClick({
+    const handleFileOpen = async (item) => {
+        await handleFileClick({
             name: item.name,
             url: item.url,
             type: item.type
@@ -158,17 +165,25 @@ const Files = () => {
     }, [activeDropdown])
 
     useEffect(() => {
-        setItems(folders[currentPath] || []);
-    }, [folders, currentPath]);
+        getRootFiles();
+        const handleClickOutside = () => setActiveDropdown(null);
+        document.addEventListener('click', handleClickOutside)
+        return () => document.removeEventListener('click', handleClickOutside);
+
+    }, []);
+
 
     return (
         <div className="flex min-h-screen">
             <Navbar />
+
+            {/* Main Content */}
             <div className="w-4/5 bg-white">
                 <ToastContainer />
                 <ProfileBar onSearch={(value) => console.log(value)} />
+
                 <div className="p-6">
-                    <ActionButtons />
+                    <ActionButtons onActionComplete={handleRefresh} getFolderId={getFolderId} />
                     {clipboard && (
                         <button
                             onClick={handlePaste}
@@ -177,6 +192,8 @@ const Files = () => {
                             Paste "{clipboard.name}"
                         </button>
                     )}
+
+
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-2">
@@ -187,8 +204,10 @@ const Files = () => {
                                     className="p-2 hover:bg-gray-100 rounded-lg"
                                     icon={<MdArrowBack size={20} />}
                                 />
+                                {/*<span className="text-gray-600">Current Path: {currentPath == null ? "/" : currentPath}</span>*/}
                                 <span className="text-gray-600">Current Path: {currentPath}</span>
                             </div>
+
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                     <label className="text-sm text-gray-600">Modified:</label>
@@ -201,6 +220,7 @@ const Files = () => {
                                         <option value="oldest">Oldest</option>
                                     </select>
                                 </div>
+
                                 <div className="flex items-center space-x-2">
                                     <label className="text-sm text-gray-600">Uploaded by:</label>
                                     <select
@@ -213,6 +233,7 @@ const Files = () => {
                                         <option value="others">Others</option>
                                     </select>
                                 </div>
+
                                 <div className="flex items-center space-x-2">
                                     <label className="text-sm text-gray-600">Type:</label>
                                     <select
@@ -228,6 +249,8 @@ const Files = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Files and Folders Grid */}
                     <div className="grid grid-cols-4 gap-4 ">
                         {items.length > 0 ? items.map((item, index) => {
                             // Determine if this card should be disabled in paste mode

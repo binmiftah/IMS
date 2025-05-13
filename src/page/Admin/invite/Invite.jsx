@@ -27,7 +27,6 @@ const Invite = () => {
     }
 
     // Handle invite logic here, e.g., send members to the server
-    console.log('Inviting Members:', members);
 
     // Clear inputs after submission
     setMembers([{ email: '', role: '' }]);

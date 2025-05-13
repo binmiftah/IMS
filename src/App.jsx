@@ -16,7 +16,9 @@ import Settings from './page/Admin/Settings/Settings.jsx'
 import UserDashboard from './page/User/UserDashboard/UserDashboard.jsx'
 import UserFiles from './page/User/UserFiles/UserFiles.jsx'
 
+
 import NotFound from './components/NotFound'
+import UserLogin from "./page/User/login/Login.jsx";
 
 const App = () => {
   return (
@@ -34,7 +36,8 @@ const App = () => {
             <Route path="/trash" element={<Trash />} />
             <Route path="/settings" element={<Settings />} />
 
-            {/* User Routes */} 
+            {/* User Routes */}
+            <Route path='/user/login' element={<UserLogin />} />
             <Route path="/user/dashboard" element={<UserDashboard />} />
             <Route path="/user/files" element={<UserFiles />} />
 

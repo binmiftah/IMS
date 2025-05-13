@@ -3,9 +3,9 @@ import { MdUpload, MdCreateNewFolder } from 'react-icons/md';
 import Button from './Button.jsx';
 import { ToastContainer, toast } from "react-toastify";
 import apiCall from "../pkg/api/internal.js";
-import { handleAxiosError } from "../pkg/error/error.js";
+import { handleError } from "../pkg/error/error.js";
 
-const ActionButtons = ({ onActionComplete }) => {
+const ActionButtons = ({ onActionComplete, getFolderId }) => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -19,14 +19,30 @@ const ActionButtons = ({ onActionComplete }) => {
 
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
+        let folderId = null;
+        if (getFolderId)
+            folderId = getFolderId();
         try {
+            let res;
             const formData = new FormData();
             formData.append('file', selectedFile);
-            const res = await apiCall.uploadFile("files/upload/file", formData);
-            toast.success(res.message);
+            if (!folderId){
+                res = await apiCall.uploadFile("files/upload/file", formData);
+            }else{
+                res = await  apiCall.uploadFile("files/upload/file/" + folderId, formData)
+            }
+            toast.success(res.message,{
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
             onActionComplete?.(); // Callback to refresh parent data
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         } finally {
             setIsUploadModalOpen(false);
             setSelectedFile(null);
@@ -35,12 +51,22 @@ const ActionButtons = ({ onActionComplete }) => {
 
     const handleFolderSubmit = async () => {
         if (!folderName.trim()) return;
+
+        let folderId = null;
+        if (getFolderId)
+            folderId = getFolderId();
+
+        let res;
         try {
-            const res = await apiCall.createFolder("files/create/folder", { folderName });
+            if (!folderId){
+                res = await apiCall.createFolder("files/create/folder", { folderName });
+            }else{
+                res = await apiCall.createFolder("files/create/folder/" + folderId, {folderName});
+            }
             toast.success(res.message);
             onActionComplete?.(); // Callback to refresh parent data
         } catch (error) {
-            handleAxiosError(error);
+            handleError(error);
         } finally {
             setIsFolderModalOpen(false);
             setFolderName('');

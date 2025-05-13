@@ -5,9 +5,11 @@ import ActionButtons from '../../../components/ActionButtons.jsx';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import Button from '../../../components/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
-import { toast, ToastContainer } from "react-toastify";
-import { handleAxiosError } from "../../../pkg/error/error.js";
-import { useAuth } from '../../../context/AuthContext.jsx';
+import {toast, ToastContainer} from "react-toastify";
+import {handleError} from "../../../pkg/error/error.js";
+import {useNavigate} from "react-router-dom";
+import {useAuth} from "../../../context/AuthContext.jsx";
+
 
 
 const Dashboard = () => {
@@ -15,6 +17,7 @@ const Dashboard = () => {
     const [auditLogs, setAuditLogs] = useState([]);
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
+    const navigate = useNavigate();
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
@@ -28,16 +31,15 @@ const Dashboard = () => {
 
     // Fetch Audit Logs
     const fetchAuditLog = async () => {
-        try {
-            const result = await apiCall.allAuditLogs("/auditlog")
-            setAuditLogs(result.data.logs);
-        } catch (error) {
-            console.error(error);
-            handleAxiosError(error);
-        }
+      try{
+          const result = await apiCall.allAuditLogs("/auditlog")
+          setAuditLogs(result.data.logs);
+      }catch (error) {
+          handleError(error);
+      }
     }
 
-    useEffect(() => {
+    useEffect(()=>{
         fetchAuditLog();
     }, [])
 
@@ -49,17 +51,16 @@ const Dashboard = () => {
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
         // Handle file upload logic here
-        try {
+        try{
             const formData = new FormData();
             formData.append('file', selectedFile);
             const res = await apiCall.uploadFile("files/upload/file", formData)
-            console.log("resppnse", res)
             toast.success(res.message);
 
-        } catch (error) {
-            handleAxiosError(error)
-        } finally {
-            fetchAuditLog()
+        }catch (error){
+           handleError(error)
+        }finally {
+            await fetchAuditLog()
             setIsUploadModalOpen(false);
             setSelectedFile(null);
         }
@@ -70,13 +71,13 @@ const Dashboard = () => {
     const handleFolderSubmit = async () => {
         if (!folderName.trim()) return;
         // Handle folder creation logic here
-        try {
-            const res = await apiCall.createFolder("files/create/folder", { folderName })
+        try{
+            const res = await apiCall.createFolder("files/create/folder", {folderName})
             toast.success(res.message);
-        } catch (error) {
-            handleAxiosError(error)
-        } finally {
-            fetchAuditLog()
+        }catch(error){
+           handleError(error)
+        }finally {
+            await fetchAuditLog()
             setIsFolderModalOpen(false);
             setFolderName('');
         }
@@ -102,7 +103,7 @@ const Dashboard = () => {
     const handleSearch = (searchTerm) => {
         if (searchTerm) {
             const filteredLogs = auditLogs.filter((log) =>
-                log.users.email.toLowerCase().includes(searchTerm.toLowerCase())
+                log.actor.email.toLowerCase().includes(searchTerm.toLowerCase())
             );
             setAuditLogs(filteredLogs);
         } else {
@@ -129,28 +130,6 @@ const Dashboard = () => {
                 {/* Content Section */}
                 <div className="p-6">
                     <ActionButtons />
-                    {/* <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                        <div className="flex justify-end items-right">
-                            <ToastContainer/>
-                            <span className="flex space-x-4">
-                                <Button
-                                    onClick={() => setIsUploadModalOpen(true)}
-                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    icon={<MdUpload className='mr-2' size={20} />}
-                                >
-                                    Upload
-                                </Button>
-                                <Button
-                                    onClick={() => setIsFolderModalOpen(true)}
-                                    className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                    icon={<MdCreateNewFolder className='mr-2' size={20} />}
-                                >
-                                    Create Folder
-                                </Button>
-                            </span>
-                        </div>
-                    </div> */}
-
                     {/* Activity Table */}
                     <div className="bg-white rounded-lg shadow-lg p-6">
                         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
@@ -180,13 +159,13 @@ const Dashboard = () => {
                                             className="border-b border-gray-100 mb-2 hover:bg-gray-50"
                                         >
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.users.email}
+                                                {item.actor.email}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.action}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.file ? item.file.filePath : item.folder ? item.folder.fullPath : ''}
+                                                {item.File ? item.File.filePath : item.Folder ? item.Folder.fullPath : ''}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {new Date(item.createdAt).toLocaleDateString()}   {new Date(item.createdAt).toLocaleTimeString()}

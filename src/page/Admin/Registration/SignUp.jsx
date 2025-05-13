@@ -3,7 +3,7 @@ import { FaEnvelope, FaLock, FaUser, FaPhone } from 'react-icons/fa';
 import signup from '/assets/images/signup.png?url';
 import { Link, useNavigate } from 'react-router-dom';
 import apiCall  from "../../../pkg/api/internal.js";
-import {handleAxiosError} from "../../../pkg/error/error.js";
+import {handleError} from "../../../pkg/error/error.js";
 import {toast, ToastContainer} from "react-toastify";
 
 const SignUp = () => {
@@ -51,6 +51,8 @@ const SignUp = () => {
       try{
          const response =  await apiCall.register('auth/register', data);
          if (response){
+            localStorage.setItem("token", response.data.token) // Store token in local storage
+            localStorage.setItem("user", JSON.stringify(response.data.user)) // Store user data in local storage
             toast.success(response.message, {
                position: "top-right",
                autoClose: 2000,
@@ -62,7 +64,7 @@ const SignUp = () => {
             })
             // Navigate to user login
             setTimeout(()=>{
-               navigate('/login')
+               navigate('/dashboard')
             }, 2500)
          }
 
@@ -77,7 +79,7 @@ const SignUp = () => {
             setError("Error Creating User")
             return;
          }
-         handleAxiosError(error, setError);
+         handleError(error, setError);
 
       }
    };

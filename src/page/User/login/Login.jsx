@@ -9,7 +9,7 @@ import apiCall from "../../../pkg/api/internal.js";
 import {handleError} from "../../../pkg/error/error.js";
 
 
-const Login = () => {
+const UserLogin = () => {
    const [email, setEmail] = useState('') // State for email input 
    const [password, setPassword] = useState('') // State for password input
    const [error, setError] = useState('') // State for error message
@@ -20,7 +20,7 @@ const Login = () => {
        e.preventDefault() // Prevent default form submission behavior
 
        try {
-           const data = await apiCall.adminLogin("auth/login", {
+           const data = await apiCall.memberLogin("auth/member/login", {
                email: email,
                password: password
            })
@@ -39,10 +39,11 @@ const Login = () => {
                })
 
                setTimeout(() => {
-                   navigate("/dashboard") // Redirect to home page
+                   navigate("/user/dashboard") // Redirect to home page
                }, 2500)
            }
        } catch (error) {
+           console.log(error)
            handleError(error, setError)
        }
    }
@@ -95,29 +96,18 @@ const Login = () => {
                   >
                      Login
                   </button>
-                  <p>Or</p>
-                  <button className="px-4 py-2 border flex gap-2 border-black dark:border-black rounded-lg text-black dark:text-black hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-300 hover:shadow transition duration-150">
-                     <img className="w-6 h-6" src="https://www.svgrepo.com/show/475656/google-color.svg" loading="lazy" alt="google logo" />
-                     <span>Login with Google</span>
-                  </button>
                </form>
-               <div className="flex items-center flex-col space-y-4">
-                   <p>
-                       <Link to="/user/login" className="text-blue-500 hover:underline">
-                           Login as Member
-                       </Link>
-                   </p>
-                   <p className="text-sm text-center text-gray-600">
-                       Don't have an account?{' '}
-                       <Link to="/signup" className="text-blue-500 hover:underline">
-                           Sign up
-                       </Link>
-                   </p>
-               </div>
+                <div className="flex items-center flex-col space-y-4">
+                    <p>
+                        <Link to="/login" className="text-blue-500 hover:underline">
+                            Login as Admin
+                        </Link>
+                    </p>
+                </div>
             </div>
          </div>
       </div>
    )
 }
 
-export default Login
+export default UserLogin;
