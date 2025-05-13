@@ -46,7 +46,6 @@ const Files = () => {
             handleError(error)
         }
     }
-    });
 
     const handleSort = (sortType, value) => {
         setSortBy((prev) => ({
