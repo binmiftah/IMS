@@ -11,22 +11,7 @@ import {handleError} from "../../../pkg/error/error.js";
 import {useAuth} from "../../../context/AuthContext.jsx";
 import FileItem from "../../../component/FileItem.jsx"
 
-// const DUMMY_ITEMS = [
-//     {
-//         id: 'dummy-folder-1',
-//         name: 'Demo Folder',
-//         type: 'folder',
-//         fullPath: '/Demo Folder',
-//         createdAt: new Date().toISOString(),
-//     },
-//     {
-//         id: 'dummy-file-1',
-//         name: 'Demo File.txt',
-//         type: 'file',
-//         fileName: 'Demo File.txt',
-//         createdAt: new Date().toISOString(),
-//     }
-// ];
+
 
 const Files = () => {
     const {user} = useAuth()
@@ -173,6 +158,8 @@ const Files = () => {
        setIsOpenFile((s) => !s);
     };
 
+
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -182,10 +169,25 @@ const Files = () => {
         if (activeDropdown !== null) {
             document.addEventListener('mousedown', handleClickOutside);
         }
+
+        const preventRightClick = (e) => {
+            e.preventDefault();
+        };
+
+        document.addEventListener('contextmenu', preventRightClick);
+
+
+
+        // Cleanup when component unmounts
         return () => {
+
+            document.removeEventListener('contextmenu', preventRightClick);
             document.removeEventListener('mousedown', handleClickOutside);
         };
+
     }, [activeDropdown])
+
+
 
     useEffect(() => {
         getRootFiles();
