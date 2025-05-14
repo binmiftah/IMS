@@ -16,7 +16,11 @@ export default function FileItem({ file }) {
         }
 
         const handleKeyDown = (e) => {
+
+
             if (e.ctrlKey && e.key === 'c') {
+
+                console.log("i was called")
                 e.preventDefault();  // Block the copy action
                 console.log('Copying is disabled');
             }
@@ -31,12 +35,11 @@ export default function FileItem({ file }) {
             if (iframe && iframe.contentWindow) { // Add a check for iframe.contentWindow
                 iframe.contentWindow.document.removeEventListener('contextmenu', preventRightClick);
                 iframe.contentWindow.document.removeEventListener('mousedown', preventTextSelection);
+                document.removeEventListener('keydown', handleKeyDown);
             }
-            document.removeEventListener('keydown', handleKeyDown);
         };
     }, []);
 
-    console.log("file", file);
 
     const getFileType = (file) => {
         if (!file || !file.fileName) return 'unknown';

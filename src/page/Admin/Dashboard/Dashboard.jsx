@@ -129,7 +129,7 @@ const Dashboard = () => {
 
                 {/* Content Section */}
                 <div className="p-6">
-                    <ActionButtons />
+                    <ActionButtons onActionComplete={fetchAuditLog} />
                     {/* Activity Table */}
                     <div className="bg-white rounded-lg shadow-lg p-6">
                         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
