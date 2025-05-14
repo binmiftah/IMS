@@ -11,6 +11,23 @@ import {handleError} from "../../../pkg/error/error.js";
 import {useAuth} from "../../../context/AuthContext.jsx";
 import FileItem from "../../../component/FileItem.jsx"
 
+// const DUMMY_ITEMS = [
+//     {
+//         id: 'dummy-folder-1',
+//         name: 'Demo Folder',
+//         type: 'folder',
+//         fullPath: '/Demo Folder',
+//         createdAt: new Date().toISOString(),
+//     },
+//     {
+//         id: 'dummy-file-1',
+//         name: 'Demo File.txt',
+//         type: 'file',
+//         fileName: 'Demo File.txt',
+//         createdAt: new Date().toISOString(),
+//     }
+// ];
+
 const Files = () => {
     const {user} = useAuth()
     const [currentPath, setCurrentPath] = useState('/');
@@ -41,13 +58,20 @@ const Files = () => {
 
     const getRootFiles = async () => {
         try {
-
-            const result = await Promise.all([apiCall.getFolder("files/folders"), apiCall.getFile("/files")])
+            const result = await Promise.all([apiCall.getFolder("files/folders"), apiCall.getFile("/files")]);
             let allResult = [...result[0], ...result[1]];
+
+            // If backend returns no items, show dummy data
+            // if (allResult.length === 0) {
+            //     allResult = DUMMY_ITEMS;
+            // }
+
             setItems(allResult);
         } catch (error) {
             console.log(error);
-            handleError(error)
+            handleError(error);
+            // On error, show dummy data as fallback
+            // setItems(DUMMY_ITEMS);
         }
     }
 
