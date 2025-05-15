@@ -36,7 +36,7 @@ const Users = () => {
     };
 
     const handlePermissionModel = (user) => {
-        navigate(`/admin/users/${user.id}/permissions`);
+        navigate(`/users/${user.id}/permissions`);
     };
 
     const fetchUsers = async () => {
