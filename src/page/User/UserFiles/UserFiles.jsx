@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdCloseFullscreen, MdOpenInNew } from 'react-icons/md';
 import UserNavbar from '../../../component/UserNavbar';
 import ProfileBar from '../../../component/ProfileBar';
@@ -23,6 +23,8 @@ const UserFiles = () => {
     const [clickedItem, setClickedItem] = useState(null);
     const [isOpenFile, setIsOpenFile] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
+
+    const dropdownRef = useRef(null);
 
     useEffect(() => {
         getRootFiles();
@@ -117,6 +119,20 @@ const UserFiles = () => {
         setIsOpenFile(true);
     };
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setActiveDropdown(null);
+            }
+        };
+        if (activeDropdown !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [activeDropdown]);
+
     return (
         <div className="flex min-h-screen">
             <UserNavbar />
@@ -189,6 +205,37 @@ const UserFiles = () => {
                                             >
                                                 {item.name || item.fileName}
                                             </span>
+                                        </div>
+                                        <div className="relative" ref={dropdownRef}>
+                                            <Button
+                                                variant="icon"
+                                                className="p-2 hover:bg-gray-200 rounded-full"
+                                                icon={<MdMoreVert size={20} />}
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setActiveDropdown(activeDropdown === index ? null : index);
+                                                }}
+                                            />
+                                            {activeDropdown === index && (
+                                                <div
+                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            if (item.type === 'folder') handleNavigate(item);
+                                                            else handleFileOpen(item);
+                                                            setActiveDropdown(null);
+                                                        }}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                                    >
+                                                        <MdOpenInNew className="mr-2" size={18} />
+                                                        Open
+                                                    </button>
+                                                    {/* Add more actions here as needed */}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
