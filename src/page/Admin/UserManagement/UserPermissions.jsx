@@ -52,6 +52,16 @@ function ResourceTree({ nodes, selectedResources, onToggle, expanded, onExpandTo
             {nodes.map(node => {
                 const isFolder = node.type === 'folder';
                 const isExpanded = expanded[node.id] || false;
+                const selectionState = getSelectionState(node, selectedResources);
+                const checkboxRef = React.useRef();
+
+                // Set indeterminate state after render
+                React.useEffect(() => {
+                    if (checkboxRef.current) {
+                        checkboxRef.current.indeterminate = selectionState === "indeterminate";
+                    }
+                }, [selectionState]);
+
                 return (
                     <li key={node.id}>
                         <div className="flex items-center cursor-pointer">
@@ -70,8 +80,9 @@ function ResourceTree({ nodes, selectedResources, onToggle, expanded, onExpandTo
                                 </button>
                             )}
                             <input
+                                ref={checkboxRef}
                                 type="checkbox"
-                                checked={selectedResources.includes(node.id)}
+                                checked={selectionState === "checked"}
                                 onChange={() => onToggle(node.id)}
                                 className="form-checkbox h-5 w-5 text-blue-600"
                             />
@@ -100,6 +111,16 @@ function ResourceTree({ nodes, selectedResources, onToggle, expanded, onExpandTo
     );
 }
 
+function getSelectionState(node, selectedResources) {
+        if (!node.children || node.children.length === 0) {
+            return selectedResources.includes(node.id) ? "checked" : "none";
+        }
+        const childStates = node.children.map(child => getSelectionState(child, selectedResources));
+        if (childStates.every(state => state === "checked")) return "checked";
+        if (childStates.every(state => state === "none")) return selectedResources.includes(node.id) ? "checked" : "none";
+        return "indeterminate";
+    }
+
 const ALL_PERMISSIONS = [
     "full_access", "read", "write", "execute", "create_folder", "upload", "download", "rename", "move", "copy",
     "view", "edit", "comment", "approve_download", "approve_upload", "reject", "publish", "unpublish", "archive",
@@ -107,6 +128,22 @@ const ALL_PERMISSIONS = [
     "update", "open_folder", "open_file", "delete_folder", "delete_file", "delete", "share", "manage_users",
     "change_permissions", "execute_permissions", "view_permissions"
 ];
+
+const PERMISSION_GROUPS = {
+    "General": ["full_access", "read", "write", "execute", "view", "edit", "update"],
+    "File": ["upload", "download", "rename", "move", "copy", "open_file", "delete_file", "share_file", "view_history"],
+    "Folder": ["create_folder", "open_folder", "delete_folder", "share_folder", "archive", "restore"],
+    "Admin": ["manage_permissions", "manage_settings", "manage_roles", "manage_users", "change_permissions", "execute_permissions", "view_permissions", "publish", "unpublish", "reject",  "approve_download", "approve_upload"],
+};
+
+const PERMISSION_DESCRIPTIONS = {
+    full_access: "Grants all permissions.",
+    read: "Allows reading files and folders.",
+    write: "Allows modifying files and folders.",
+    upload: "Allows uploading files.",
+    download: "Allows downloading files.",
+    // ...add more as needed
+};
 
 const DUMMY_USER = {
     fullName: "Demo User",
@@ -172,38 +209,6 @@ const UserPermissions = () => {
         ]);
     }, []);
 
-    const handlePermissionChange = (perm) => {
-        if (perm === "full_access") {
-            setPermissions(prev => {
-                if (prev.includes("full_access")) {
-                    // Uncheck all if full_access is unchecked
-                    return [];
-                } else {
-                    // Check all permissions if full_access is checked
-                    return [...ALL_PERMISSIONS];
-                }
-            });
-        } else {
-            setPermissions(prev => {
-                // If full_access is checked, remove it if any other permission is toggled
-                let updated;
-                if (prev.includes(perm)) {
-                    updated = prev.filter((p) => p !== perm && p !== "full_access");
-                } else {
-                    updated = [...prev.filter(p => p !== "full_access"), perm];
-                }
-                // If all permissions except full_access are checked, add full_access
-                if (
-                    updated.length === ALL_PERMISSIONS.length - 1 &&
-                    !updated.includes("full_access")
-                ) {
-                    return [...ALL_PERMISSIONS];
-                }
-                return updated;
-            });
-        }
-    };
-
     const filteredPermissions = ALL_PERMISSIONS.filter(perm =>
         perm.replace(/_/g, ' ').toLowerCase().includes(search.toLowerCase())
     );
@@ -254,7 +259,36 @@ const UserPermissions = () => {
         setSaving(false);
     };
 
-    
+    const handlePermissionChange = (perm) => {
+        if (perm === "full_access") {
+            setPermissions(prev => {
+                if (prev.includes("full_access")) {
+                    // Uncheck all if full_access is unchecked
+                    return [];
+                } else {
+                    // Check all permissions if full_access is checked
+                    return [...ALL_PERMISSIONS];
+                }
+            });
+        } else {
+            setPermissions(prev => {
+                let updated;
+                if (prev.includes(perm)) {
+                    updated = prev.filter((p) => p !== perm && p !== "full_access");
+                } else {
+                    updated = [...prev.filter(p => p !== "full_access"), perm];
+                }
+                // If all permissions except full_access are checked, add full_access
+                if (
+                    updated.length === ALL_PERMISSIONS.length - 1 &&
+                    !updated.includes("full_access")
+                ) {
+                    return [...ALL_PERMISSIONS];
+                }
+                return updated;
+            });
+        }
+    };
 
     
 
@@ -295,24 +329,33 @@ const UserPermissions = () => {
                                     />
                                 </div>
                                 <h2 className="text-xl font-semibold mb-3 text-gray-700">Permissions</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                                    {filteredPermissions.length > 0 ? filteredPermissions.map((perm) => (
-                                        <label
-                                            key={perm}
-                                            className="flex items-center bg-gray-50 rounded-lg px-3 py-2 shadow-sm hover:bg-blue-50 transition"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={permissions.includes(perm)}
-                                                onChange={() => handlePermissionChange(perm)}
-                                                className="form-checkbox h-5 w-5 text-blue-600"
-                                            />
-                                            <span className="ml-3 capitalize text-gray-700">{perm.replace(/_/g, ' ')}</span>
-                                        </label>
-                                    )) : (
-                                        <span className="text-gray-400 col-span-full">No permissions found.</span>
-                                    )}
-                                </div>
+                                {Object.entries(PERMISSION_GROUPS).map(([group, perms]) => (
+                                    <div key={group} className="mb-4">
+                                        <h3 className="font-semibold text-blue-600 mb-2">{group}</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                            {perms.filter(perm => filteredPermissions.includes(perm)).map((perm) => (
+                                                <label
+                                                    key={perm}
+                                                    className="flex items-center bg-gray-50 rounded-lg px-3 py-2 shadow-sm hover:bg-blue-50 transition"
+                                                    title={PERMISSION_DESCRIPTIONS[perm] || ""}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={permissions.includes(perm)}
+                                                        onChange={() => handlePermissionChange(perm)}
+                                                        className="form-checkbox h-5 w-5 text-blue-600"
+                                                    />
+                                                    <span className="ml-3 capitalize text-gray-700">{perm.replace(/_/g, ' ')}</span>
+                                                    {PERMISSION_DESCRIPTIONS[perm] && (
+                                                        <span className="ml-2 text-gray-400 text-xs" title={PERMISSION_DESCRIPTIONS[perm]}>
+                                                            ⓘ
+                                                        </span>
+                                                    )}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                             <div className="mt-10">
                                 <h2 className="text-xl font-semibold mb-3 text-gray-700">Accessible Files & Folders</h2>
