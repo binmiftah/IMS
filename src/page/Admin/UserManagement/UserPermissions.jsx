@@ -112,28 +112,28 @@ function ResourceTree({ nodes, selectedResources, onToggle, expanded, onExpandTo
 }
 
 function getSelectionState(node, selectedResources) {
-        if (!node.children || node.children.length === 0) {
-            return selectedResources.includes(node.id) ? "checked" : "none";
-        }
-        const childStates = node.children.map(child => getSelectionState(child, selectedResources));
-        if (childStates.every(state => state === "checked")) return "checked";
-        if (childStates.every(state => state === "none")) return selectedResources.includes(node.id) ? "checked" : "none";
-        return "indeterminate";
+    if (!node.children || node.children.length === 0) {
+        return selectedResources.includes(node.id) ? "checked" : "none";
     }
+    const childStates = node.children.map(child => getSelectionState(child, selectedResources));
+    if (childStates.every(state => state === "checked")) return "checked";
+    if (childStates.every(state => state === "none")) return selectedResources.includes(node.id) ? "checked" : "none";
+    return "indeterminate";
+}
 
 const ALL_PERMISSIONS = [
     "full_access", "read", "write", "execute", "create_folder", "upload", "download", "rename", "move", "copy",
-    "view", "edit", "comment", "approve_download", "approve_upload", "reject", "publish", "unpublish", "archive",
+    "approve_download", "approve_upload", "reject", "publish", "unpublish", "archive",
     "restore", "share_folder", "share_file", "view_history", "manage_permissions", "manage_settings", "manage_roles",
     "update", "open_folder", "open_file", "delete_folder", "delete_file", "delete", "share", "manage_users",
     "change_permissions", "execute_permissions", "view_permissions"
 ];
 
 const PERMISSION_GROUPS = {
-    "General": ["full_access", "read", "write", "execute", "view", "edit", "update"],
-    "File": ["upload", "download", "rename", "move", "copy", "open_file", "delete_file", "share_file", "view_history"],
+    "General": ["full_access", "read", "write", "execute", "update", "upload", "download", "rename", "move", "copy"],
+    "File": ["open_file", "delete_file", "share_file"],
     "Folder": ["create_folder", "open_folder", "delete_folder", "share_folder", "archive", "restore"],
-    "Admin": ["manage_permissions", "manage_settings", "manage_roles", "manage_users", "change_permissions", "execute_permissions", "view_permissions", "publish", "unpublish", "reject",  "approve_download", "approve_upload"],
+    "Admin": ["manage_permissions", "manage_settings", "manage_roles", "manage_users", "change_permissions", "execute_permissions", "view_permissions", "publish", "unpublish", "reject", "approve_download", "approve_upload"],
 };
 
 const PERMISSION_DESCRIPTIONS = {
@@ -162,6 +162,31 @@ const UserPermissions = () => {
     const [allResources, setAllResources] = useState([]);
     const [selectedResources, setSelectedResources] = useState([]);
     const [expanded, setExpanded] = useState({}); // For collapsible folders
+    const [securityGroups, setSecurityGroups] = useState([
+        // Example initial data; replace with your real data or fetch from API
+        {
+            id: 1,
+            name: "Engineering",
+            department: "Engineering",
+            permissions: ["read", "write"],
+            resources: [1, 2], // resource IDs
+        },
+        {
+            id: 2,
+            name: "HR",
+            department: "HR",
+            permissions: ["read"],
+            resources: [1],
+        },
+    ]);
+    const [selectedGroup, setSelectedGroup] = useState(null);
+    const [showNewGroupForm, setShowNewGroupForm] = useState(false);
+    const [newGroup, setNewGroup] = useState({
+        name: "",
+        department: "",
+        permissions: [],
+        resources: [],
+    });
 
     // Fetch user and permissions (real or dummy)
     useEffect(() => {
@@ -290,7 +315,7 @@ const UserPermissions = () => {
         }
     };
 
-    
+
 
     return (
         <div className="flex min-h-screen bg-gray-100">
@@ -382,27 +407,267 @@ const UserPermissions = () => {
                                     )}
                                 </div>
                             </div>
-                            {/* Save button at the end of the page */}
-                            <div className="flex justify-end mt-10">
-                                <button
-                                    type="button"
-                                    onClick={handleSave}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold shadow"
-                                    disabled={saving}
-                                >
-                                    {saving ? "Saving..." : "Save Permissions"}
-                                </button>
+                            {/* Security Groups Section */}
+                            <div className="mt-10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-700">Security Groups by Department</h2>
+                                    <button
+                                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-semibold"
+                                        onClick={() => setShowNewGroupForm(true)}
+                                    >
+                                        + Add Security Group
+                                    </button>
+                                </div>
+                                <div className="space-y-6">
+                                    {securityGroups.length === 0 && (
+                                        <div className="text-gray-400 text-center">No security groups yet.</div>
+                                    )}
+                                    {securityGroups.map(group => (
+                                        <div key={group.id} className="border rounded-lg p-4 bg-gray-50 shadow-sm">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <span className="font-bold text-blue-700">{group.name}</span>
+                                                    <span className="ml-2 text-sm text-gray-500">({group.department})</span>
+                                                </div>
+                                                <button
+                                                    className="text-blue-600 underline text-sm"
+                                                    onClick={() => setSelectedGroup({ ...group })}
+                                                >
+                                                    Edit
+                                                </button>
+                                            </div>
+                                            <div className="mb-1">
+                                                <span className="font-medium text-gray-600">Permissions:</span>
+                                                <span className="ml-2 flex flex-wrap gap-1">
+                                                    {group.permissions.length === 0
+                                                        ? <span className="text-gray-400">None</span>
+                                                        : group.permissions.map(p => (
+                                                            <span key={p} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">
+                                                                {p.replace(/_/g, ' ')}
+                                                            </span>
+                                                        ))}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="font-medium text-gray-600">Accessible Resources:</span>
+                                                <span className="ml-2 flex flex-wrap gap-1">
+                                                    {group.resources.length === 0
+                                                        ? <span className="text-gray-400">None</span>
+                                                        : group.resources.map(rid => {
+                                                            const res = allResources.find(r => r.id === rid);
+                                                            return (
+                                                                <span key={rid} className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs">
+                                                                    {res ? (res.name || res.fileName) : rid}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
+
+                            {/* Create Security Group Modal */}
+                            {showNewGroupForm && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+                                        <button
+                                            className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+                                            onClick={() => {
+                                                setShowNewGroupForm(false);
+                                                setNewGroup({ name: "", department: "", permissions: [], resources: [] });
+                                            }}
+                                        >✕</button>
+                                        <h3 className="text-lg font-bold mb-4 text-blue-700">Create Security Group</h3>
+                                        <div className="mb-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Group Name"
+                                                value={newGroup.name}
+                                                onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))}
+                                                className="border px-3 py-2 rounded w-full mb-2"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Department"
+                                                value={newGroup.department}
+                                                onChange={e => setNewGroup(g => ({ ...g, department: e.target.value }))}
+                                                className="border px-3 py-2 rounded w-full"
+                                            />
+                                        </div>
+                                        <div className="mb-2">
+                                            <span className="font-medium text-gray-600">Permissions:</span>
+                                            <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
+                                                {ALL_PERMISSIONS.map(perm => (
+                                                    <label key={perm} className="flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={newGroup.permissions.includes(perm)}
+                                                            onChange={() =>
+                                                                setNewGroup(g => ({
+                                                                    ...g,
+                                                                    permissions: g.permissions.includes(perm)
+                                                                        ? g.permissions.filter(p => p !== perm)
+                                                                        : [...g.permissions, perm]
+                                                                }))
+                                                            }
+                                                            className="form-checkbox h-4 w-4 text-blue-600"
+                                                        />
+                                                        <span className="ml-2 text-gray-700">{perm.replace(/_/g, ' ')}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="mb-2">
+                                            <span className="font-medium text-gray-600">Accessible Resources:</span>
+                                            <div className="max-h-32 overflow-y-auto border rounded p-2 bg-white mt-2">
+                                                {allResources.map(res => (
+                                                    <label key={res.id} className="flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={newGroup.resources.includes(res.id)}
+                                                            onChange={() =>
+                                                                setNewGroup(g => ({
+                                                                    ...g,
+                                                                    resources: g.resources.includes(res.id)
+                                                                        ? g.resources.filter(rid => rid !== res.id)
+                                                                        : [...g.resources, res.id]
+                                                                }))
+                                                            }
+                                                            className="form-checkbox h-4 w-4 text-blue-600"
+                                                        />
+                                                        <span className="ml-2">{res.name || res.fileName}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 mt-2">
+                                            <button
+                                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
+                                                onClick={() => {
+                                                    if (!newGroup.name.trim() || !newGroup.department.trim()) return;
+                                                    setSecurityGroups(groups => [
+                                                        ...groups,
+                                                        {
+                                                            ...newGroup,
+                                                            id: Date.now(),
+                                                        },
+                                                    ]);
+                                                    // Merge group permissions/resources into user's permissions/resources
+                                                    setPermissions(prev =>
+                                                        Array.from(new Set([...prev, ...newGroup.permissions]))
+                                                    );
+                                                    setSelectedResources(prev =>
+                                                        Array.from(new Set([...prev, ...newGroup.resources]))
+                                                    );
+                                                    setNewGroup({ name: "", department: "", permissions: [], resources: [] });
+                                                    setShowNewGroupForm(false);
+                                                }}
+                                            >
+                                                Create
+                                            </button>
+                                            <button
+                                                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded font-semibold"
+                                                onClick={() => {
+                                                    setShowNewGroupForm(false);
+                                                    setNewGroup({ name: "", department: "", permissions: [], resources: [] });
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Edit Security Group Modal */}
+                            {selectedGroup && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+                                        <button
+                                            className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+                                            onClick={() => setSelectedGroup(null)}
+                                        >✕</button>
+                                        <h3 className="text-lg font-bold mb-4 text-blue-700">Edit Security Group: {selectedGroup.name}</h3>
+                                        {/* Permissions */}
+                                        <div className="mb-4">
+                                            <span className="font-medium text-gray-600">Permissions:</span>
+                                            <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
+                                                {ALL_PERMISSIONS.map(perm => (
+                                                    <label key={perm} className="flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedGroup.permissions.includes(perm)}
+                                                            onChange={() => {
+                                                                setSelectedGroup(prev => ({
+                                                                    ...prev,
+                                                                    permissions: prev.permissions.includes(perm)
+                                                                        ? prev.permissions.filter(p => p !== perm)
+                                                                        : [...prev.permissions, perm]
+                                                                }));
+                                                            }}
+                                                            className="form-checkbox h-4 w-4 text-blue-600"
+                                                        />
+                                                        <span className="ml-2 text-gray-700">{perm.replace(/_/g, ' ')}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {/* Resources */}
+                                        <div className="mb-4">
+                                            <span className="font-medium text-gray-600">Accessible Resources:</span>
+                                            <div className="max-h-40 overflow-y-auto border rounded p-2 bg-gray-50 mt-2">
+                                                {allResources.map(res => (
+                                                    <label key={res.id} className="flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedGroup.resources.includes(res.id)}
+                                                            onChange={() => {
+                                                                setSelectedGroup(g => ({
+                                                                    ...g,
+                                                                    resources: g.resources.includes(res.id)
+                                                                        ? g.resources.filter(rid => rid !== res.id)
+                                                                        : [...g.resources, res.id]
+                                                                }));
+                                                            }}
+                                                            className="form-checkbox h-4 w-4 text-blue-600"
+                                                        />
+                                                        <span className="ml-2">{res.name || res.fileName}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 mt-2">
+                                            <button
+                                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
+                                                onClick={() => {
+                                                    setSecurityGroups(groups =>
+                                                        groups.map(g =>
+                                                            g.id === selectedGroup.id ? { ...selectedGroup } : g
+                                                        )
+                                                    );
+                                                    setSelectedGroup(null);
+                                                }}
+                                            >
+                                                Save Group
+                                            </button>
+                                            <button
+                                                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded font-semibold"
+                                                onClick={() => setSelectedGroup(null)}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-40">
-                            <span className="text-red-500 text-lg">User not found.</span>
-                        </div>
-                    )}
+                    ) : null}
                 </div>
             </div>
         </div>
-    );
-};
+    ); // <-- This closes the UserPermissions component
+}
 
 export default UserPermissions;
