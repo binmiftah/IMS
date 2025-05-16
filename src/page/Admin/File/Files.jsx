@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove } from 'react-icons/md';
+import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove, MdCloseFullscreen } from 'react-icons/md';
 import Navbar from '../../../component/Navbar';
 import Button from '../../../component/Button';
 import ActionButtons from '../../../component/ActionButtons.jsx';
@@ -25,7 +25,8 @@ const Files = () => {
     const [selectedMovePath, setSelectedMovePath] = useState(null);
     const [clipboard, setClipboard] = useState(null);
     const [clickedItem, setClickedItem] = useState(null)
-    const [isOpenFile, setIsOpenFile] = useState(false)
+    const [isOpenFile, setIsOpenFile] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(false); // <-- Add this
 
     const dropdownRef = useRef(null);
 
@@ -451,15 +452,26 @@ const Files = () => {
 
             {/*Open file*/}
             {isOpenFile && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                    <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6 relative">
+                <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40`}>
+                    <div className={`bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative transition-all duration-300
+                        ${isMaximized ? 'max-w-full max-h-full w-full h-full rounded-none' : 'max-w-3xl'}
+                    `}>
                         <button
                             className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
                             onClick={() => setIsOpenFile(false)}
                         >
                             ✕
                         </button>
-                        <FileItem file={clickedItem} />
+                        <button
+                            className="absolute top-3 right-12 text-gray-500 hover:text-gray-700"
+                            onClick={() => setIsMaximized(m => !m)}
+                            title={isMaximized ? "Minimize" : "Maximize"}
+                        >
+                            {isMaximized ? <MdCloseFullscreen size={22} /> : <MdOpenInNew size={22} />}
+                        </button>
+                        <div className={`${isMaximized ? 'h-[90vh] overflow-auto' : ''}`}>
+                            <FileItem file={clickedItem} />
+                        </div>
                     </div>
                 </div>
             )}
