@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert } from 'react-icons/md';
+import React, { useState, useEffect, useRef } from 'react';
+import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdCloseFullscreen, MdOpenInNew } from 'react-icons/md';
 import UserNavbar from '../../../component/UserNavbar';
 import ProfileBar from '../../../component/ProfileBar';
 import ActionButtons from '../../../component/ActionButtons';
@@ -8,6 +8,7 @@ import { ToastContainer } from "react-toastify";
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";
 // import handleFileClick  from '../../../utils/fileOpenHandlers';
+import FileItem from '../../../component/FileItem';
 
 const UserFiles = () => {
     const [currentPath, setCurrentPath] = useState('/');
@@ -19,6 +20,11 @@ const UserFiles = () => {
         modified: "newest",
         type: "all",
     });
+    const [clickedItem, setClickedItem] = useState(null);
+    const [isOpenFile, setIsOpenFile] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(false);
+
+    const dropdownRef = useRef(null);
 
     useEffect(() => {
         getRootFiles();
@@ -108,6 +114,25 @@ const UserFiles = () => {
         // Implement sorting logic here
     };
 
+    const handleFileOpen = (item) => {
+        setClickedItem(item);
+        setIsOpenFile(true);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setActiveDropdown(null);
+            }
+        };
+        if (activeDropdown !== null) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [activeDropdown]);
+
     return (
         <div className="flex min-h-screen">
             <UserNavbar />
@@ -164,7 +189,7 @@ const UserFiles = () => {
                             {items.length > 0 ? items.map((item, index) => (
                                 <div
                                     key={index}
-                                    onClick={() => item.type === 'folder' && handleNavigate(item)}
+                                    onClick={() => item.type === 'folder' ? handleNavigate(item) : handleFileOpen(item)}
                                     className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                                 >
                                     <div className="flex items-center justify-between">
@@ -181,6 +206,37 @@ const UserFiles = () => {
                                                 {item.name || item.fileName}
                                             </span>
                                         </div>
+                                        <div className="relative" ref={dropdownRef}>
+                                            <Button
+                                                variant="icon"
+                                                className="p-2 hover:bg-gray-200 rounded-full"
+                                                icon={<MdMoreVert size={20} />}
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setActiveDropdown(activeDropdown === index ? null : index);
+                                                }}
+                                            />
+                                            {activeDropdown === index && (
+                                                <div
+                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                    onClick={e => e.stopPropagation()}
+                                                >
+                                                    <button
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            if (item.type === 'folder') handleNavigate(item);
+                                                            else handleFileOpen(item);
+                                                            setActiveDropdown(null);
+                                                        }}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                                    >
+                                                        <MdOpenInNew className="mr-2" size={18} />
+                                                        Open
+                                                    </button>
+                                                    {/* Add more actions here as needed */}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )) : (
@@ -191,6 +247,31 @@ const UserFiles = () => {
                         </div>
                     </div>
                 </div>
+
+                {isOpenFile && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                        <div className={`bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative transition-all duration-300
+                            ${isMaximized ? 'max-w-full max-h-full w-full h-full rounded-none' : 'max-w-3xl'}
+                        `}>
+                            <button
+                                className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+                                onClick={() => setIsOpenFile(false)}
+                            >
+                                ✕
+                            </button>
+                            <button
+                                className="absolute top-3 right-12 text-gray-500 hover:text-gray-700"
+                                onClick={() => setIsMaximized(m => !m)}
+                                title={isMaximized ? "Minimize" : "Maximize"}
+                            >
+                                {isMaximized ? <MdCloseFullscreen size={22} /> : <MdOpenInNew size={22} />}
+                            </button>
+                            <div className={`${isMaximized ? 'h-[90vh] overflow-auto' : ''}`}>
+                                <FileItem file={clickedItem} />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

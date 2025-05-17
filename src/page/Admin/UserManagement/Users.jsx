@@ -1,21 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../../../component/Navbar.jsx';
 import ProfileBar from '../../../component/ProfileBar.jsx';
-import { MdSearch, MdNotifications, MdAdd, MdClose } from 'react-icons/md';
+import { MdAdd, MdClose } from 'react-icons/md';
 import Button from '../../../component/Button.jsx';
 import apiCall from "../../../pkg/api/internal.js";
 import { handleError } from "../../../pkg/error/error.js";
 import { toast, ToastContainer } from "react-toastify";
-import { SiSetapp } from 'react-icons/si';
+// import { SiSetapp } from 'react-icons/si';
 
 const Users = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isPermissionModal, setIsPermissionModal] = useState(false);
-    const [permissionForm, setPermissionForm] = useState({
-        type: '',
-        folderPath: '',
-        targetType: 'FOLDER',
-    })
     const [newUser, setNewUser] = useState({
         fullName: '',
         email: '',
@@ -23,20 +18,16 @@ const Users = () => {
         role: '',
     });
 
-    const [selectedUser, setSelectedUser] = useState(null)
     const [sortBy, setSortBy] = useState({
         field: 'email',
         order: 'asc',
-    })
-
-
+    });
 
     const [users, setUsers] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
     const modalRef = useRef(null);
-
-
+    const navigate = useNavigate();
 
     const handleOutsideClick = (e) => {
         if (modalRef.current && !modalRef.current.contains(e.target)) {
@@ -45,28 +36,8 @@ const Users = () => {
     };
 
     const handlePermissionModel = (user) => {
-        setSelectedUser(user);
-        setIsPermissionModal(true);
-
-    }
-
-    const handlePermissionSubmit = async () => {
-
-        console.log('Submitting permission:', permissionForm);
-        console.log('Selected User:', selectedUser);
-        try {
-            await apiCall.createPermission("/permissions", {
-                ...permissionForm,
-                accountId: selectedUser.id,
-            });
-            setIsPermissionModal(false);
-            setPermissionForm({ type: '', folderPath: '', targetType: 'FOLDER' });
-            toast.success('Permission successfully created!');
-        } catch (err) {
-            handleError(err)
-        }
-    }
-
+        navigate(`/users/${user.id}/permissions`);
+    };
 
     const fetchUsers = async () => {
         try {
@@ -74,15 +45,12 @@ const Users = () => {
 
             const allUsers = res.data.users;
 
-            // You should sort by email or id for deterministic ordering
-            // allUsers.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
-            allUsers.reverse()
+            allUsers.reverse();
             setUsers(allUsers);
         } catch (error) {
             handleError(error);
         }
     };
-
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -99,16 +67,12 @@ const Users = () => {
         }));
     };
 
-
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('Submitting new user:', newUser);
 
-        // TODO: Implement API call to save user
-
-        const user = await apiCall.createNewMember("users/add-user", newUser)
-        console.log(user)
+        const user = await apiCall.createNewMember("users/add-user", newUser);
+        console.log(user);
 
         setIsAddModalOpen(false);
         setNewUser({
@@ -135,7 +99,6 @@ const Users = () => {
             if (aValue > bValue) return sortBy.order === 'asc' ? 1 : -1;
             return 0;
         }
-        // For date fields
         if (sortBy.field === 'updatedAt' || sortBy.field === 'lastActive') {
             return sortBy.order === 'asc'
                 ? new Date(aValue) - new Date(bValue)
@@ -166,7 +129,6 @@ const Users = () => {
                     </div>
                 </div>
 
-                {/* Add Modal */}
                 {isAddModalOpen && (
                     <div
                         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -184,7 +146,6 @@ const Users = () => {
                             </div>
 
                             <form onSubmit={handleSubmit}>
-                                {/* Full Name */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">FullName</label>
                                     <input
@@ -196,7 +157,6 @@ const Users = () => {
                                         required
                                     />
                                 </div>
-                                {/* Email */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                     <input
@@ -208,8 +168,6 @@ const Users = () => {
                                         required
                                     />
                                 </div>
-
-                                {/* Password */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                                     <input
@@ -221,8 +179,6 @@ const Users = () => {
                                         required
                                     />
                                 </div>
-
-                                {/* Role */}
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                                     <select
@@ -251,86 +207,6 @@ const Users = () => {
                     </div>
                 )}
 
-
-                {isPermissionModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div ref={modalRef} className="bg-white rounded-lg p-6 relative">
-                            <h2 className="text-xl font-semibold mb-4">Assign Permission</h2>
-
-                            <div className="mb-4">
-                                <label className="block mb-1">Permission Type</label>
-                                <select
-                                    className="w-full border px-3 py-2 rounded"
-                                    value={permissionForm.type}
-                                    onChange={(e) =>
-                                        setPermissionForm({ ...permissionForm, type: e.target.value })
-                                    }
-                                >
-                                    <option value="">Select</option>
-                                    <option value="ReadOnly">Read</option>
-                                    <option value="ReadAndWrite">Read & Write</option>
-                                </select>
-                            </div>
-
-                            <div className="mb-4">
-                                <label className="block mb-1">Target Folder Path</label>
-                                <input
-                                    className="w-full border px-3 py-2 rounded"
-                                    value={permissionForm.folderPath}
-                                    onChange={(e) =>
-                                        setPermissionForm({ ...permissionForm, folderPath: e.target.value })
-                                    }
-                                />
-                            </div>
-
-                            {/*<div className="mb-4">*/}
-                            {/*    /!*<label className="block mb-1">Target ID (Folder/File ID)</label>*!/*/}
-                            {/*    <select*/}
-                            {/*        className="w-full border px-3 py-2 rounded"*/}
-                            {/*        // value={permissionForm.targetId}*/}
-                            {/*        // onChange={(e) =>*/}
-                            {/*        //     setPermissionForm({ ...permissionForm, targetId: e.target.value })*/}
-                            {/*        // }*/}
-                            {/*    >*/}
-                            {/*        <option></option>*/}
-                            {/*        <select/>*/}
-
-                            {/*</div>*/}
-
-                            <div className="mb-4">
-                                <label className="block mb-1">Target Type</label>
-                                <select
-                                    className="w-full border px-3 py-2 rounded"
-                                    value={permissionForm.targetType}
-                                    onChange={(e) =>
-                                        setPermissionForm({ ...permissionForm, targetType: e.target.value })
-                                    }
-                                >
-                                    <option value="FOLDER">Folder</option>
-                                    {/*<option value="FILE">File</option>*/}
-                                </select>
-                            </div>
-
-                            <div className="flex justify-end space-x-2">
-                                <button
-                                    className="bg-gray-200 px-4 py-2 rounded"
-                                    onClick={() => setIsPermissionModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    className="bg-black text-white px-4 py-2 rounded"
-                                    onClick={handlePermissionSubmit}
-                                >
-                                    Save
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-
-                {/* Table */}
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -358,7 +234,11 @@ const Users = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {paginatedUsers.length > 0 ? (
                                 paginatedUsers.map((user, idx) => (
-                                    <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handlePermissionModel(user)}>
+                                    <tr
+                                        key={user.id}
+                                        className="hover:bg-gray-50 cursor-pointer"
+                                        onClick={() => handlePermissionModel(user)}
+                                    >
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm ">{user.role || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -373,7 +253,6 @@ const Users = () => {
                             )}
                         </tbody>
                     </table>
-                    {/* Pagination */}
                     <div className="flex justify-between items-center p-4">
                         <button
                             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -394,7 +273,6 @@ const Users = () => {
                         </button>
                     </div>
                 </div>
-
             </div>
         </div>
     );

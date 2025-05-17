@@ -13,7 +13,7 @@ class ApiCall {
 
         this.instance2 = axios.create({
             // baseURL: 'http://localhost:3004/api/v2/',
-            baseURL: 'https://api.yareyare.software/api/v2/',
+            baseURL: 'https://api.yareyare.software/api/v1/',
             timeout: 0,
 
         });
