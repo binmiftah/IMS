@@ -667,7 +667,7 @@ const UserPermissions = () => {
                 </div>
             </div>
         </div>
-    ); // <-- This closes the UserPermissions component
+    );
 }
 
 export default UserPermissions;
