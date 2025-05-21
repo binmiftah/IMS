@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:3004/api/v1/permissions";
+const API_BASE = "https://api.yareyare.software/api/v1/permissions";
 
 function getToken() {
   return localStorage.getItem("token");
