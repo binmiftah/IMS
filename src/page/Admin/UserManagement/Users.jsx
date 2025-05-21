@@ -42,6 +42,7 @@ const Users = () => {
     const fetchUsers = async () => {
         try {
             const res = await apiCall.getAllUsers("users");
+            console.log("Fetched Users:", res);
 
             const allUsers = res.data.users;
 

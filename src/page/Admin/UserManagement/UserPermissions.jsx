@@ -7,154 +7,7 @@ import {
   MdExpandMore,
   MdChevronRight,
 } from "react-icons/md";
-import {
-  getAllPermissions,
-  getUserPermissions,
-  getGroupPermissions,
-  createGroupPermission,
-  createMemberPermission,
-} from "../../../pkg/api/permissions";
-
-// Optionally keep these for grouping and descriptions
-const PERMISSION_GROUPS = {
-  General: [
-    "full_access", "read", "write", "execute", "update", "upload", "download", "rename", "move", "copy"
-  ],
-  File: ["open_file", "delete_file", "share_file"],
-  Folder: ["create_folder", "open_folder", "delete_folder", "share_folder", "archive", "restore"],
-  Admin: [
-    "manage_permissions", "manage_settings", "manage_roles", "manage_users", "change_permissions",
-    "execute_permissions", "view_permissions", "publish", "unpublish", "reject", "approve_download", "approve_upload"
-  ],
-};
-const PERMISSION_DESCRIPTIONS = {
-  full_access: "Grants all permissions.",
-  read: "Allows reading files and folders.",
-  write: "Allows modifying files and folders.",
-  upload: "Allows uploading files.",
-  download: "Allows downloading files.",
-  // ...add more as needed
-};
-
-// Helper functions (unchanged)
-function buildTree(resources) {
-  const map = {};
-  const roots = [];
-  resources.forEach((item) => {
-    map[item.id] = { ...item, children: [] };
-  });
-  resources.forEach((item) => {
-    if (item.parentId && map[item.parentId]) {
-      map[item.parentId].children.push(map[item.id]);
-    } else {
-      roots.push(map[item.id]);
-    }
-  });
-  return roots;
-}
-function getAllDescendantIds(node) {
-  let ids = [node.id];
-  if (node.children && node.children.length > 0) {
-    node.children.forEach((child) => {
-      ids = ids.concat(getAllDescendantIds(child));
-    });
-  }
-  return ids;
-}
-function findNodeById(nodes, id) {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    if (node.children) {
-      const found = findNodeById(node.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-function getSelectionState(node, selectedResources) {
-  if (!node.children || node.children.length === 0) {
-    return selectedResources.includes(node.id) ? "checked" : "none";
-  }
-  const childStates = node.children.map((child) =>
-    getSelectionState(child, selectedResources)
-  );
-  if (childStates.every((state) => state === "checked")) return "checked";
-  if (
-    childStates.every((state) => state === "none") &&
-    selectedResources.includes(node.id)
-  )
-    return "checked";
-  return "indeterminate";
-}
-function ResourceTree({
-  nodes,
-  selectedResources,
-  onToggle,
-  expanded,
-  onExpandToggle,
-}) {
-  return (
-    <ul className="ml-4">
-      {nodes.map((node) => {
-        const isFolder = node.type === "folder";
-        const isExpanded = expanded[node.id] || false;
-        const selectionState = getSelectionState(node, selectedResources);
-        const checkboxRef = React.useRef();
-
-        React.useEffect(() => {
-          if (checkboxRef.current) {
-            checkboxRef.current.indeterminate = selectionState === "indeterminate";
-          }
-        }, [selectionState]);
-
-        return (
-          <li key={node.id}>
-            <div className="flex items-center cursor-pointer">
-              {isFolder && (
-                <button
-                  type="button"
-                  onClick={() => onExpandToggle(node.id)}
-                  className="mr-1 focus:outline-none"
-                  aria-label={isExpanded ? "Collapse" : "Expand"}
-                >
-                  {isExpanded ? (
-                    <MdExpandMore className="inline-block w-5 h-5" />
-                  ) : (
-                    <MdChevronRight className="inline-block w-5 h-5" />
-                  )}
-                </button>
-              )}
-              <input
-                ref={checkboxRef}
-                type="checkbox"
-                checked={selectionState === "checked"}
-                onChange={() => onToggle(node.id)}
-                className="form-checkbox h-5 w-5 text-blue-600"
-              />
-              <span className="ml-2 flex items-center">
-                {isFolder ? (
-                  <MdFolder className="text-yellow-600 mr-1" />
-                ) : (
-                  <MdInsertDriveFile className="text-gray-500 mr-1" />
-                )}
-                {node.name || node.fileName}
-              </span>
-            </div>
-            {isFolder && isExpanded && node.children && node.children.length > 0 && (
-              <ResourceTree
-                nodes={node.children}
-                selectedResources={selectedResources}
-                onToggle={onToggle}
-                expanded={expanded}
-                onExpandToggle={onExpandToggle}
-              />
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
+import apiCall from "../../../pkg/api/internal.js";
 
 const UserPermissions = () => {
   const { userId } = useParams();
@@ -184,10 +37,8 @@ const UserPermissions = () => {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      getAllPermissions(),
-      getUserPermissions(userId),
-      // getGroupPermissions(userId), // Uncomment if you have group API
-      // fetchResources(), // Implement if you have a resources API
+      apiCall.getAllPermissions("permissions"),
+      apiCall.getUserPermissions(`permissions/user/${userId}`),
     ])
       .then(([permissionsData, userData]) => {
         setAllPermissions(
@@ -197,94 +48,46 @@ const UserPermissions = () => {
         );
         setUser(userData.user || userData);
         setPermissions(userData.permissions || []);
-        // setSecurityGroups(groupsData); // If you fetch groups
-        // setAllResources(resourcesData); // If you fetch resources
       })
       .catch((err) => {
-        // handle error
+        console.error(err);
       })
       .finally(() => setLoading(false));
   }, [userId]);
 
-  // Dummy resources fallback (remove if you fetch from API)
-  useEffect(() => {
-    setAllResources([
-      { id: 1, name: "Root Folder", type: "folder", parentId: null },
-      { id: 2, name: "Sub Folder", type: "folder", parentId: 1 },
-      { id: 3, name: "File A", type: "file", parentId: 2 },
-      { id: 4, name: "File B", type: "file", parentId: 1 },
-    ]);
-  }, []);
-
-  const filteredPermissions = allPermissions.filter((perm) =>
-    perm.replace(/_/g, " ").toLowerCase().includes(search.toLowerCase())
-  );
-
-  const filteredResources = allResources.filter((res) =>
-    (res.name || res.fileName || "").toLowerCase().includes(resourceSearch.toLowerCase())
-  );
-
-  const resourceTree = buildTree(filteredResources);
-
-  const handleResourceToggle = (id) => {
-    const node = findNodeById(resourceTree, id);
-    if (!node) return;
-    const descendantIds = getAllDescendantIds(node);
-    setSelectedResources((prev) => {
-      const isChecked = prev.includes(id);
-      if (isChecked) {
-        return prev.filter((rid) => !descendantIds.includes(rid));
-      } else {
-        return [...new Set([...prev, ...descendantIds])];
-      }
-    });
-  };
-
-  const handleExpandToggle = (id) => {
-    setExpanded((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
   const handleSave = async () => {
     setSaving(true);
-    // Example: Save user permissions
-    await createMemberPermission({
-      resourceType: "FOLDER",
-      permissions,
-      folderId: "", // or relevant folderId
-      accountId: userId,
-      inherited: false,
-    });
-    setSaving(false);
+    try {
+      await apiCall.createMemberPermission("permissions/member", {
+        resourceType: "FOLDER",
+        permissions,
+        folderId: "",
+        accountId: userId,
+        inherited: false,
+      });
+      toast.success("Permissions saved successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save permissions.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handlePermissionChange = (perm) => {
-    if (perm === "full_access") {
-      setPermissions((prev) => {
-        if (prev.includes("full_access")) {
-          return [];
-        } else {
-          return [...allPermissions];
-        }
+  const handleCreateGroup = async () => {
+    try {
+      await apiCall.createGroupPermission("permissions/group", {
+        resourceType: "FOLDER",
+        permissions: newGroup.permissions,
+        folderId: "",
+        groupId: "new-group-id",
+        inherited: false,
       });
-    } else {
-      setPermissions((prev) => {
-        let updated;
-        if (prev.includes(perm)) {
-          updated = prev.filter((p) => p !== perm && p !== "full_access");
-        } else {
-          updated = [...prev.filter((p) => p !== "full_access"), perm];
-        }
-        if (
-          updated.length === allPermissions.length - 1 &&
-          !updated.includes("full_access")
-        ) {
-          return [...allPermissions];
-        }
-        return updated;
-      });
+      toast.success("Group created successfully!");
+      setShowNewGroupForm(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create group.");
     }
   };
 
@@ -304,6 +107,7 @@ const UserPermissions = () => {
             </div>
           ) : user ? (
             <div>
+              {/* User Details */}
               <div className="mb-8">
                 <h2 className="text-xl font-semibold mb-3 text-gray-700">
                   User Details
@@ -325,6 +129,7 @@ const UserPermissions = () => {
                   </div>
                 </div>
               </div>
+              {/* Permissions */}
               <div>
                 <div className="flex items-center mb-4">
                   <input
@@ -355,7 +160,33 @@ const UserPermissions = () => {
                             <input
                               type="checkbox"
                               checked={permissions.includes(perm)}
-                              onChange={() => handlePermissionChange(perm)}
+                              onChange={() => {
+                                if (perm === "full_access") {
+                                  setPermissions((prev) => {
+                                    if (prev.includes("full_access")) {
+                                      return [];
+                                    } else {
+                                      return [...allPermissions];
+                                    }
+                                  });
+                                } else {
+                                  setPermissions((prev) => {
+                                    let updated;
+                                    if (prev.includes(perm)) {
+                                      updated = prev.filter((p) => p !== perm && p !== "full_access");
+                                    } else {
+                                      updated = [...prev.filter((p) => p !== "full_access"), perm];
+                                    }
+                                    if (
+                                      updated.length === allPermissions.length - 1 &&
+                                      !updated.includes("full_access")
+                                    ) {
+                                      return [...allPermissions];
+                                    }
+                                    return updated;
+                                  });
+                                }
+                              }}
                               className="form-checkbox h-5 w-5 text-blue-600"
                             />
                             <span className="ml-3 capitalize text-gray-700">

@@ -1,8 +1,6 @@
-import axios, {AxiosError} from "axios";
+import axios from "axios";
 
-const BaseUrl =  "https://api.yareyare.software/api/v1/";
-// const BaseUrl = "http://localhost:3004/api/v1/";
-// const BaseUrl = "http://dev.yareyare.software/api/v1/"
+const BaseUrl = "https://api.yareyare.software/api/v1/";
 
 class ApiCall {
     constructor(url) {
@@ -11,11 +9,13 @@ class ApiCall {
             timeout: 0,
         });
 
-        this.instance2 = axios.create({
-            // baseURL: 'http://localhost:3004/api/v2/',
-            baseURL: 'https://api.yareyare.software/api/v1/',
-            timeout: 0,
-
+        // Add Authorization header interceptor
+        this.instance1.interceptors.request.use((config) => {
+            const token = localStorage.getItem("token");
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
         });
     }
 
@@ -195,8 +195,13 @@ class ApiCall {
 
     /**
      * PERMISSIONS API CALLS
-      */
-    async getAllPermissions(urlPath) {
+     */
+    async getAllPermissions(urlPath = "permissions") {
+        const response = await this.instance1.get(urlPath);
+        return response.data;
+    }
+
+    async getPermissionById(urlPath) {
         const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -205,8 +210,35 @@ class ApiCall {
         return response.data;
     }
 
-    async createPermission(urlPath, data) {
-        const response = await this.instance1.post(urlPath, data, {
+    async getUserPermissions(urlPath) {
+        const response = await this.instance1.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async getGroupPermissions(urlPath) {
+        const response = await this.instance1.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async createGroupPermission(urlPath) {
+        const response = await this.instance1.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        })
+        return response.data;
+    }
+
+    async createMemberPermission(urlPath) {
+        const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
