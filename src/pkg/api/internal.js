@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const BaseUrl = "https://api.yareyare.software/api/v1/";
+// const BaseUrl = "https://api.yareyare.software/api/v2/";
 
 class ApiCall {
     constructor(url) {

@@ -47,7 +47,7 @@ const UserPermissions = () => {
             : permissionsData
         );
         setUser(userData.user || userData);
-        setPermissions(userData.permissions || []);
+        setPermissions(userData.permissions || []); // Default to an empty array if no permissions are set
       })
       .catch((err) => {
         console.error(err);
@@ -143,68 +143,79 @@ const UserPermissions = () => {
                 <h2 className="text-xl font-semibold mb-3 text-gray-700">
                   Permissions
                 </h2>
-                {Object.entries(PERMISSION_GROUPS).map(([group, perms]) => (
-                  <div key={group} className="mb-4">
-                    <h3 className="font-semibold text-blue-600 mb-2">
-                      {group}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      {perms
-                        .filter((perm) => filteredPermissions.includes(perm))
-                        .map((perm) => (
-                          <label
-                            key={perm}
-                            className="flex items-center bg-gray-50 rounded-lg px-3 py-2 shadow-sm hover:bg-blue-50 transition"
-                            title={PERMISSION_DESCRIPTIONS[perm] || ""}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={permissions.includes(perm)}
-                              onChange={() => {
-                                if (perm === "full_access") {
-                                  setPermissions((prev) => {
-                                    if (prev.includes("full_access")) {
-                                      return [];
-                                    } else {
-                                      return [...allPermissions];
-                                    }
-                                  });
-                                } else {
-                                  setPermissions((prev) => {
-                                    let updated;
-                                    if (prev.includes(perm)) {
-                                      updated = prev.filter((p) => p !== perm && p !== "full_access");
-                                    } else {
-                                      updated = [...prev.filter((p) => p !== "full_access"), perm];
-                                    }
-                                    if (
-                                      updated.length === allPermissions.length - 1 &&
-                                      !updated.includes("full_access")
-                                    ) {
-                                      return [...allPermissions];
-                                    }
-                                    return updated;
-                                  });
-                                }
-                              }}
-                              className="form-checkbox h-5 w-5 text-blue-600"
-                            />
-                            <span className="ml-3 capitalize text-gray-700">
-                              {perm.replace(/_/g, " ")}
-                            </span>
-                            {PERMISSION_DESCRIPTIONS[perm] && (
-                              <span
-                                className="ml-2 text-gray-400 text-xs"
-                                title={PERMISSION_DESCRIPTIONS[perm]}
-                              >
-                                ⓘ
+                {permissions.length === 0 ? (
+                  <p className="text-gray-500">
+                    No permissions have been set for this user.
+                  </p>
+                ) : (
+                  Object.entries(PERMISSION_GROUPS).map(([group, perms]) => (
+                    <div key={group} className="mb-4">
+                      <h3 className="font-semibold text-blue-600 mb-2">
+                        {group}
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {perms
+                          .filter((perm) => filteredPermissions.includes(perm))
+                          .map((perm) => (
+                            <label
+                              key={perm}
+                              className="flex items-center bg-gray-50 rounded-lg px-3 py-2 shadow-sm hover:bg-blue-50 transition"
+                              title={PERMISSION_DESCRIPTIONS[perm] || ""}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={permissions.includes(perm)}
+                                onChange={() => {
+                                  if (perm === "full_access") {
+                                    setPermissions((prev) => {
+                                      if (prev.includes("full_access")) {
+                                        return [];
+                                      } else {
+                                        return [...allPermissions];
+                                      }
+                                    });
+                                  } else {
+                                    setPermissions((prev) => {
+                                      let updated;
+                                      if (prev.includes(perm)) {
+                                        updated = prev.filter(
+                                          (p) => p !== perm && p !== "full_access"
+                                        );
+                                      } else {
+                                        updated = [
+                                          ...prev.filter((p) => p !== "full_access"),
+                                          perm,
+                                        ];
+                                      }
+                                      if (
+                                        updated.length === allPermissions.length - 1 &&
+                                        !updated.includes("full_access")
+                                      ) {
+                                        return [...allPermissions];
+                                      }
+                                      return updated;
+                                    });
+                                  }
+                                }}
+                                className="form-checkbox h-5 w-5 text-blue-600"
+                              />
+                              <span className="ml-3 capitalize text-gray-700">
+                                {perm.replace(/_/g, " ")}
                               </span>
-                            )}
-                          </label>
-                        ))}
+                              {PERMISSION_DESCRIPTIONS[perm] && (
+                                <span
+                                  className="ml-2 text-gray-400 text-xs"
+                                  title={PERMISSION_DESCRIPTIONS[perm]}
+                                >
+                                  ⓘ
+                                </span>
+                              )}
+                            </label>
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               <div className="mt-10">
                 <h2 className="text-xl font-semibold mb-3 text-gray-700">
