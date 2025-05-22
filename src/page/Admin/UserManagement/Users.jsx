@@ -234,7 +234,7 @@ const Users = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {paginatedUsers.length > 0 ? (
-                                paginatedUsers.map((user, idx) => (
+                                paginatedUsers.map((user, id) => (
                                     <tr
                                         key={user.id}
                                         className="hover:bg-gray-50 cursor-pointer"
