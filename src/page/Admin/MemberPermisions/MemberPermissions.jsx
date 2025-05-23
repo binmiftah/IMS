@@ -84,42 +84,70 @@ const MemberPermissions = () => {
     }
   };
 
+  // Fetch resources (folders and files)
+  const fetchResources = async () => {
+    try {
+      // Fetch folders and files concurrently
+      const [foldersRes, filesRes] = await Promise.all([
+        apiCall.getFolder("files/folders"), // Fetch folders
+        apiCall.getFile("files"), // Fetch files
+      ]);
+
+      console.log("Fetched Folders:", foldersRes); // Debugging log
+      console.log("Fetched Files:", filesRes); // Debugging log
+
+      const folderData = Array.isArray(foldersRes) ? foldersRes : [];
+      const fileData = Array.isArray(filesRes) ? filesRes : [];
+
+      // Combine folders and files into a single list
+      const resources = [
+        ...folderData.map((folder) => ({ ...folder, type: "folder" })),
+        ...fileData.map((file) => ({ ...file, type: "file" })),
+      ];
+
+      setFolders(resources); // Update the folders state with combined resources
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      toast.error("Failed to load resources.");
+      setFolders([]); // Reset folders on error
+    }
+  };
+
   // Save individual user permissions
   const handleSaveUserPermissions = async () => {
     if (!selectedUser) {
-      toast.error("Please select a user.");
-      return;
+        toast.error("Please select a user.");
+        return;
     }
 
     if (selectedFolders.length === 0) {
-      toast.error("Please select at least one folder.");
-      return;
+        toast.error("Please select at least one folder.");
+        return;
     }
 
     setSaving(true);
     try {
-      const payload = {
-        resourceType: "FOLDER",
-        permissions, // Selected permissions
-        folderIds: selectedFolders, // Selected folders
-        accountId: selectedUser.id, // User ID
-        inherited: false,
-      };
+        const payload = {
+            resourceType: "FOLDER", // Resource type
+            permissions,
+            folderIds: selectedFolders, // Selected folder IDs
+            accountId: selectedUser.id, // User ID
+            inherited: false, // Whether permissions are inherited
+        };
 
-      console.log("Saving permissions for user:", payload); // Debugging log
+        console.log("Saving permissions for user:", payload); // Debugging log
 
-      const response = await apiCall.createMemberPermission("permissions", payload);
-      console.log("Save response from backend:", response); // Debugging log
-      console.log("Backend response:", res);
+        const response = await apiCall.createMemberPermission("permissions", payload);
+        console.log("Save response from backend:", response); // Debugging log
 
-      toast.success("Permissions saved successfully!");
+        toast.success("Permissions saved successfully!");
     } catch (error) {
-      console.error("Error saving permissions:", error);
-      toast.error("Failed to save permissions.");
+        console.error("Error saving permissions:", error);
+        toast.error("Failed to save permissions.");
     } finally {
-      setSaving(false);
+        setSaving(false);
     }
-  };
+};
 
   // Save group permissions
   const handleCreateGroup = async () => {
@@ -151,6 +179,10 @@ const MemberPermissions = () => {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    fetchResources(); // Fetch folders and files on component mount
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -230,7 +262,7 @@ const MemberPermissions = () => {
                 {selectedUser && (
                   <>
                     <h3 className="text-lg font-semibold mb-2">Accessible Folders</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 over">
                       {folders.map((folder) => (
                         <label key={folder.id} className="flex items-center">
                           <input
@@ -408,22 +440,26 @@ const MemberPermissions = () => {
                         Accessible Resources:
                       </span>
                       <div className="max-h-32 overflow-y-auto border rounded p-2 bg-white mt-2">
-                        {folders.map((res) => (
-                          <label key={res.id} className="flex items-center">
+                        {folders.map((resource) => (
+                          <label key={resource.id} className="flex items-center">
                             <input
                               type="checkbox"
-                              checked={newGroup.resources.includes(res.id)}
+                              checked={selectedFolders.includes(resource.id)}
                               onChange={() =>
-                                setNewGroup((g) => ({
-                                  ...g,
-                                  resources: g.resources.includes(res.id)
-                                    ? g.resources.filter((rid) => rid !== res.id)
-                                    : [...g.resources, res.id],
-                                }))
+                                setSelectedFolders((prev) =>
+                                  prev.includes(resource.id)
+                                    ? prev.filter((id) => id !== resource.id)
+                                    : [...prev, resource.id]
+                                )
                               }
                               className="form-checkbox h-4 w-4 text-blue-600"
                             />
-                            <span className="ml-2">{res.name}</span>
+                            <span className="ml-2">
+                              {resource.name}{" "}
+                              <span className="text-sm text-gray-500">
+                                ({resource.type})
+                              </span>
+                            </span>
                           </label>
                         ))}
                       </div>

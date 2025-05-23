@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import apiCall from "../pkg/api/internal.js";
 import { handleError } from "../pkg/error/error.js";
 
-const ActionButtons = ({ onActionComplete, getFolderId }) => {
+const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -19,19 +19,36 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
 
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
+
         let folderId = null;
-        if (getFolderId)
-            folderId = getFolderId();
+        if (getFolderId) folderId = getFolderId();
+
         try {
-            let res;
+            // Fetch existing files in the folder
+            const existingFiles = folderId
+                ? await apiCall.getFolderById(`files/folders/${folderId}`)
+                : await apiCall.getFile("/files");
+
+            const duplicate = existingFiles.files?.find((file) => file.name === selectedFile.name);
+
+            if (duplicate) {
+                toast.error("A file with the same name already exists.");
+                return;
+            }
+
+            const formData = new FormData();const handleUploadSubmit = async () => {
+        if (!selectedFile) return;
+        let folderId = null;
+        if (getFolderId) folderId = getFolderId();
+        try {
             const formData = new FormData();
             formData.append('file', selectedFile);
-            if (!folderId){
-                res = await apiCall.uploadFile("files/upload/file", formData);
-            }else{
-                res = await apiCall.uploadFile("files/upload/file/" + folderId, formData)
-            }
-            toast.success(res.message,{
+
+            const res = folderId
+                ? await apiCall.uploadFile(`files/upload/file/${folderId}`, formData)
+                : await apiCall.uploadFile("files/upload/file", formData);
+
+            toast.success(res.message, {
                 position: "top-right",
                 autoClose: 2000,
                 hideProgressBar: false,
@@ -40,9 +57,35 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
                 draggable: true,
                 progress: undefined,
             });
-            onActionComplete?.(); // Callback to refresh parent data
+
+            onActionComplete?.(); // Refresh the current folder
         } catch (error) {
             handleError(error);
+        } finally {
+            setIsUploadModalOpen(false);
+            setSelectedFile(null);
+        }
+    };
+            formData.append("file", selectedFile);
+
+            const res = folderId
+                ? await apiCall.uploadFile(`files/upload/file/${folderId}`, formData)
+                : await apiCall.uploadFile("files/upload/file", formData);
+
+            toast.success(res.message, {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+
+            onActionComplete?.(); // Refresh the current folder
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            toast.error("Failed to upload file.");
         } finally {
             setIsUploadModalOpen(false);
             setSelectedFile(null);
@@ -163,7 +206,7 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
                             Create
                         </Button>
                     </div>
-                        </div>
+                </div>
             )}
         </>
     );

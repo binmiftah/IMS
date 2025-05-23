@@ -87,6 +87,17 @@ class ApiCall {
         return response.data;
     }
 
+    // async uploadFileToRoot(urlPath, data) {
+    //     const response = await this.instance2.post(`${urlPath}?resourceType=FILE`, data, {
+    //         headers: {
+    //             'Content-Type': 'multipart/form-data',
+    //             Authorization: `Bearer ${localStorage.getItem("token")}`
+    //         }
+    //     })
+
+    //     return response.data;
+    // }
+
     async uploadFile(urlPath, data) {
         const response = await this.instance2.post(`${urlPath}?resourceType=FILE`, data, {
             headers: {
@@ -94,19 +105,20 @@ class ApiCall {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
+        console.log(response.data)
 
         return response.data;
     }
 
     async getFile(urlPath) {
-        const response = await this.instance2.get(urlPath, {
+        const response = await this.instance2.get(`${urlPath}?resourceType=FILE`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
         });
 
         // Ensure the response contains an array
-        return response.data?.files || [];
+        return response.data.data || [];
     }
 
     async getFolder(urlPath) {
@@ -138,6 +150,15 @@ class ApiCall {
         })
         console.log(response.data.data)
         return response.data.data || [];
+    }
+
+    async getFileById(urlPath) {
+        const response = await this.instance2.get(urlPath, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        });
+        return response.data;
     }
 
     async deleteFolder(urlPath) {

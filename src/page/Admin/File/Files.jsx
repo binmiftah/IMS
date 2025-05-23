@@ -40,8 +40,12 @@ const Files = () => {
 
     // get folder id
     const getFolderId = () => {
+        if (!currentFolderId) {
+            console.log("Current Folder ID: Root");
+            return null; // Use null to represent the root folder
+        }
         console.log("Current Folder ID:", currentFolderId);
-        return currentFolderId
+        return currentFolderId;
     }
 
     const getRootFiles = async () => {
@@ -50,6 +54,7 @@ const Files = () => {
                 apiCall.getFolder("files/folders"),
                 apiCall.getFile("/files"),
             ]);
+            console.log("Fetched Files:", result[0]);
             console.log("Fetched Files:", result[1]);
 
             const folders = Array.isArray(result[0]) ? result[0] : [];
@@ -95,15 +100,15 @@ const Files = () => {
 
     const handleRefresh = async () => {
         try {
-            const result = await Promise.all([
-                apiCall.getFolder("files/folders"), // Fetch folders
-                apiCall.getFile("/files"), // Fetch files
-            ]);
-
-            const folders = Array.isArray(result[0]) ? result[0] : [];
-            const files = Array.isArray(result[1]) ? result[1] : [];
-
-            setItems([...folders, ...files]);
+            if (currentFolderId) {
+                // Fetch files and folders for the current folder
+                const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
+                const allResult = [...(result.children || []), ...(result.files || [])];
+                setItems(allResult);
+            } else {
+                // Fetch root files and folders
+                await getRootFiles();
+            }
         } catch (error) {
             console.error("Error refreshing files:", error);
             handleError(error);
