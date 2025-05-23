@@ -5,7 +5,7 @@ import Button from '../../../component/Button';
 import ActionButtons from '../../../component/ActionButtons.jsx';
 import ProfileBar from '../../../component/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 // import { handleFileClick } from '../../../utils/fileOpenHandlers';
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
@@ -94,14 +94,21 @@ const Files = () => {
     };
 
     const handleRefresh = async () => {
-        console.log("i am here", currentFolderId)
-        if (currentFolderId) {
+        try {
+            const result = await Promise.all([
+                apiCall.getFolder("files/folders"), // Fetch folders
+                apiCall.getFile("/files"), // Fetch files
+            ]);
 
-            const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
-            const allResult = [...result.children, ...result.files];
-            setItems(allResult);
+            const folders = Array.isArray(result[0]) ? result[0] : [];
+            const files = Array.isArray(result[1]) ? result[1] : [];
+
+            setItems([...folders, ...files]);
+        } catch (error) {
+            console.error("Error refreshing files:", error);
+            handleError(error);
         }
-    }
+    };
 
     const handleBack = async () => {
         try {
@@ -169,6 +176,22 @@ const Files = () => {
         setIsOpenFile((s) => !s);
     };
 
+    const handleCreateFolder = async (folderName) => {
+        try {
+            const data = { folderName };
+            const result = await apiCall.createFolder("files/create/folder", data);
+            console.log("Folder created:", result);
+
+            // Refresh the folder list
+            await handleRefresh();
+
+            // Show success message
+            toast.success("Folder created successfully!");
+        } catch (error) {
+            console.error("Error creating folder:", error);
+            handleError(error);
+        }
+    };
 
 
     useEffect(() => {
@@ -399,7 +422,7 @@ const Files = () => {
                                     </div>
                                 </div>
                             );
-                        }) : <p className="items-center">No Items Create A File or Folder</p>}
+                        }) : <p className="items-center">No Items, Create A File or Folder</p>}
                     </div>
                 </div>
             </div>

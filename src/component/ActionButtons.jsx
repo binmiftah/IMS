@@ -65,9 +65,10 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
                 ? await apiCall.createFolder(`files/create/folder/${folderId}`, payload)
                 : await apiCall.createFolder("files/create/folder", payload);
 
-            // console.log("Backend response:", res);
             toast.success(res.message);
-            onActionComplete?.(); // Callback to refresh parent data
+
+            // Trigger the refresh callback
+            onActionComplete?.(); // Refresh the files page
         } catch (error) {
             console.error("Error creating folder:", error);
             toast.error("Failed to create folder.");
@@ -162,7 +163,7 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
                             Create
                         </Button>
                     </div>
-                </div>
+                        </div>
             )}
         </>
     );
