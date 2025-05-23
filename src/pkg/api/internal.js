@@ -79,7 +79,7 @@ class ApiCall {
      * */
 
     async createFolder(urlPath, data) {
-        const response = await this.instance2.post(urlPath, data, {
+        const response = await this.instance2.post(`${urlPath}?resourceType=FOLDER`, data, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
@@ -88,7 +88,7 @@ class ApiCall {
     }
 
     async uploadFile(urlPath, data) {
-        const response = await this.instance2.post(urlPath, data, {
+        const response = await this.instance2.post(`${urlPath}?resourceType=FILE`, data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -131,7 +131,7 @@ class ApiCall {
 
 
     async getFolderById(urlPath) {
-        const response = await this.instance2.get(urlPath, {
+        const response = await this.instance2.get(`${urlPath}?resourceType=FOLDER`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
