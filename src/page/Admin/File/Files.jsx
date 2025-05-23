@@ -7,14 +7,14 @@ import ProfileBar from '../../../component/ProfileBar';
 import apiCall from '../../../pkg/api/internal.js';
 import { ToastContainer } from "react-toastify";
 // import { handleFileClick } from '../../../utils/fileOpenHandlers';
-import {handleError} from "../../../pkg/error/error.js";
-import {useAuth} from "../../../context/AuthContext.jsx";
+import { handleError } from "../../../pkg/error/error.js";
+import { useAuth } from "../../../context/AuthContext.jsx";
 import FileItem from "../../../component/FileItem.jsx"
 
 
 
 const Files = () => {
-    const {user} = useAuth()
+    const { user } = useAuth()
     const [currentPath, setCurrentPath] = useState('/');
     const [folders, setFolders] = useState(null);
     const [items, setItems] = useState([]);
@@ -26,9 +26,10 @@ const Files = () => {
     const [clipboard, setClipboard] = useState(null);
     const [clickedItem, setClickedItem] = useState(null)
     const [isOpenFile, setIsOpenFile] = useState(false);
-    const [isMaximized, setIsMaximized] = useState(false); // <-- Add this
+    const [isMaximized, setIsMaximized] = useState(false);
 
     const dropdownRef = useRef(null);
+
 
     const [sortBy, setSortBy] = useState({
         modified: "newest",
@@ -39,27 +40,27 @@ const Files = () => {
 
     // get folder id
     const getFolderId = () => {
+        console.log("Current Folder ID:", currentFolderId);
         return currentFolderId
     }
 
     const getRootFiles = async () => {
         try {
-            const result = await Promise.all([apiCall.getFolder("files/folders"), apiCall.getFile("/files")]);
-            let allResult = [...result[0], ...result[1]];
+            const result = await Promise.all([
+                apiCall.getFolder("files/folders"),
+                apiCall.getFile("/files"),
+            ]);
+            console.log("Fetched Files:", result[1]);
 
-            // If backend returns no items, show dummy data
-            // if (allResult.length === 0) {
-            //     allResult = DUMMY_ITEMS;
-            // }
+            const folders = Array.isArray(result[0]) ? result[0] : [];
+            const files = Array.isArray(result[1]) ? result[1] : [];
 
+            let allResult = [...folders, ...files];
             setItems(allResult);
         } catch (error) {
-            console.log(error);
             handleError(error);
-            // On error, show dummy data as fallback
-            // setItems(DUMMY_ITEMS);
         }
-    }
+    };
 
     const handleSort = (sortType, value) => {
         setSortBy((prev) => ({
@@ -71,21 +72,30 @@ const Files = () => {
 
     const handleNavigate = async (item) => {
         try {
-            setNavigationHistory(prev => [...prev, { path: currentPath, id: currentFolderId }]);
+            console.log("Navigating to folder with ID:", item.id); // Debugging log
+            setNavigationHistory((prev) => [...prev, { path: currentPath, id: currentFolderId }]);
             setCurrentPath(item.fullPath);
-            setCurrentFolderId(item.id);
+            setCurrentFolderId(item.id); // Updates currentFolderId with the selected folder's ID
 
             const result = await apiCall.getFolderById(`files/folders/${item.id}`);
-            const allResult = [...result.children, ...result.files];
-            setItems(allResult);
+            console.log("Fetched Folder Contents:", result); // Debugging log
+
+            if (result.children || result.files) {
+                const allResult = [...(result.children || []), ...(result.files || [])];
+                setItems(allResult);
+            } else {
+                console.error("No children or files found in the response.");
+                setItems([]);
+            }
         } catch (error) {
+            console.error("Error navigating to folder:", error);
             handleError(error);
         }
     };
 
-    const handleRefresh = async () =>{
+    const handleRefresh = async () => {
         console.log("i am here", currentFolderId)
-        if (currentFolderId){
+        if (currentFolderId) {
 
             const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
             const allResult = [...result.children, ...result.files];
@@ -100,7 +110,7 @@ const Files = () => {
                 setCurrentPath('/');
                 setCurrentFolderId(null);
                 getRootFiles();
-                return;
+                return; folder
             }
 
             const lastNav = navigationHistory[navigationHistory.length - 1];
@@ -155,8 +165,8 @@ const Files = () => {
     };
 
     const handleFileOpen = async (item) => {
-       setClickedItem(item);
-       setIsOpenFile((s) => !s);
+        setClickedItem(item);
+        setIsOpenFile((s) => !s);
     };
 
 
@@ -277,7 +287,7 @@ const Files = () => {
                     </div>
 
                     {/* Files and Folders Grid */}
-                    <div className="grid grid-cols-4 gap-4 ">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
                         {items.length > 0 ? items.map((item, index) => {
                             // Determine if this card should be disabled in paste mode
                             const isPasteMode = !!clipboard;
@@ -324,7 +334,11 @@ const Files = () => {
                                             {activeDropdown === index && (
                                                 <div
                                                     ref={dropdownRef}
-                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 overflow-y-auto"
+                                                    style={{
+                                                        maxHeight: '200px',
+                                                        maxWidth: 'calc(100vw - 20px)', // Prevent overflow
+                                                    }}
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <button
@@ -409,13 +423,13 @@ const Files = () => {
                                             .map(f => f.fullPath)
                                     )
                                 )
-                            ]
-                                .filter(path => path !== currentPath)
-                                .map(path => (
-                                    <option key={path} value={path}>
-                                        {path === '/' ? 'Root' : path.replace(/^\//, '')}
-                                    </option>
-                                ))}
+                                    .filter(path => path !== currentPath)
+                                    .map(path => (
+                                        <option key={path} value={path}>
+                                            {path === '/' ? 'Root' : path.replace(/^\//, '')}
+                                        </option>
+                                    ))
+                            ]}
                         </select>
                         <div className="flex justify-end space-x-2 mt-4">
                             <button

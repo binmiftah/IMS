@@ -29,7 +29,7 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
             if (!folderId){
                 res = await apiCall.uploadFile("files/upload/file", formData);
             }else{
-                res = await  apiCall.uploadFile("files/upload/file/" + folderId, formData)
+                res = await apiCall.uploadFile("files/upload/file/" + folderId, formData)
             }
             toast.success(res.message,{
                 position: "top-right",
@@ -50,23 +50,27 @@ const ActionButtons = ({ onActionComplete, getFolderId }) => {
     };
 
     const handleFolderSubmit = async () => {
-        if (!folderName.trim()) return;
+        if (!folderName.trim()) {
+            toast.error("Folder name cannot be empty.");
+            return;
+        }
 
         let folderId = null;
-        if (getFolderId)
-            folderId = getFolderId();
+        if (getFolderId) folderId = getFolderId();
 
-        let res;
         try {
-            if (!folderId){
-                res = await apiCall.createFolder("files/create/folder", { folderName });
-            }else{
-                res = await apiCall.createFolder("files/create/folder/" + folderId, {folderName});
-            }
+            const payload = { folderName };
+
+            const res = folderId
+                ? await apiCall.createFolder(`files/create/folder/${folderId}`, payload)
+                : await apiCall.createFolder("files/create/folder", payload);
+
+            // console.log("Backend response:", res);
             toast.success(res.message);
             onActionComplete?.(); // Callback to refresh parent data
         } catch (error) {
-            handleError(error);
+            console.error("Error creating folder:", error);
+            toast.error("Failed to create folder.");
         } finally {
             setIsFolderModalOpen(false);
             setFolderName('');

@@ -1,8 +1,10 @@
-import axios, {AxiosError} from "axios";
+import axios, { AxiosError } from "axios";
 
-const BaseUrl =  "https://api.yareyare.software/api/v1/";
+// const BaseUrl = "https://api.yareyare.software/api/v1/";
 // const BaseUrl = "http://localhost:3004/api/v1/";
+const BaseUrl = "http://20.80.82.90:3000/api/v1";
 // const BaseUrl = "http://dev.yareyare.software/api/v1/"
+
 
 class ApiCall {
     constructor(url) {
@@ -13,7 +15,8 @@ class ApiCall {
 
         this.instance2 = axios.create({
             // baseURL: 'http://localhost:3004/api/v2/',
-            baseURL: 'https://api.yareyare.software/api/v2/',
+            baseURL: 'http://20.80.82.90:3000/api/v2',
+            // baseURL: 'https://api.yareyare.software/api/v2/',
             timeout: 0,
 
         });
@@ -75,15 +78,12 @@ class ApiCall {
      * FOLDER AND FILES API CALL
      * */
 
-     async createFolder(urlPath, data) {
-
-        const response = await this.instance2.post(urlPath, {
-            folderName: data.folderName,
-        }, {
+    async createFolder(urlPath, data) {
+        const response = await this.instance2.post(urlPath, data, {
             headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        });
         return response.data;
     }
 
@@ -98,44 +98,46 @@ class ApiCall {
         return response.data;
     }
 
-    async getFile(urlPath){
-        // GET root file
+    async getFile(urlPath) {
         const response = await this.instance2.get(urlPath, {
             headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        });
 
-        return response.data.data.files
+        // Ensure the response contains an array
+        return response.data?.files || [];
     }
 
     async getFolder(urlPath) {
         const response = await this.instance2.get(urlPath, {
             headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        return response.data.data.folders
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        });
+
+        return response.data.data || [];
     }
 
-    async getRootLevelFiles(urlPath){
+    async getRootLevelFiles(urlPath) {
         const response = await this.instance1.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
 
-        return response.data.data.folders
+        return response.data.data || [];
     }
 
 
     async getFolderById(urlPath) {
-        const response = await this.instance1.get(urlPath, {
+        const response = await this.instance2.get(urlPath, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
-        return response.data.data
+        console.log(response.data.data)
+        return response.data.data || [];
     }
 
     async deleteFolder(urlPath) {
@@ -166,7 +168,7 @@ class ApiCall {
      * MEMBERS API CALLS
      * */
     async createNewMember(urlPath, data) {
-        const response = await this.instance1.post(urlPath,data, {
+        const response = await this.instance1.post(urlPath, data, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
@@ -276,12 +278,12 @@ class ApiCall {
         return response.data.data.trashedItems
     }
 
-    async restoreItem(url, item){
+    async restoreItem(url, item) {
         const response = await this.instance1.put(url, {
             type: item.itemType,
             folderId: item.folderId
         }, {
-            headers:{
+            headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
@@ -292,8 +294,6 @@ class ApiCall {
 
 const apiCall = new ApiCall(BaseUrl);
 export default apiCall;
-
-
 // import axios, {AxiosError} from "axios";
 
 // const BaseUrl =  "https://api.yareyare.software/api/v1/";
@@ -430,7 +430,6 @@ export default apiCall;
 //             headers: {
 //                 Authorization: `Bearer ${localStorage.getItem("token")}`
 //             }
-//         })
 //         return response.data.data
 //     }
 
