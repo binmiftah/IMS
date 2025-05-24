@@ -1,127 +1,172 @@
-// FolderTree Component - Add within the same file or create a new component
+import React, { useState } from 'react';
+
 const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
-  const [expandedFolders, setExpandedFolders] = useState({});
-  
-  // Organize items into a tree structure
-  const buildTreeData = () => {
-    const rootItems = [];
-    const childrenMap = {};
-    
-    // First, group all items by their parentId
-    items.forEach(item => {
-      if (!item.parentId) {
-        rootItems.push(item);
-      } else {
-        if (!childrenMap[item.parentId]) {
-          childrenMap[item.parentId] = [];
-        }
-        childrenMap[item.parentId].push(item);
-      }
-    });
-    
-    // Function to recursively build the tree
-    const buildTree = (items) => {
-      return items.map(item => ({
-        ...item,
-        children: childrenMap[item.id] ? buildTree(childrenMap[item.id]) : []
-      }));
+    const [expandedFolders, setExpandedFolders] = useState({});
+
+    // Organize items into a tree structure
+    const buildTreeData = () => {
+        const rootItems = [];
+        const childrenMap = {};
+
+        // First, group all items by their parentId
+        items.forEach(item => {
+            if (!item.parentId) {
+                rootItems.push(item);
+            } else {
+                if (!childrenMap[item.parentId]) {
+                    childrenMap[item.parentId] = [];
+                }
+                childrenMap[item.parentId].push(item);
+            }
+        });
+
+        // Function to recursively build the tree
+        const buildTree = (items) => {
+            return items.map(item => ({
+                ...item,
+                children: childrenMap[item.id] ? buildTree(childrenMap[item.id]) : []
+            }));
+        };
+
+        return buildTree(rootItems);
     };
-    
-    return buildTree(rootItems);
-  };
-  
-  const treeData = buildTreeData();
-  
-  // Toggle folder expansion
-  const toggleFolder = (folderId) => {
-    setExpandedFolders(prev => ({
-      ...prev,
-      [folderId]: !prev[folderId]
-    }));
-  };
-  
-  // Handle item selection
-  const handleItemSelect = (item) => {
-    onSelectionChange(prev => 
-      prev.includes(item.id)
-        ? prev.filter(id => id !== item.id)
-        : [...prev, item.id]
-    );
-  };
-  
-  // Recursive component to render tree nodes
-  const renderTreeNode = (item, level = 0) => {
-    const isFolder = item.type === 'folder';
-    const isExpanded = expandedFolders[item.id];
-    const hasChildren = isFolder && item.children && item.children.length > 0;
-    const isSelected = selectedItems.includes(item.id);
-    
+
+    const treeData = buildTreeData();
+
+    // Toggle folder expansion
+    const toggleFolder = (folderId) => {
+        setExpandedFolders(prev => ({
+            ...prev,
+            [folderId]: !prev[folderId]
+        }));
+    };
+
+    // Get all descendant IDs recursively
+    const getAllDescendantIds = (node, accumulatedIds = []) => {
+        // Add current node ID
+        accumulatedIds.push(node.id);
+
+        // If it has children, process them recursively
+        if (node.children && node.children.length > 0) {
+            node.children.forEach(child => {
+                getAllDescendantIds(child, accumulatedIds);
+            });
+        }
+
+        return accumulatedIds;
+    };
+
+    // Handle item selection with recursive selection for children
+    const handleItemSelect = (item, isChecked) => {
+        let newSelectedItems = [...selectedItems];
+
+        if (isChecked) {
+            // If checking, add this item and all its descendants
+            if (item.type === 'folder' && item.children && item.children.length > 0) {
+                const descendantIds = getAllDescendantIds(item, []);
+
+                // Add all descendant IDs without duplicates
+                descendantIds.forEach(id => {
+                    if (!newSelectedItems.includes(id)) {
+                        newSelectedItems.push(id);
+                    }
+                });
+            } else {
+                // Just add this item if it's not already selected
+                if (!newSelectedItems.includes(item.id)) {
+                    newSelectedItems.push(item.id);
+                }
+            }
+        } else {
+            // If unchecking, remove this item and all its descendants
+            if (item.type === 'folder' && item.children && item.children.length > 0) {
+                const descendantIds = getAllDescendantIds(item, []);
+                newSelectedItems = newSelectedItems.filter(id => !descendantIds.includes(id));
+            } else {
+                // Just remove this item
+                newSelectedItems = newSelectedItems.filter(id => id !== item.id);
+            }
+        }
+
+        // Update the parent component with the new selection
+        onSelectionChange(newSelectedItems);
+    };
+
+    // Recursive function to render tree nodes
+    const renderTreeNodes = (nodes) => {
+        return nodes.map(node => {
+            // Determine if the item is a folder based on various properties
+            const isFolder =
+                node.type === 'folder' ||
+                node.type === 'FOLDER' ||
+                (node.children && node.children.length > 0);
+
+            return (
+                <div key={node.id} className="pl-4">
+                    <div className="flex items-center py-1">
+                        <input
+                            type="checkbox"
+                            id={`node-${node.id}`}
+                            checked={selectedItems.includes(node.id)}
+                            onChange={(e) => handleItemSelect(node, e.target.checked)}
+                            className="mr-2"
+                        />
+
+                        {isFolder && node.children && node.children.length > 0 ? (
+                            <span
+                                className="cursor-pointer mr-1 w-4 text-center"
+                                onClick={() => toggleFolder(node.id)}
+                            >
+                                {expandedFolders[node.id] ? '▼' : '►'}
+                            </span>
+                        ) : (
+                            <span className="w-4 mr-1"></span>
+                        )}
+
+                        <label
+                            htmlFor={`node-${node.id}`}
+                            className="cursor-pointer flex items-center"
+                        >
+                            {isFolder ? (
+                                <span className="text-yellow-600 mr-1">📁</span>
+                            ) : (
+                                <span className="text-blue-600 mr-1">📄</span>
+                            )}
+                            <span>{node.name || node.fileName}</span>
+                        </label>
+                    </div>
+
+                    {isFolder && node.children && node.children.length > 0 && expandedFolders[node.id] && (
+                        <div className="ml-4 border-l border-gray-200">
+                            {renderTreeNodes(node.children)}
+                        </div>
+                    )}
+                </div>
+            );
+        });
+    };
+
+    // If no items are provided, show a message
+    if (!items || items.length === 0) {
+        return <div className="text-gray-500">No resources available</div>;
+    }
+
+    // Debugging logs
+    //   console.log("Selected folders format:", selectedItems);
+    //   console.log("Permissions format:", selectedItems);
+    //   console.log("Permission payload:", {
+    //     accountId: selectedItems.id,
+    //     resourceType: "FOLDER",
+    //     permissions: selectedItems.length > 0 ? selectedItems : ["READ_FILES"],
+    //     folderIds: selectedItems,
+    //     inherited: false
+    //   });
+
     return (
-      <div key={item.id} className="select-none">
-        <div 
-          className={`flex items-center py-1 ${level > 0 ? 'ml-' + (level * 4) : ''}`}
-        >
-          {/* Expand/collapse icon for folders with children */}
-          {isFolder && hasChildren ? (
-            <button 
-              onClick={() => toggleFolder(item.id)}
-              className="mr-1 w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700"
-            >
-              {isExpanded ? '▼' : '►'}
-            </button>
-          ) : (
-            <span className="w-5 mr-1"></span>
-          )}
-          
-          {/* Checkbox */}
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => handleItemSelect(item)}
-            className="form-checkbox h-5 w-5 text-blue-600 mr-2"
-          />
-          
-          {/* Icon based on type */}
-          <span className="mr-2">
-            {isFolder ? (
-              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a2 2 0 012 2v2h4a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4z" clipRule="evenodd" />
-              </svg>
-            )}
-          </span>
-          
-          {/* Item name */}
-          <span className={`truncate ${isSelected ? 'font-medium' : ''}`}>
-            {item.name}
-            {!isFolder && item.fileName && (
-              <span className="text-sm text-gray-500 ml-1">({item.fileName})</span>
-            )}
-          </span>
+        <div className="folder-tree">
+            {renderTreeNodes(treeData)}
         </div>
-        
-        {/* Render children if expanded */}
-        {isFolder && isExpanded && item.children && (
-          <div>
-            {item.children.map(child => renderTreeNode(child, level + 1))}
-          </div>
-        )}
-      </div>
     );
-  };
-  
-  return (
-    <div className="folder-tree">
-      {treeData.length > 0 ? (
-        treeData.map(item => renderTreeNode(item))
-      ) : (
-        <div className="text-gray-500 py-2">No resources available</div>
-      )}
-    </div>
-  );
 };
 
 export default FolderTree;

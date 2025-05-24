@@ -109,7 +109,6 @@ class ApiCall {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         });
-        console.log(response.data);
         return response.data;
     }
 
@@ -121,8 +120,6 @@ class ApiCall {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
         });
-
-        console.log("Full getfile response:", response.data.data);
         return response.data.data || [];
     }
 
@@ -132,8 +129,6 @@ class ApiCall {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
         });
-
-        console.log("Full folder response:", response.data.data);
 
         return response.data.data || [];
     }
@@ -148,9 +143,6 @@ class ApiCall {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         });
-
-        // Log the full response to understand the structure
-        console.log("Full folder response:", response.data);
 
         // Handle various response structures
         if (response.data && response.data.data === null) {
@@ -177,7 +169,6 @@ class ApiCall {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         })
-        console.log(response)
         return response.data.data
     }
 
@@ -266,22 +257,32 @@ class ApiCall {
         return response.data;
     }
 
-    async createGroupPermission(urlPath) {
-        const response = await this.instance1.get(urlPath, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        return response.data;
-    }
-
     async createMemberPermission(urlPath, data) {
-        const response = await this.instance1.post(urlPath, data, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
+        try {
+            // Ensure proper format - API might expect a specific structure
+            const formattedData = {
+                accountId: data.accountId,
+                resourceType: data.resourceType,
+                permissions: data.permissions,
+                folderIds: data.folderIds,
+                inherited: data.inherited
+            };
+
+            const response = await this.instance1.post(urlPath, formattedData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // Log the specific error for debugging
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
             }
-        })
-        return response.data;
+            throw error;
+        }
     }
 
     /**

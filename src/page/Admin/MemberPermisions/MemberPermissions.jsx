@@ -28,16 +28,37 @@ const MemberPermissions = () => {
   useEffect(() => {
     setLoading(true);
     apiCall
-      .getAllUsers("users") // Fetch all users
+      .getAllUsers("users")
       .then((res) => {
-        console.log("Fetched Users:", res); // Debugging log
-        const usersData = res.data?.users || []; // Access users from res.data.users
-        setUsers(Array.isArray(usersData) ? usersData : []); // Ensure usersData is an array
+        console.log("Raw API response for users:", res);
+
+        // Try to handle different response structures
+        let usersData = [];
+
+        if (res.data?.users) {
+          usersData = res.data.users;
+        } else if (res.data?.data) {
+          usersData = res.data.data;
+        } else if (Array.isArray(res.data)) {
+          usersData = res.data;
+        } else if (Array.isArray(res)) {
+          usersData = res;
+        }
+
+        // Ensure each user has an id
+        const validUsers = usersData.filter(user => user && user.id);
+
+        console.log("Processed users with IDs:", validUsers);
+        setUsers(validUsers);
+
+        if (validUsers.length === 0) {
+          console.warn("No valid users found with IDs");
+        }
       })
       .catch((err) => {
         console.error("Error fetching users:", err);
         toast.error("Failed to load users.");
-        setUsers([]); // Fallback to an empty array
+        setUsers([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -116,35 +137,62 @@ const MemberPermissions = () => {
 
   // Save individual user permissions
   const handleSaveUserPermissions = async () => {
+    console.log("Saving permissions for user:", selectedUser);
     if (!selectedUser) {
-      toast.error("Please select a user.");
+      toast.warning("Please select a user to update permissions");
       return;
     }
 
-    if (selectedFolders.length === 0) {
-      toast.error("Please select at least one folder.");
+    if (!selectedUser.id) {
+      console.error("Selected user has no ID property:", selectedUser);
+      toast.error("Invalid user selection. Please try selecting the user again.");
       return;
     }
 
-    setSaving(true);
+    if (permissions.length === 0 || selectedFolders.length === 0) {
+      toast.warning("Please select at least one permission and resource");
+      return;
+    }
+
     try {
-      const payload = {
-        resourceType: "FOLDER", // Resource type
-        permissions,
-        folderIds: selectedFolders, // Selected folder IDs
-        accountId: selectedUser.id, // User ID
-        inherited: false, // Whether permissions are inherited
+      setSaving(true);
+
+      // Ensure we have a valid account ID
+      if (!selectedUser.id) {
+        throw new Error("Selected user has no ID");
+      }
+
+      // Format the data correctly for the API
+      const permissionData = {
+        accountId: selectedUser.id,
+        resourceType: "FOLDER",
+        permissions: permissions.length > 0 ? permissions : ["READ_FILES"],
+        folderIds: selectedFolders,
+        inherited: false,
       };
 
-      console.log("Saving permissions for user:", payload); // Debugging log
+      console.log("Saving permissions for user:", permissionData);
 
-      const response = await apiCall.createMemberPermission("permissions", payload);
-      console.log("Save response from backend:", response); // Debugging log
+      // Call API to save permissions
+      const response = await apiCall.createMemberPermission("permissions", permissionData);
 
-      toast.success("Permissions saved successfully!");
+      if (response && response.status === "success") {
+        toast.success("Permissions updated successfully");
+
+        // Refresh user permissions to show the updated state
+        fetchUserPermissions(selectedUser.id);
+      } else {
+        toast.error("Failed to update permissions");
+      }
     } catch (error) {
       console.error("Error saving permissions:", error);
-      toast.error("Failed to save permissions.");
+
+      // More detailed error message
+      if (error.response && error.response.data && error.response.data.message) {
+        toast.error(`Error: ${error.response.data.message}`);
+      } else {
+        toast.error("Failed to update permissions. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -211,21 +259,37 @@ const MemberPermissions = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
                   value={selectedUser?.id || ""}
                   onChange={(e) => {
-                    const user = users.find((user) => user.id === e.target.value);
-                    setSelectedUser(user);
-                    if (user) {
-                      fetchUserPermissions(user.id); // Fetch permissions for the selected user
+                    const userId = e.target.value;
+                    console.log("Selected user ID from dropdown:", userId);
+
+                    if (!userId) {
+                      setSelectedUser(null);
+                      return;
+                    }
+
+                    const user = users.find(user => user.id === userId);
+                    console.log("Found user object:", user);
+
+                    if (user && user.id) {
+                      setSelectedUser(user);
+                      fetchUserPermissions(user.id);
+                    } else {
+                      console.error("Invalid user selected:", user);
+                      toast.error("Error selecting user. Please try again.");
                     }
                   }}
-                  disabled={users.length === 0} // Disable if no users are available
+                  disabled={users.length === 0}
                 >
                   <option value="">Select a user</option>
                   {Array.isArray(users) && users.length > 0 ? (
-                    users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.fullName} ({user.email})
-                      </option>
-                    ))
+                    users.map((user) => {
+                      // console.log("User in dropdown:", user);
+                      return (
+                        <option key={user.id} value={user.id}>
+                          {user.fullName || user.email || user.username || user.id}
+                        </option>
+                      );
+                    })
                   ) : (
                     <option value="" disabled>
                       No users available
