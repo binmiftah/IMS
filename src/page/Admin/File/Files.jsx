@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove, MdCloseFullscreen } from 'react-icons/md';
+import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove, MdCloseFullscreen, MdRefresh } from 'react-icons/md';
 import Navbar from '../../../component/Navbar';
 import Button from '../../../component/Button';
 import ActionButtons from '../../../component/ActionButtons.jsx';
@@ -52,15 +52,25 @@ const Files = () => {
         try {
             const result = await Promise.all([
                 apiCall.getFolder("files/folders"),
-                apiCall.getFile("/files"),
+                apiCall.getFile("/files?parentId=null"), // Only get files with no parent (root files)
             ]);
-            console.log("Fetched Files:", result[0]);
-            console.log("Fetched Files:", result[1]);
+            console.log("Fetched Folders:", result[0]);
+            console.log("Fetched Root Files:", result[1]);
 
             const folders = Array.isArray(result[0]) ? result[0] : [];
             const files = Array.isArray(result[1]) ? result[1] : [];
 
-            let allResult = [...folders, ...files];
+            // More robust filtering to identify root files
+            const rootFiles = files.filter(file =>
+                !file.parentId ||
+                file.parentId === null ||
+                file.parentId === "null" ||
+                file.isRootFile === true
+            );
+
+            console.log("Filtered Root Files:", rootFiles);
+
+            let allResult = [...folders, ...rootFiles];
             setItems(allResult);
         } catch (error) {
             handleError(error);
@@ -77,40 +87,84 @@ const Files = () => {
 
     const handleNavigate = async (item) => {
         try {
-            console.log("Navigating to folder with ID:", item.id); // Debugging log
+            console.log("Navigating to folder with ID:", item.id);
+            // Save current state for back navigation
             setNavigationHistory((prev) => [...prev, { path: currentPath, id: currentFolderId }]);
+            // Update current folder info
             setCurrentPath(item.fullPath);
-            setCurrentFolderId(item.id); // Updates currentFolderId with the selected folder's ID
-
-            const result = await apiCall.getFolderById(`files/folders/${item.id}`);
-            console.log("Fetched Folder Contents:", result); // Debugging log
-
-            if (result.children || result.files) {
-                const allResult = [...(result.children || []), ...(result.files || [])];
-                setItems(allResult);
-            } else {
-                console.error("No children or files found in the response.");
-                setItems([]);
-            }
+            setCurrentFolderId(item.id);
+            
+            // Force refresh folder contents
+            await refreshFolderContents(item.id);
         } catch (error) {
             console.error("Error navigating to folder:", error);
             handleError(error);
         }
     };
 
+    // Create a separate function for refreshing folder contents
+    const refreshFolderContents = async (folderId) => {
+        try {
+            // Get folder contents
+            const result = await apiCall.getFolderById(`files/folders/${folderId}`);
+            console.log("Fetched Folder Contents:", result);
+
+            if (result) {
+                // Get files with this folder as parent
+                const filesResult = await apiCall.getFile(`/files?parentId=${folderId}`);
+                console.log("Files for folder ID:", folderId, filesResult);
+                
+                // Extract children folders
+                const children = result.children || [];
+                
+                // Combine files from both sources (folder result and direct query)
+                const uniqueFiles = new Map();
+                
+                // Add files from folder result
+                if (Array.isArray(result.files)) {
+                    result.files.forEach(file => {
+                        if (file.parentId === folderId || file.folderId === folderId) {
+                            uniqueFiles.set(file.id, file);
+                        }
+                    });
+                }
+                
+                // Add files from direct query
+                if (Array.isArray(filesResult)) {
+                    filesResult.forEach(file => {
+                        if (file.parentId === folderId || file.folderId === folderId) {
+                            uniqueFiles.set(file.id, file);
+                        }
+                    });
+                }
+                
+                // Convert map to array
+                const combinedFiles = Array.from(uniqueFiles.values());
+                console.log("Final combined files:", combinedFiles);
+                
+                // Update UI with combined results
+                setItems([...children, ...combinedFiles]);
+            } else {
+                console.error("No folder content found in the response");
+                setItems([]);
+            }
+        } catch (error) {
+            console.error("Error refreshing folder contents:", error);
+            throw error;
+        }
+    };
+
     const handleRefresh = async () => {
         try {
             if (currentFolderId) {
-                // Fetch files and folders for the current folder
-                const result = await apiCall.getFolderById(`files/folders/${currentFolderId}`);
-                const allResult = [...(result.children || []), ...(result.files || [])];
-                setItems(allResult);
+                // We're in a specific folder - refresh its contents
+                await refreshFolderContents(currentFolderId);
             } else {
-                // Fetch root files and folders
+                // We're at the root level
                 await getRootFiles();
             }
         } catch (error) {
-            console.error("Error refreshing files:", error);
+            console.error("Error refreshing:", error);
             handleError(error);
         }
     };
@@ -121,24 +175,21 @@ const Files = () => {
                 // If we're at root, get root files
                 setCurrentPath('/');
                 setCurrentFolderId(null);
-                getRootFiles();
-                return; folder
+                await getRootFiles();
+                return;
             }
 
             const lastNav = navigationHistory[navigationHistory.length - 1];
-
             setCurrentPath(lastNav.path);
             setCurrentFolderId(lastNav.id);
-
             setNavigationHistory(prev => prev.slice(0, -1));
 
             if (lastNav.id) {
-                const result = await apiCall.getFolderById(`files/folders/${lastNav.id}`);
-                const allResult = [...result.children, ...result.files];
-                setItems(allResult);
+                // Use the new refresh function for consistency
+                await refreshFolderContents(lastNav.id);
             } else {
                 // If we're going back to root
-                getRootFiles();
+                await getRootFiles();
             }
         } catch (error) {
             handleError(error);
@@ -198,6 +249,36 @@ const Files = () => {
         }
     };
 
+
+    // Add this function to handle clicking on current folder path
+    const handleCurrentPathClick = async () => {
+        try {
+            // Force refresh current folder contents
+            if (currentFolderId) {
+                console.log("Refreshing current folder:", currentFolderId);
+                await refreshFolderContents(currentFolderId);
+                
+                // Show user feedback
+                toast.info("Folder refreshed", {
+                    position: "top-right",
+                    autoClose: 2000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            } else {
+                await getRootFiles();
+                toast.info("Root folder refreshed", {
+                    position: "top-right",
+                    autoClose: 2000,
+                });
+            }
+        } catch (error) {
+            console.error("Error refreshing current folder:", error);
+            handleError(error);
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -268,8 +349,20 @@ const Files = () => {
                                     className="p-2 hover:bg-gray-100 rounded-lg"
                                     icon={<MdArrowBack size={20} />}
                                 />
-                                {/*<span className="text-gray-600">Current Path: {currentPath == null ? "/" : currentPath}</span>*/}
-                                <span className="text-gray-600">Current Path: {currentPath}</span>
+                                <Button
+                                    onClick={handleRefresh}
+                                    variant="icon"
+                                    className="p-2 hover:bg-gray-100 rounded-lg"
+                                    icon={<MdRefresh size={20} />}
+                                    title="Refresh current folder"
+                                />
+                                <span 
+                                    className="text-gray-600 hover:text-blue-600 cursor-pointer"
+                                    onClick={handleCurrentPathClick}
+                                    title="Click to refresh folder"
+                                >
+                                    Current Path: {currentPath}
+                                </span>
                             </div>
 
                             <div className="flex items-center space-x-4">
@@ -321,6 +414,15 @@ const Files = () => {
                             const isPasteMode = !!clipboard;
                             const isFolder = item.type === 'folder';
                             const isDisabled = isPasteMode && !isFolder;
+
+                            // Skip files that don't belong in this folder
+                            const belongsInCurrentFolder = isFolder ||
+                                (!isFolder && (
+                                    (currentFolderId === null && !item.parentId) ||
+                                    (currentFolderId && item.parentId === currentFolderId)
+                                ));
+
+                            if (!belongsInCurrentFolder) return null;
 
                             return (
                                 <div

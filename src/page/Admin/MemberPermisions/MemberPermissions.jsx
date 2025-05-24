@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "../../../component/Navbar.jsx";
 import { toast } from "react-toastify";
 import apiCall from "../../../pkg/api/internal.js";
+import FolderTree from "../../../component/FolderTree.jsx";
 
 const MemberPermissions = () => {
   // State
@@ -116,38 +117,38 @@ const MemberPermissions = () => {
   // Save individual user permissions
   const handleSaveUserPermissions = async () => {
     if (!selectedUser) {
-        toast.error("Please select a user.");
-        return;
+      toast.error("Please select a user.");
+      return;
     }
 
     if (selectedFolders.length === 0) {
-        toast.error("Please select at least one folder.");
-        return;
+      toast.error("Please select at least one folder.");
+      return;
     }
 
     setSaving(true);
     try {
-        const payload = {
-            resourceType: "FOLDER", // Resource type
-            permissions,
-            folderIds: selectedFolders, // Selected folder IDs
-            accountId: selectedUser.id, // User ID
-            inherited: false, // Whether permissions are inherited
-        };
+      const payload = {
+        resourceType: "FOLDER", // Resource type
+        permissions,
+        folderIds: selectedFolders, // Selected folder IDs
+        accountId: selectedUser.id, // User ID
+        inherited: false, // Whether permissions are inherited
+      };
 
-        console.log("Saving permissions for user:", payload); // Debugging log
+      console.log("Saving permissions for user:", payload); // Debugging log
 
-        const response = await apiCall.createMemberPermission("permissions", payload);
-        console.log("Save response from backend:", response); // Debugging log
+      const response = await apiCall.createMemberPermission("permissions", payload);
+      console.log("Save response from backend:", response); // Debugging log
 
-        toast.success("Permissions saved successfully!");
+      toast.success("Permissions saved successfully!");
     } catch (error) {
-        console.error("Error saving permissions:", error);
-        toast.error("Failed to save permissions.");
+      console.error("Error saving permissions:", error);
+      toast.error("Failed to save permissions.");
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
-};
+  };
 
   // Save group permissions
   const handleCreateGroup = async () => {
@@ -261,25 +262,13 @@ const MemberPermissions = () => {
                 {/* Accessible Folders Section */}
                 {selectedUser && (
                   <>
-                    <h3 className="text-lg font-semibold mb-2">Accessible Folders</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 over">
-                      {folders.map((folder) => (
-                        <label key={folder.id} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedFolders.includes(folder.id)}
-                            onChange={() =>
-                              setSelectedFolders((prev) =>
-                                prev.includes(folder.id)
-                                  ? prev.filter((f) => f !== folder.id)
-                                  : [...prev, folder.id]
-                              )
-                            }
-                            className="form-checkbox h-5 w-5 text-blue-600"
-                          />
-                          <span className="ml-2">{folder.name}</span>
-                        </label>
-                      ))}
+                    <h3 className="text-lg font-semibold mb-2">Accessible Resources</h3>
+                    <div className="border rounded-lg p-3 max-h-96 overflow-auto">
+                      <FolderTree
+                        items={folders}
+                        selectedItems={selectedFolders}
+                        onSelectionChange={setSelectedFolders}
+                      />
                     </div>
                   </>
                 )}
@@ -439,29 +428,12 @@ const MemberPermissions = () => {
                       <span className="font-medium text-gray-600">
                         Accessible Resources:
                       </span>
-                      <div className="max-h-32 overflow-y-auto border rounded p-2 bg-white mt-2">
-                        {folders.map((resource) => (
-                          <label key={resource.id} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedFolders.includes(resource.id)}
-                              onChange={() =>
-                                setSelectedFolders((prev) =>
-                                  prev.includes(resource.id)
-                                    ? prev.filter((id) => id !== resource.id)
-                                    : [...prev, resource.id]
-                                )
-                              }
-                              className="form-checkbox h-4 w-4 text-blue-600"
-                            />
-                            <span className="ml-2">
-                              {resource.name}{" "}
-                              <span className="text-sm text-gray-500">
-                                ({resource.type})
-                              </span>
-                            </span>
-                          </label>
-                        ))}
+                      <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white mt-2">
+                        <FolderTree
+                          items={folders}
+                          selectedItems={newGroup.resources}
+                          onSelectionChange={(resources) => setNewGroup(prev => ({ ...prev, resources }))}
+                        />
                       </div>
                     </div>
                     <div className="flex gap-2 mt-2">

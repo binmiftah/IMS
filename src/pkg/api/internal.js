@@ -99,25 +99,30 @@ class ApiCall {
     // }
 
     async uploadFile(urlPath, data) {
-        const response = await this.instance2.post(`${urlPath}?resourceType=FILE`, data, {
+        // Check if the URL already has query parameters
+        const hasParams = urlPath.includes('?');
+        const separator = hasParams ? '&' : '?';
+
+        const response = await this.instance2.post(`${urlPath}${separator}resourceType=FILE`, data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
-        })
-        console.log(response.data)
-
+        });
+        console.log(response.data);
         return response.data;
     }
 
     async getFile(urlPath) {
-        const response = await this.instance2.get(`${urlPath}?resourceType=FILE`, {
+        const hasParams = urlPath.includes('?');
+        const separator = hasParams ? '&' : '?';
+        const response = await this.instance2.get(`${urlPath}${separator}resourceType=FILE`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
         });
 
-        // Ensure the response contains an array
+        console.log("Full getfile response:", response.data.data);
         return response.data.data || [];
     }
 
@@ -128,28 +133,33 @@ class ApiCall {
             },
         });
 
-        return response.data.data || [];
-    }
-
-    async getRootLevelFiles(urlPath) {
-        const response = await this.instance1.get(urlPath, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
+        console.log("Full folder response:", response.data.data);
 
         return response.data.data || [];
     }
-
 
     async getFolderById(urlPath) {
-        const response = await this.instance2.get(`${urlPath}?resourceType=FOLDER`, {
+        // Check if the URL already has query parameters
+        const hasParams = urlPath.includes('?');
+        const separator = hasParams ? '&' : '?';
+
+        const response = await this.instance2.get(`${urlPath}${separator}resourceType=FOLDER`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
-        })
-        console.log(response.data.data)
-        return response.data.data || [];
+        });
+
+        // Log the full response to understand the structure
+        console.log("Full folder response:", response.data);
+
+        // Handle various response structures
+        if (response.data && response.data.data === null) {
+            // If data is null, return an empty object with essential properties
+            return { files: [], children: [] };
+        }
+
+        // Return the whole data structure, not just files
+        return response.data.data || { files: [], children: [] };
     }
 
     async getFileById(urlPath) {
