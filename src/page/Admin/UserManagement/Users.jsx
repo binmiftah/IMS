@@ -42,6 +42,7 @@ const Users = () => {
     const fetchUsers = async () => {
         try {
             const res = await apiCall.getAllUsers("users");
+            console.log("Fetched Users:", res);
 
             const allUsers = res.data.users;
 
@@ -71,18 +72,30 @@ const Users = () => {
         e.preventDefault();
         console.log('Submitting new user:', newUser);
 
-        const user = await apiCall.createNewMember("users/add-user", newUser);
-        console.log(user);
+        try {
+            const user = await apiCall.createNewMember("users/add-user", newUser);
+            console.log("User created:", user);
 
-        setIsAddModalOpen(false);
-        setNewUser({
-            email: '',
-            password: '',
-            role: '',
-            rootDir: '/',
-            dirPath: '',
-            permission: ''
-        });
+            // Close the modal
+            setIsAddModalOpen(false);
+
+            // Reset the form
+            setNewUser({
+                fullName: '',
+                email: '',
+                password: '',
+                role: '',
+            });
+
+            // Refresh the user list
+            fetchUsers();
+
+            // Show success message
+            toast.success("User added successfully!");
+        } catch (error) {
+            console.error("Error creating user:", error);
+            handleError(error);
+        }
     };
 
     useEffect(() => {
@@ -233,7 +246,7 @@ const Users = () => {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {paginatedUsers.length > 0 ? (
-                                paginatedUsers.map((user, idx) => (
+                                paginatedUsers.map((user, id) => (
                                     <tr
                                         key={user.id}
                                         className="hover:bg-gray-50 cursor-pointer"

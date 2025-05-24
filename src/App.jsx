@@ -10,6 +10,7 @@ import Invite from './page/Admin/invite/Invite.jsx'
 import Dashboard from './page/Admin/Dashboard/Dashboard.jsx'
 import Users from './page/Admin/UserManagement/Users.jsx'
 import UserPermissions from './page/Admin/UserManagement/UserPermissions.jsx'
+import MemberPermissions from './page/Admin/MemberPermisions/MemberPermissions.jsx'
 import Files from './page/Admin/File/Files.jsx'
 import Trash from './page/Admin/Trash/Trash.jsx'
 import Settings from './page/Admin/Settings/Settings.jsx'
@@ -34,6 +35,7 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/users" element={<Users />} />
             <Route path="/users/:userId/permissions" element={<UserPermissions />} />
+            <Route path="/members/permissions" element={<MemberPermissions />} />
             <Route path="/files" element={<Files />} />
             <Route path="/trash" element={<Trash />} />
             <Route path="/settings" element={<Settings />} />

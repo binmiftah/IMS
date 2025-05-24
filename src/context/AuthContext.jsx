@@ -21,12 +21,19 @@ export const AuthProvider = ({ children }) => {
     const login = (userData) => {
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
+
+        // Save the token separately
+        if (userData.token) {
+            localStorage.setItem('token', userData.token);
+            console.log("Token saved to localStorage:", userData.token);
+        }
     };
 
     // Logout function
     const logout = () => {
         setUser(null);
         localStorage.removeItem('user');
+        localStorage.removeItem('token'); // Remove the token
     };
 
     return (
