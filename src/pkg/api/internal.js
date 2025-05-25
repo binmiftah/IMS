@@ -248,14 +248,14 @@ class ApiCall {
         return response;
     }
 
-    async getGroupPermissions(urlPath) {
-        const response = await this.instance1.get(urlPath, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        return response.data;
-    }
+    // async getGroupPermissions(urlPath) {
+    //     const response = await this.instance1.get(urlPath, {
+    //         headers: {
+    //             Authorization: `Bearer ${localStorage.getItem("token")}`
+    //         }
+    //     })
+    //     return response.data;
+    // }
 
     async createMemberPermission(urlPath, data) {
         try {
@@ -284,6 +284,96 @@ class ApiCall {
             throw error;
         }
     }
+
+    /**
+     * Create group folder permissions
+     * Assigns permissions to folders for a specific security group
+     */
+    async createGroupFolderPermission(groupId, data) {
+        try {
+            // Format the data according to the API requirements
+            const formattedData = {
+                resourceType: "FOLDER",
+                permissions: data.permissions,
+                folderIds: data.folderIds,
+                groupId: groupId,
+                inherited: data.inherited || false
+            };
+
+            console.log("Creating group folder permissions:", formattedData);
+
+            const response = await this.instance1.post("permissions/group/folder", formattedData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // Log the specific error for debugging
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Get folder permissions for a security group
+     * Retrieves all folder permissions assigned to a specific group
+     */
+    async getGroupFolderPermissions(groupId) {
+        try {
+            if (!groupId) {
+                throw new Error("Group ID is required");
+            }
+
+            const response = await this.instance1.get(`permissions/group/${groupId}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            // Log the specific error for debugging
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    async createGroupFilePermission(groupId, data) {
+  try {
+    // Format the data according to the API requirements
+    const formattedData = {
+      resourceType: "FILE",
+      permissions: data.permissions,
+      fileIds: data.fileIds,
+      groupId: groupId,
+      inherited: data.inherited || false
+    };
+
+    console.log("Creating group file permissions:", formattedData);
+
+    const response = await this.instance1.post("permissions/group/file", formattedData, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    // Log the specific error for debugging
+    if (error.response && error.response.data) {
+      console.error("API Error Details:", error.response.data);
+    }
+    throw error;
+  }
+}
 
     /**
      * Static Permissions
