@@ -291,10 +291,14 @@ class ApiCall {
      */
     async createGroupFolderPermission(groupId, data) {
         try {
-            // Format the data according to the API requirements
             const formattedData = {
                 resourceType: "FOLDER",
-                permissions: data.permissions,
+                permissions: data.permissions.map(perm => {
+                    if (perm === "READ_FILES") return "READ";
+                    if (perm === "WRITE_FILES") return "WRITE";
+                    if (perm === "DELETE_FILES") return "DELETE";
+                    return perm;
+                }),
                 folderIds: data.folderIds,
                 groupId: groupId,
                 inherited: data.inherited || false
@@ -346,34 +350,67 @@ class ApiCall {
     }
 
     async createGroupFilePermission(groupId, data) {
-  try {
-    // Format the data according to the API requirements
-    const formattedData = {
-      resourceType: "FILE",
-      permissions: data.permissions,
-      fileIds: data.fileIds,
-      groupId: groupId,
-      inherited: data.inherited || false
-    };
+        try {
+            const formattedData = {
+                resourceType: "FILE",
+                permissions: data.permissions.map(perm => {
+                    if (perm === "READ_FILES") return "READ";
+                    if (perm === "WRITE_FILES") return "WRITE";
+                    if (perm === "DELETE_FILES") return "DELETE";
+                    return perm;
+                }),
+                fileIds: data.fileIds,
+                groupId: groupId,
+                inherited: data.inherited || false
+            };
 
-    console.log("Creating group file permissions:", formattedData);
+            console.log("Creating group file permissions:", formattedData);
 
-    const response = await this.instance1.post("permissions/group/file", formattedData, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem("token")}`
-      }
-    });
+            const response = await this.instance1.post("permissions/group/file", formattedData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
 
-    return response.data;
-  } catch (error) {
-    // Log the specific error for debugging
-    if (error.response && error.response.data) {
-      console.error("API Error Details:", error.response.data);
+            return response.data;
+        } catch (error) {
+            // Log the specific error for debugging
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
     }
-    throw error;
-  }
-}
+
+    /**
+     * Add users to a security group
+     * @param {string} urlPath - API endpoint
+     * @param {Object} data - Group and user data
+     * @param {string} data.groupId - ID of the security group
+     * @param {Array<string>} data.userIds - Array of user IDs to add to the group
+     * ✕
+*/
+    async addUsersToGroup(urlPath, data) {
+        try {
+            const response = await this.instance1.post(urlPath, {
+                groupId: data.groupId,
+                userIds: data.userIds
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
 
     /**
      * Static Permissions
@@ -411,248 +448,106 @@ class ApiCall {
         })
         return response
     }
+
+    /**
+     * Create a security group
+     */
+    async createSecurityGroup(data) {
+        try {
+            const response = await this.instance1.post("security-group", {
+                name: data.name,
+                description: data.description
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Add a user to a security group
+     */
+    async addUserToSecurityGroup(groupId, userId) {
+        try {
+            const response = await this.instance1.post(`security-group/${groupId}/add-user`, {
+                userId: userId
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Get all security groups
+     */
+    async getSecurityGroups() {
+      try {
+        const response = await this.instance1.get("security-group", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+        
+        // Process the response to ensure each group has the necessary properties
+        let groups = [];
+        
+        if (response.data?.data?.securityGroups) {
+          groups = response.data.data.securityGroups;
+        } else if (Array.isArray(response.data?.data)) {
+          groups = response.data.data;
+        } else if (Array.isArray(response.data)) {
+          groups = response.data;
+        }
+        
+        // Map to ensure consistent structure for each group
+        const processedGroups = groups.map(group => ({
+          id: group.id,
+          name: group.name || 'Unnamed Group',
+          department: group.description || group.department || '',
+          permissions: group.permissions || [],
+          resources: group.resources || [],
+          users: group.users || [],
+          userCount: group.users?.length || group.userCount || 0
+        }));
+        
+        return {
+          status: 'success',
+          data: {
+            securityGroups: processedGroups
+          }
+        };
+      } catch (error) {
+        console.error("Error fetching security groups:", error);
+        // Return a valid empty response to prevent crashes
+        return {
+          status: 'success',
+          data: {
+            securityGroups: []
+          }
+        };
+      }
+    }
 }
 
 
 const apiCall = new ApiCall(BaseUrl);
 export default apiCall;
-// import axios, {AxiosError} from "axios";
-
-// const BaseUrl =  "https://api.yareyare.software/api/v1/";
-// // const BaseUrl = "http://localhost:3004/api/v1/";
-// // const BaseUrl = "http://dev.yareyare.software/api/v1/"
-
-// class ApiCall {
-//     constructor(url) {
-//         this.instance1 = axios.create({
-//             baseURL: url,
-//             timeout: 0,
-//         });
-
-//         this.instance2 = axios.create({
-//             // baseURL: 'http://localhost:3004/api/v2/',
-//             baseURL: 'https://api.yareyare.software/api/v1/',
-//             timeout: 0,
-
-//         });
-//     }
-
-
-//     /**
-//      *  AUTHENTICATION API CALL
-//      * */
-
-//     async adminLogin(urlPath, data) {
-//         // Validate inputs
-//         if (!data.email || !data.password) {
-//             throw new Error("email and password must be provided");
-//         }
-//         const response = await this.instance1.post(urlPath, {
-//             email: data.email,
-//             password: data.password
-//         })
-//         return response.data;
-//     }
-
-//     async memberLogin(urlPath, data) {
-//         // Validate inputs
-//         if (!data.email || !data.password) {
-//             throw new Error("email and password must be provided");
-//         }
-//         const response = await this.instance1.post(urlPath, {
-//             email: data.email,
-//             password: data.password
-//         })
-//         return response.data;
-//     }
-
-
-//     async register(urlPath, data) {
-//         const response = await this.instance1.post(urlPath, {
-//             fullName: data.fullName,
-//             email: data.email,
-//             phoneNumber: data.phoneNumber,
-//             password: data.password
-//         })
-//         return response.data;
-//     }
-
-
-//     async logout(urlPath) {
-//         const response = await this.instance1.post(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         localStorage.removeItem("token")
-//         localStorage.removeItem("user")
-//         return response.data;
-//     }
-
-//     /**
-//      * FOLDER AND FILES API CALL
-//      * */
-
-//     async createFolder(urlPath, data) {
-
-//         const response = await this.instance2.post(urlPath, {
-//             folderName: data.folderName,
-//         }, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-//     async uploadFile(urlPath, data) {
-//         const response = await this.instance2.post(urlPath, data, {
-//             headers: {
-//                 'Content-Type': 'multipart/form-data',
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-
-//         return response.data;
-//     }
-
-//     async getFile(urlPath){
-//         // GET root file
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-
-//         return response.data.data.files
-//     }
-
-//     async getFolder(urlPath) {
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data.data.folders
-//     }
-
-//     async getRootLevelFiles(urlPath){
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-
-//         return response.data.data.folders
-//     }
-
-
-//     async getFolderById(urlPath) {
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         return response.data.data
-//     }
-
-//     async deleteFolder(urlPath) {
-//         const response = await this.instance1.delete(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         console.log(response)
-//         return response.data.data
-//     }
-
-
-//     /**
-//      * AUDITLOG API CALL
-//      * */
-//     async allAuditLogs(urlPath) {
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-
-//     /**
-//      * MEMBERS API CALLS
-//      * */
-//     async createNewMember(urlPath, data) {
-//         const response = await this.instance1.post(urlPath,data, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-//     async getAllUsers(urlPath) {
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-//     async getAllMembers(urlPath) {
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-//     /**
-//      * PERMISSIONS API CALLS
-//       */
-//     async getAllPermissions(urlPath) {
-//         const response = await this.instance1.get(urlPath, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-//     async createPermission(urlPath, data) {
-//         const response = await this.instance1.post(urlPath, data, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data;
-//     }
-
-//     // TRASH ITEMS
-//     async getTrashed(url) {
-//         const response = await this.instance1.get(url, {
-//             headers: {
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response.data.data.trashedItems
-//     }
-
-//     async restoreItem(url, item){
-//         const response = await this.instance1.put(url, {
-//             type: item.itemType,
-//             folderId: item.folderId
-//         }, {
-//             headers:{
-//                 Authorization: `Bearer ${localStorage.getItem("token")}`
-//             }
-//         })
-//         return response
-//     }
-// }
-
-
-// const apiCall = new ApiCall(BaseUrl);
-// export default apiCall;

@@ -21,6 +21,7 @@ import UserFiles from './page/User/UserFiles/UserFiles.jsx'
 
 import NotFound from './component/NotFound'
 import UserLogin from "./page/User/login/Login.jsx";
+import ErrorBoundary from './component/ErrorBoundary';
 
 const App = () => {
   return (
@@ -35,7 +36,14 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/users" element={<Users />} />
             <Route path="/users/:userId/permissions" element={<UserPermissions />} />
-            <Route path="/members/permissions" element={<MemberPermissions />} />
+            <Route 
+              path="/members/permissions" 
+              element={
+                <ErrorBoundary>
+                  <MemberPermissions />
+                </ErrorBoundary>
+              } 
+            />
             <Route path="/files" element={<Files />} />
             <Route path="/trash" element={<Trash />} />
             <Route path="/settings" element={<Settings />} />
