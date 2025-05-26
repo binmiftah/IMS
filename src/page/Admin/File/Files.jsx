@@ -37,63 +37,63 @@ const Files = () => {
         type: "all",
     })
 
-
-    // get folder id
     const getFolderId = () => {
         if (!currentFolderId) {
             console.log("Current Folder ID: Root");
-            return null; // Use null to represent the root folder
+            return null;
         }
-        console.log("Current Folder ID:", currentFolderId);
         return currentFolderId;
     }
 
     const getRootFiles = async () => {
         try {
-            const result = await Promise.all([
+            console.log("Fetching root files and folders");
+
+            const [folders, files] = await Promise.all([
                 apiCall.getFolder("files/folders"),
-                apiCall.getFile("/files?parentId=null"), // Only get files with no parent (root files)
+                apiCall.getFile("files?parentId=null")
             ]);
-            console.log("Fetched Folders:", result[0]);
-            console.log("Fetched Root Files:", result[1]);
 
-            const folders = Array.isArray(result[0]) ? result[0] : [];
-            const files = Array.isArray(result[1]) ? result[1] : [];
+            const folderItems = Array.isArray(folders) ? folders : [];
+            const fileItems = Array.isArray(files) ? files : [];
 
-            // More robust filtering to identify root files
-            const rootFiles = files.filter(file =>
+            // Ensure we only include root files (files with no parent)
+            const rootFiles = fileItems.filter(file =>
                 !file.parentId ||
                 file.parentId === null ||
                 file.parentId === "null" ||
                 file.isRootFile === true
             );
 
-            console.log("Filtered Root Files:", rootFiles);
+            const allItems = [...folderItems, ...rootFiles];
+            setItems(allItems);
+            setCurrentFolderId(null);
+            setCurrentPath('/');
 
-            let allResult = [...folders, ...rootFiles];
-            setItems(allResult);
         } catch (error) {
-            handleError(error);
+            toast.error("Failed to load files");
         }
-    };
-
-    const handleSort = (sortType, value) => {
-        setSortBy((prev) => ({
-            ...prev,
-            [sortType]: value
-        }));
     };
 
 
     const handleNavigate = async (item) => {
         try {
             console.log("Navigating to folder with ID:", item.id);
-            // Save current state for back navigation
-            setNavigationHistory((prev) => [...prev, { path: currentPath, id: currentFolderId }]);
+
+            // Save current state for back navigation with more details
+            const historyEntry = {
+                path: currentPath,
+                id: currentFolderId,
+                name: currentPath === '/' ? 'Root' : currentPath.split('/').pop(),
+                timestamp: Date.now()
+            };
+            console.log("Adding to history:", historyEntry);
+
             // Update current folder info
-            setCurrentPath(item.fullPath);
+            setNavigationHistory(prev => [...prev, historyEntry]);
+            setCurrentPath(item.fullPath || `/folder-${item.id}`);
             setCurrentFolderId(item.id);
-            
+
             // Force refresh folder contents
             await refreshFolderContents(item.id);
         } catch (error) {
@@ -105,52 +105,40 @@ const Files = () => {
     // Create a separate function for refreshing folder contents
     const refreshFolderContents = async (folderId) => {
         try {
-            // Get folder contents
-            const result = await apiCall.getFolderById(`files/folders/${folderId}`);
-            console.log("Fetched Folder Contents:", result);
+            console.log("Refreshing folder contents for ID:", folderId);
 
-            if (result) {
-                // Get files with this folder as parent
-                const filesResult = await apiCall.getFile(`/files?parentId=${folderId}`);
-                console.log("Files for folder ID:", folderId, filesResult);
-                
-                // Extract children folders
-                const children = result.children || [];
-                
-                // Combine files from both sources (folder result and direct query)
-                const uniqueFiles = new Map();
-                
-                // Add files from folder result
-                if (Array.isArray(result.files)) {
-                    result.files.forEach(file => {
-                        if (file.parentId === folderId || file.folderId === folderId) {
-                            uniqueFiles.set(file.id, file);
-                        }
-                    });
-                }
-                
-                // Add files from direct query
-                if (Array.isArray(filesResult)) {
-                    filesResult.forEach(file => {
-                        if (file.parentId === folderId || file.folderId === folderId) {
-                            uniqueFiles.set(file.id, file);
-                        }
-                    });
-                }
-                
-                // Convert map to array
-                const combinedFiles = Array.from(uniqueFiles.values());
-                console.log("Final combined files:", combinedFiles);
-                
-                // Update UI with combined results
-                setItems([...children, ...combinedFiles]);
-            } else {
-                console.error("No folder content found in the response");
-                setItems([]);
-            }
+            // Get folder data
+            const folderData = await apiCall.getFolderById(`files/folders/${folderId}`);
+            console.log("Folder data:", folderData);
+            console.log("folderid")
+
+            // Get files specifically for this folder
+            const filesData = await apiCall.getFile(`files?parentId=${folderId}`);
+            console.log("Files data for folder:", filesData);
+
+            // Combine folder children with files
+            const children = folderData.children || [];
+            const files = Array.isArray(filesData) ? filesData : [];
+
+            // Filter files to ensure they belong to this folder
+            const folderFiles = files.filter(file =>
+                file.parentId === folderId ||
+                file.folderId === folderId
+            );
+
+            const allItems = [...children, ...folderFiles];
+            console.log("Combined items:", allItems);
+
+            setItems(allItems);
+            setCurrentFolderId(folderId);
+
+            // Update navigation path
+            const folderPath = folderData.fullPath || `/folder-${folderId}`;
+            setCurrentPath(folderPath);
+
         } catch (error) {
-            console.error("Error refreshing folder contents:", error);
-            throw error;
+            console.error("Error refreshing folder:", error);
+            toast.error("Failed to load folder contents");
         }
     };
 
@@ -171,28 +159,63 @@ const Files = () => {
 
     const handleBack = async () => {
         try {
+            console.log("Navigating back in history:", navigationHistory);
+
             if (navigationHistory.length === 0) {
-                // If we're at root, get root files
                 setCurrentPath('/');
                 setCurrentFolderId(null);
                 await getRootFiles();
                 return;
             }
 
-            const lastNav = navigationHistory[navigationHistory.length - 1];
+            const newHistory = [...navigationHistory];
+            const lastNav = newHistory.pop();
+
             setCurrentPath(lastNav.path);
             setCurrentFolderId(lastNav.id);
             setNavigationHistory(prev => prev.slice(0, -1));
 
             if (lastNav.id) {
-                // Use the new refresh function for consistency
-                await refreshFolderContents(lastNav.id);
+                console.log("Refreshing folder contents for:", lastNav.id);
+                try {
+                    // Use a direct API call here to ensure fresh data
+                    const folderData = await apiCall.getFolderById(`files/folders/${lastNav.id}`);
+                    const filesData = await apiCall.getFile(`files?parentId=${lastNav.id}`);
+
+                    // Ensure we have arrays to work with
+                    const children = Array.isArray(folderData.children) ? folderData.children : [];
+                    const files = Array.isArray(filesData) ? filesData : [];
+
+                    // Filter files to ensure they belong to this folder
+                    const folderFiles = files.filter(file =>
+                        file.parentId === lastNav.id ||
+                        file.folderId === lastNav.id
+                    );
+
+                    console.log("Back navigation - combining items:", {
+                        folderChildren: children.length,
+                        folderFiles: folderFiles.length
+                    });
+
+                    setItems([...children, ...folderFiles]);
+
+                } catch (folderError) {
+                    console.error("Error fetching back folder:", folderError);
+                    toast.error("Failed to navigate back to folder");
+                    await getRootFiles();
+                }
             } else {
-                // If we're going back to root
+                console.log("Going back to root folder");
                 await getRootFiles();
             }
         } catch (error) {
+            console.error("Error in handleBack:", error);
             handleError(error);
+
+            setCurrentPath('/');
+            setCurrentFolderId(null);
+            setNavigationHistory([]);
+            await getRootFiles();
         }
     };
 
@@ -257,7 +280,7 @@ const Files = () => {
             if (currentFolderId) {
                 console.log("Refreshing current folder:", currentFolderId);
                 await refreshFolderContents(currentFolderId);
-                
+
                 // Show user feedback
                 toast.info("Folder refreshed", {
                     position: "top-right",
@@ -318,6 +341,46 @@ const Files = () => {
     }, []);
 
 
+    // Add this useEffect to debug folder state changes
+    useEffect(() => {
+        console.log("Folder state changed:");
+        console.log("- Current Path:", currentPath);
+        console.log("- Current Folder ID:", currentFolderId);
+        console.log("- Navigation History:", navigationHistory);
+    }, [currentPath, currentFolderId, navigationHistory]);
+
+
+
+    const formatFileSize = (bytes) => {
+        if (!bytes) return 'Unknown size';
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        if (bytes === 0) return '0 Bytes';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    };
+
+    const handleDownloadFile = async (file) => {
+        try {
+            // Implement file download logic
+            const response = await apiCall.downloadFile(`files/download/${file.id}`);
+            
+            // Create download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', file.name || file.fileName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            
+            toast.success('File downloaded successfully!');
+        } catch (error) {
+            console.error('Error downloading file:', error);
+            toast.error('Failed to download file');
+        }
+    };
+
     return (
         <div className="flex min-h-screen">
             <Navbar />
@@ -328,7 +391,18 @@ const Files = () => {
                 <ProfileBar onSearch={(value) => console.log(value)} />
 
                 <div className="p-6">
-                    <ActionButtons onActionComplete={handleRefresh} getFolderId={getFolderId} />
+                    <ActionButtons
+                        onActionComplete={() => {
+                            console.log("ActionButtons callback - refreshing folder:", currentFolderId);
+                            handleRefresh();
+                        }}
+                        getFolderId={() => {
+                            console.log("getFolderId called, returning:", currentFolderId);
+                            return currentFolderId;
+                        }}
+                        currentFolderId={currentFolderId}
+                        currentPath={currentPath}
+                    />
                     {clipboard && (
                         <button
                             onClick={handlePaste}
@@ -356,7 +430,7 @@ const Files = () => {
                                     icon={<MdRefresh size={20} />}
                                     title="Refresh current folder"
                                 />
-                                <span 
+                                <span
                                     className="text-gray-600 hover:text-blue-600 cursor-pointer"
                                     onClick={handleCurrentPathClick}
                                     title="Click to refresh folder"
@@ -615,6 +689,186 @@ const Files = () => {
                         </button>
                         <div className={`${isMaximized ? 'h-[90vh] overflow-auto' : ''}`}>
                             <FileItem file={clickedItem} />
+                        </div>
+                    </div>
+                </div>
+            )}{isOpenFile && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+                    <div className={`bg-white rounded-xl shadow-2xl transition-all duration-300 overflow-hidden
+            ${isMaximized
+                            ? 'w-full h-full max-w-full max-h-full rounded-none'
+                            : 'w-full max-w-5xl h-[85vh] mx-4'
+                        }
+        `}>
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">
+                            <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-blue-100 rounded-lg">
+                                    <MdInsertDriveFile size={24} className="text-blue-600" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-800 truncate max-w-md">
+                                        {clickedItem?.name || clickedItem?.fileName || 'Unknown File'}
+                                    </h2>
+                                    <p className="text-sm text-gray-500">
+                                        {clickedItem?.fileExtension && `.${clickedItem.fileExtension.toUpperCase()}`}
+                                        {clickedItem?.size && ` • ${formatFileSize(clickedItem.size)}`}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                {/* Download Button */}
+                                <button
+                                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    onClick={() => handleDownloadFile(clickedItem)}
+                                    title="Download file"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </button>
+
+                                {/* Maximize/Minimize Button */}
+                                <button
+                                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    onClick={() => setIsMaximized(m => !m)}
+                                    title={isMaximized ? "Minimize" : "Maximize"}
+                                >
+                                    {isMaximized ? <MdCloseFullscreen size={20} /> : <MdOpenInNew size={20} />}
+                                </button>
+
+                                {/* Close Button */}
+                                <button
+                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    onClick={() => setIsOpenFile(false)}
+                                    title="Close"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className={`flex h-full ${isMaximized ? 'h-[calc(100vh-80px)]' : 'h-[calc(85vh-80px)]'}`}>
+                            {/* File Info Sidebar */}
+                            <div className="w-80 bg-gray-50 border-r border-gray-200 p-4 overflow-y-auto">
+                                <div className="space-y-4">
+                                    {/* File Details */}
+                                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                                        <h3 className="font-semibold text-gray-800 mb-3">File Information</h3>
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">Name:</span>
+                                                <span className="font-medium text-gray-800 truncate ml-2">
+                                                    {clickedItem?.name || clickedItem?.fileName}
+                                                </span>
+                                            </div>
+                                            {clickedItem?.fileExtension && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Type:</span>
+                                                    <span className="font-medium text-gray-800">
+                                                        {clickedItem.fileExtension.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {clickedItem?.size && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Size:</span>
+                                                    <span className="font-medium text-gray-800">
+                                                        {formatFileSize(clickedItem.size)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {clickedItem?.createdAt && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Created:</span>
+                                                    <span className="font-medium text-gray-800">
+                                                        {new Date(clickedItem.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {clickedItem?.updatedAt && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Modified:</span>
+                                                    <span className="font-medium text-gray-800">
+                                                        {new Date(clickedItem.updatedAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {clickedItem?.account?.fullName && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Owner:</span>
+                                                    <span className="font-medium text-gray-800">
+                                                        {clickedItem.account.fullName}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* File Actions */}
+                                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                                        <h3 className="font-semibold text-gray-800 mb-3">Actions</h3>
+                                        <div className="space-y-2">
+                                            <button
+                                                onClick={() => handleDownloadFile(clickedItem)}
+                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                <span>Download</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleCopy(clickedItem)}
+                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                            >
+                                                <MdContentCopy size={16} />
+                                                <span>Copy</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleMove(clickedItem)}
+                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                            >
+                                                <MdDriveFileMove size={16} />
+                                                <span>Move</span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    handleDelete(clickedItem);
+                                                    setIsOpenFile(false);
+                                                }}
+                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <MdDelete size={16} />
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* File Path */}
+                                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                                        <h3 className="font-semibold text-gray-800 mb-3">Location</h3>
+                                        <div className="text-sm text-gray-600 break-all">
+                                            {currentPath === '/' ? 'Root' : currentPath}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* File Preview Area */}
+                            <div className="flex-1 p-4 overflow-auto bg-white">
+                                <div className="h-full flex items-center justify-center">
+                                    <FileItem
+                                        file={clickedItem}
+                                        isModal={true}
+                                        className="w-full h-full"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -98,24 +98,32 @@ class ApiCall {
     //     return response.data;
     // }
 
+    // In the ApiCall class, update the uploadFile method:
     async uploadFile(urlPath, data) {
         // Check if the URL already has query parameters
+        console.log("API uploadFile called with:", {
+            urlPath,
+            formDataEntries: Array.from(data.entries()).map(([key, value]) =>
+                key === 'file' ? `${key}: [File: ${value.name}]` : `${key}: ${value}`
+            )
+        });
         const hasParams = urlPath.includes('?');
         const separator = hasParams ? '&' : '?';
-
         const response = await this.instance2.post(`${urlPath}${separator}resourceType=FILE`, data, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             }
         });
+
+        console.log("Upload response:", response.data);
         return response.data;
     }
 
     async getFile(urlPath) {
         const hasParams = urlPath.includes('?');
         const separator = hasParams ? '&' : '?';
-        const response = await this.instance2.get(`${urlPath}${separator}resourceType=FILE`, {
+        const response = await this.instance2.get(`${urlPath}${separator}resourceType=FOLDER`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
@@ -500,51 +508,51 @@ class ApiCall {
      * Get all security groups
      */
     async getSecurityGroups() {
-      try {
-        const response = await this.instance1.get("security-group", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          }
-        });
-        
-        // Process the response to ensure each group has the necessary properties
-        let groups = [];
-        
-        if (response.data?.data?.securityGroups) {
-          groups = response.data.data.securityGroups;
-        } else if (Array.isArray(response.data?.data)) {
-          groups = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          groups = response.data;
+        try {
+            const response = await this.instance1.get("security-group", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            // Process the response to ensure each group has the necessary properties
+            let groups = [];
+
+            if (response.data?.data?.securityGroups) {
+                groups = response.data.data.securityGroups;
+            } else if (Array.isArray(response.data?.data)) {
+                groups = response.data.data;
+            } else if (Array.isArray(response.data)) {
+                groups = response.data;
+            }
+
+            // Map to ensure consistent structure for each group
+            const processedGroups = groups.map(group => ({
+                id: group.id,
+                name: group.name || 'Unnamed Group',
+                department: group.description || group.department || '',
+                permissions: group.permissions || [],
+                resources: group.resources || [],
+                users: group.users || [],
+                userCount: group.users?.length || group.userCount || 0
+            }));
+
+            return {
+                status: 'success',
+                data: {
+                    securityGroups: processedGroups
+                }
+            };
+        } catch (error) {
+            console.error("Error fetching security groups:", error);
+            // Return a valid empty response to prevent crashes
+            return {
+                status: 'success',
+                data: {
+                    securityGroups: []
+                }
+            };
         }
-        
-        // Map to ensure consistent structure for each group
-        const processedGroups = groups.map(group => ({
-          id: group.id,
-          name: group.name || 'Unnamed Group',
-          department: group.description || group.department || '',
-          permissions: group.permissions || [],
-          resources: group.resources || [],
-          users: group.users || [],
-          userCount: group.users?.length || group.userCount || 0
-        }));
-        
-        return {
-          status: 'success',
-          data: {
-            securityGroups: processedGroups
-          }
-        };
-      } catch (error) {
-        console.error("Error fetching security groups:", error);
-        // Return a valid empty response to prevent crashes
-        return {
-          status: 'success',
-          data: {
-            securityGroups: []
-          }
-        };
-      }
     }
 }
 
