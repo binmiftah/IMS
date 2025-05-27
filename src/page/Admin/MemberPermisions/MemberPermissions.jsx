@@ -452,12 +452,21 @@ const MemberPermissions = () => {
 
       console.log("Creating new permissions for group:", editingGroup.id);
 
-      // Map permissions to expected format (READ, WRITE, DELETE)
+      // Updated permission mapping for the new structure
       const mappedPermissions = editingGroup.permissions.map(perm => {
-        if (perm === "READ_FILES") return "READ";
-        if (perm === "WRITE_FILES") return "WRITE";
-        if (perm === "DELETE_FILES") return "DELETE";
-        return perm;
+        // Keep the new permissions as-is since they're already in the correct format
+        switch (perm) {
+          // Legacy mapping for backward compatibility (if needed)
+          case "READ_FILES":
+            return "READ";
+          case "WRITE_FILES":
+            return "WRITE";
+          case "DELETE_FILES":
+            return "DELETE_FILE";
+          // New permissions are passed through unchanged
+          default:
+            return perm;
+        }
       });
 
       // Only proceed with permissions if there are any selected
@@ -741,6 +750,135 @@ const MemberPermissions = () => {
 
                 {/* Permissions Section for Selected User */}
                 {selectedUser && (
+                  <>
+                    <h3 className="text-lg font-semibold mb-2">Permissions</h3>
+                    <div className="max-h-64 overflow-y-auto border rounded-lg p-3 mb-4">
+                      {/* Master Permission */}
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-2">Master Permission</h4>
+                        <div className="grid grid-cols-1 gap-2">
+                          {["FULL_ACCESS"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(permissions).includes(perm)}
+                                onChange={() => {
+                                  if (permissions.includes(perm)) {
+                                    // Remove FULL_ACCESS
+                                    setPermissions(prev => prev.filter(p => p !== perm));
+                                  } else {
+                                    // Add all permissions
+                                    setPermissions(allPermissions);
+                                  }
+                                }}
+                                className="form-checkbox h-5 w-5 text-red-600"
+                              />
+                              <span className="ml-2 font-medium text-red-600">
+                                {perm.replace(/_/g, " ")} <span className="text-xs text-gray-500">(All permissions)</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Basic Resource Permissions */}
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(permissions).includes(perm)}
+                                onChange={() =>
+                                  setPermissions((prev) =>
+                                    prev.includes(perm)
+                                      ? prev.filter((p) => p !== perm)
+                                      : [...prev, perm]
+                                  )
+                                }
+                                className="form-checkbox h-5 w-5 text-blue-600"
+                              />
+                              <span className="ml-2">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* File-specific Permissions */}
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">File-specific</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["OPEN_FILE", "DELETE_FILE", "SHARE_FILE"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(permissions).includes(perm)}
+                                onChange={() =>
+                                  setPermissions((prev) =>
+                                    prev.includes(perm)
+                                      ? prev.filter((p) => p !== perm)
+                                      : [...prev, perm]
+                                  )
+                                }
+                                className="form-checkbox h-5 w-5 text-green-600"
+                              />
+                              <span className="ml-2">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Folder-specific Permissions */}
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-2">Folder-specific</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["CREATE_FOLDER", "OPEN_FOLDER", "DELETE_FOLDER", "SHARE_FOLDER", "ARCHIVE", "RESTORE"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(permissions).includes(perm)}
+                                onChange={() =>
+                                  setPermissions((prev) =>
+                                    prev.includes(perm)
+                                      ? prev.filter((p) => p !== perm)
+                                      : [...prev, perm]
+                                  )
+                                }
+                                className="form-checkbox h-5 w-5 text-purple-600"
+                              />
+                              <span className="ml-2">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Administrative Permissions */}
+                      <div className="mb-3">
+                        <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-2">Administrative</h4>
+                        <div className="grid grid-cols-1 gap-2">
+                          {["MANAGE_PERMISSIONS", "MANAGE_USERS", "MANAGE_ROLES"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(permissions).includes(perm)}
+                                onChange={() =>
+                                  setPermissions((prev) =>
+                                    prev.includes(perm)
+                                      ? prev.filter((p) => p !== perm)
+                                      : [...prev, perm]
+                                  )
+                                }
+                                className="form-checkbox h-5 w-5 text-orange-600"
+                              />
+                              <span className="ml-2">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}{selectedUser && (
                   <>
                     <h3 className="text-lg font-semibold mb-2">Permissions</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
@@ -1173,30 +1311,160 @@ const MemberPermissions = () => {
 
                     <div className="mb-2">
                       <span className="font-medium text-gray-600">New Permissions to Create:</span>
-                      <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
-                        {Array.isArray(allPermissions) && allPermissions.map((perm) => (
-                          <label key={perm} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setEditingGroup(prev => prev ? {
-                                    ...prev,
-                                    permissions: [...(prev.permissions || []), perm]
-                                  } : null);
-                                } else {
-                                  setEditingGroup(prev => prev ? {
-                                    ...prev,
-                                    permissions: (prev.permissions || []).filter(p => p !== perm)
-                                  } : null);
-                                }
-                              }}
-                              className="form-checkbox h-4 w-4 text-blue-600"
-                            />
-                            <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
-                          </label>
-                        ))}
+                      <div className="mt-2 max-h-48 overflow-y-auto">
+                        {/* Master Permission */}
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-2">Master Permission</h4>
+                          <div className="grid grid-cols-1 gap-1">
+                            {["FULL_ACCESS"].map((perm) => (
+                              <label key={perm} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      // If FULL_ACCESS is selected, select all permissions
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: allPermissions
+                                      } : null);
+                                    } else {
+                                      // If FULL_ACCESS is deselected, only remove FULL_ACCESS
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: (prev.permissions || []).filter(p => p !== perm)
+                                      } : null);
+                                    }
+                                  }}
+                                  className="form-checkbox h-4 w-4 text-red-600"
+                                />
+                                <span className="ml-2 text-sm font-medium text-red-600">
+                                  {perm.replace(/_/g, " ")} <span className="text-xs text-gray-500">(All permissions)</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Basic Resource Permissions */}
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                              <label key={perm} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: [...(prev.permissions || []), perm]
+                                      } : null);
+                                    } else {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: (prev.permissions || []).filter(p => p !== perm)
+                                      } : null);
+                                    }
+                                  }}
+                                  className="form-checkbox h-4 w-4 text-blue-600"
+                                />
+                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* File-specific Permissions */}
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">File-specific</h4>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["OPEN_FILE", "DELETE_FILE", "SHARE_FILE"].map((perm) => (
+                              <label key={perm} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: [...(prev.permissions || []), perm]
+                                      } : null);
+                                    } else {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: (prev.permissions || []).filter(p => p !== perm)
+                                      } : null);
+                                    }
+                                  }}
+                                  className="form-checkbox h-4 w-4 text-green-600"
+                                />
+                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Folder-specific Permissions */}
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-2">Folder-specific</h4>
+                          <div className="grid grid-cols-2 gap-1">
+                            {["CREATE_FOLDER", "OPEN_FOLDER", "DELETE_FOLDER", "SHARE_FOLDER", "ARCHIVE", "RESTORE"].map((perm) => (
+                              <label key={perm} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: [...(prev.permissions || []), perm]
+                                      } : null);
+                                    } else {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: (prev.permissions || []).filter(p => p !== perm)
+                                      } : null);
+                                    }
+                                  }}
+                                  className="form-checkbox h-4 w-4 text-purple-600"
+                                />
+                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Administrative Permissions */}
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-2">Administrative</h4>
+                          <div className="grid grid-cols-1 gap-1">
+                            {["MANAGE_PERMISSIONS", "MANAGE_USERS", "MANAGE_ROLES"].map((perm) => (
+                              <label key={perm} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: [...(prev.permissions || []), perm]
+                                      } : null);
+                                    } else {
+                                      setEditingGroup(prev => prev ? {
+                                        ...prev,
+                                        permissions: (prev.permissions || []).filter(p => p !== perm)
+                                      } : null);
+                                    }
+                                  }}
+                                  className="form-checkbox h-4 w-4 text-orange-600"
+                                />
+                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
