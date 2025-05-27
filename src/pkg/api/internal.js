@@ -297,16 +297,45 @@ class ApiCall {
      * Create group folder permissions
      * Assigns permissions to folders for a specific security group
      */
+    // async createGroupFolderPermission(groupId, data) {
+    //     try {
+    //         const formattedData = {
+    //             resourceType: "FOLDER",
+    //             permissions: data.permissions.map(perm => {
+    //                 if (perm === "READ_FILES") return "READ";
+    //                 if (perm === "WRITE_FILES") return "WRITE";
+    //                 if (perm === "DELETE_FILES") return "DELETE";
+    //                 return perm;
+    //             }),
+    //             folderIds: data.folderIds,
+    //             groupId: groupId,
+    //             inherited: data.inherited || false
+    //         };
+
+    //         console.log("Creating group folder permissions:", formattedData);
+
+    //         const response = await this.instance1.post("permissions/group/folder", formattedData, {
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 Authorization: `Bearer ${localStorage.getItem("token")}`
+    //             }
+    //         });
+
+    //         return response.data;
+    //     } catch (error) {
+    //         // Log the specific error for debugging
+    //         if (error.response && error.response.data) {
+    //             console.error("API Error Details:", error.response.data);
+    //         }
+    //         throw error;
+    //     }
+    // }
+
     async createGroupFolderPermission(groupId, data) {
         try {
             const formattedData = {
                 resourceType: "FOLDER",
-                permissions: data.permissions.map(perm => {
-                    if (perm === "READ_FILES") return "READ";
-                    if (perm === "WRITE_FILES") return "WRITE";
-                    if (perm === "DELETE_FILES") return "DELETE";
-                    return perm;
-                }),
+                permissions: data.permissions, // Keep as-is since you're already mapping in the component
                 folderIds: data.folderIds,
                 groupId: groupId,
                 inherited: data.inherited || false
@@ -323,7 +352,6 @@ class ApiCall {
 
             return response.data;
         } catch (error) {
-            // Log the specific error for debugging
             if (error.response && error.response.data) {
                 console.error("API Error Details:", error.response.data);
             }
@@ -357,16 +385,45 @@ class ApiCall {
         }
     }
 
+    // async createGroupFilePermission(groupId, data) {
+    //     try {
+    //         const formattedData = {
+    //             resourceType: "FILE",
+    //             permissions: data.permissions.map(perm => {
+    //                 if (perm === "READ_FILES") return "READ";
+    //                 if (perm === "WRITE_FILES") return "WRITE";
+    //                 if (perm === "DELETE_FILES") return "DELETE";
+    //                 return perm;
+    //             }),
+    //             fileIds: data.fileIds,
+    //             groupId: groupId,
+    //             inherited: data.inherited || false
+    //         };
+
+    //         console.log("Creating group file permissions:", formattedData);
+
+    //         const response = await this.instance1.post("permissions/group/file", formattedData, {
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 Authorization: `Bearer ${localStorage.getItem("token")}`
+    //             }
+    //         });
+
+    //         return response.data;
+    //     } catch (error) {
+    //         // Log the specific error for debugging
+    //         if (error.response && error.response.data) {
+    //             console.error("API Error Details:", error.response.data);
+    //         }
+    //         throw error;
+    //     }
+    // }
+
     async createGroupFilePermission(groupId, data) {
         try {
             const formattedData = {
                 resourceType: "FILE",
-                permissions: data.permissions.map(perm => {
-                    if (perm === "READ_FILES") return "READ";
-                    if (perm === "WRITE_FILES") return "WRITE";
-                    if (perm === "DELETE_FILES") return "DELETE";
-                    return perm;
-                }),
+                permissions: data.permissions, // Keep as-is since you're already mapping in the component
                 fileIds: data.fileIds,
                 groupId: groupId,
                 inherited: data.inherited || false
@@ -383,7 +440,6 @@ class ApiCall {
 
             return response.data;
         } catch (error) {
-            // Log the specific error for debugging
             if (error.response && error.response.data) {
                 console.error("API Error Details:", error.response.data);
             }

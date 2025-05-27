@@ -22,22 +22,19 @@ const MemberPermissions = () => {
   const [files, setFiles] = useState([]);
   const [securityGroups, setSecurityGroups] = useState([]);
   const [securityGroupsLoading, setSecurityGroupsLoading] = useState(false);
-  
+
   // Initialize form states with safe defaults
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
   const [newGroup, setNewGroup] = useState({
     name: "",
     department: "",
-    permissions: [],
-    resources: [],
-    users: []
   });
-  
+
   // Group management states
   const [showManageUsersModal, setShowManageUsersModal] = useState(false);
   const [groupToManage, setGroupToManage] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  
+
   // Edit group states
   const [showEditGroupForm, setShowEditGroupForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState({
@@ -228,137 +225,67 @@ const MemberPermissions = () => {
     }
   };
 
-  // Update the handleCreateGroup function to use the correct endpoint
-
+  // Update the handleCreateGroup function to only create the basic group
   const handleCreateGroup = async () => {
     if (!newGroup.name.trim()) {
       toast.error("Please provide a valid group name.");
       return;
     }
+
+    if (!newGroup.department.trim()) {
+      toast.error("Please provide a department.");
+      return;
+    }
+
     setSaving(true);
     try {
-      // First create the security group using the correct endpoint
+      // Only create the security group with name and department
       const createGroupResponse = await apiCall.instance1.post("security-group", {
-        name: newGroup.name,
-        description: newGroup.department // Use department as the description
+        name: newGroup.name.trim(),
+        description: newGroup.department.trim()
       }, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem("token")}`
         }
       });
-      
-      console.log("Group created:", createGroupResponse.data.data.securityGroup.id);
-      
-      // Get the newly created group ID
-      const groupId = createGroupResponse.data.data.securityGroup.id;
 
-          
-      
-      if (!groupId) {
-        throw new Error("Failed to get group ID from response");
-      }
-      
-      // Now assign permissions to the group if resources are selected
-      if (newGroup.permissions.length > 0 && newGroup.resources.length > 0) {
-        // Map permissions to expected format (READ, WRITE, DELETE)
-        const mappedPermissions = newGroup.permissions.map(perm => {
-          if (perm === "READ_FILES") return "READ";
-          if (perm === "WRITE_FILES") return "WRITE";
-          if (perm === "DELETE_FILES") return "DELETE";
-          return perm;
-        });
-        
-        // Separate folders and files from the selected resources
-        const folderIds = [];
-        const fileIds = [];
-        
-        newGroup.resources.forEach(resourceId => {
-          const resource = folders.find(item => item.id === resourceId);
-          if (resource) {
-            // Use name-based detection as fallback
-            const isFolder = resource.type === 'folder' || 
-                            (resource.mimeType && resource.mimeType.includes('folder')) ||
-                            (!resource.fileExtension);
-            
-            if (isFolder) {
-              folderIds.push(resourceId);
-            } else {
-              fileIds.push(resourceId);
-            }
-          }
-        });
-        
-        // Process folders if any are selected
-        if (folderIds.length > 0) {
-          console.log(`Assigning ${mappedPermissions.length} permissions to ${folderIds.length} folders`);
-          await apiCall.createGroupFolderPermission(groupId, {
-            permissions: mappedPermissions,
-            folderIds: folderIds,
-            inherited: false
-          });
-        }
-        
-        // Process files if any are selected
-        if (fileIds.length > 0) {
-          console.log(`Assigning ${mappedPermissions.length} permissions to ${fileIds.length} files`);
-          await apiCall.createGroupFilePermission(groupId, {
-            permissions: mappedPermissions,
-            fileIds: fileIds,
-            inherited: false
-          });
-        }
-      }
+      console.log("Group created:", createGroupResponse.data);
 
-      // If users were selected, add them to the group - one by one using the correct endpoint
-      if (newGroup.users.length > 0) {
-        for (const userId of newGroup.users) {
-          try {
-            await apiCall.instance1.post(`security-group/${groupId}/add-user`, {
-              userId: userId
-            }, {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-              }
-            });
-            console.log(`Added user ${userId} to group ${groupId}`);
-          } catch (userError) {
-            console.error(`Error adding user ${userId} to group:`, userError);
-          }
-        }
-      }
+      // Get the newly created group
+      const newGroupData = createGroupResponse.data.data?.securityGroup || createGroupResponse.data;
 
-      toast.success("Group created successfully with assigned users!");
-      
-      // Add the new group to the list with its users
+      toast.success(`Security group "${newGroup.name}" created successfully!`);
+
+      // Add the new group to the list
       setSecurityGroups((prev) => [
         ...prev,
         {
-          ...newGroup,
-          id: groupId,
-          userCount: newGroup.users.length
+          id: newGroupData.id,
+          name: newGroup.name,
+          department: newGroup.department,
+          userCount: 0,
+          permissions: [],
+          resources: [],
+          users: []
         }
       ]);
-      
-      // Reset the form
+
+      // Reset the form to initial state
       setNewGroup({
         name: "",
         department: "",
-        permissions: [],
-        resources: [],
-        users: []
       });
-      
+
       setShowNewGroupForm(false);
+
     } catch (error) {
-      console.error(error);
-      
-      // More detailed error message
+      console.error("Error creating group:", error);
+
       if (error.response?.data?.message) {
         toast.error(`Error: ${error.response.data.message}`);
       } else {
-        toast.error("Failed to create group. Please check the console for details.");
+        toast.error("Failed to create group. Please try again.");
       }
     } finally {
       setSaving(false);
@@ -371,9 +298,9 @@ const MemberPermissions = () => {
       setSecurityGroupsLoading(true);
       try {
         const response = await apiCall.getSecurityGroups();
-        
+
         console.log("Security groups response:", response);
-        
+
         // Handle the nested data structure correctly
         if (response?.data?.securityGroups) {
           // This is the correct path based on your console logs
@@ -408,10 +335,10 @@ const MemberPermissions = () => {
   // Add this function to handle opening the manage users modal
   const handleManageUsers = (group) => {
     setGroupToManage(group);
-    
+
     // Safely initialize selectedUsers
     let initialUsers = [];
-    
+
     // Check if group.users exists and is an array
     if (group.users && Array.isArray(group.users)) {
       // Map user IDs with safety check
@@ -419,7 +346,7 @@ const MemberPermissions = () => {
         .filter(user => user && user.id) // Only include users with valid IDs
         .map(user => user.id);
     }
-    
+
     setSelectedUsers(initialUsers);
     setShowManageUsersModal(true);
   };
@@ -428,19 +355,19 @@ const MemberPermissions = () => {
 
   const handleSaveGroupUsers = async () => {
     if (!groupToManage) return;
-    
+
     try {
       setSaving(true);
-      
+
       // Get the current users in the group
       const currentUsers = groupToManage.users?.map(user => user.id) || [];
-      
+
       // Figure out which users to add and which to remove
       const usersToAdd = selectedUsers.filter(id => !currentUsers.includes(id));
       const usersToRemove = currentUsers.filter(id => !selectedUsers.includes(id));
-      
+
       console.log(`Adding ${usersToAdd.length} users and removing ${usersToRemove.length} users`);
-      
+
       // Add new users to the group - one by one
       for (const userId of usersToAdd) {
         try {
@@ -457,7 +384,7 @@ const MemberPermissions = () => {
           console.error(`Error adding user ${userId} to group:`, error);
         }
       }
-      
+
       // Remove users from the group if needed - assuming there's an endpoint for this
       // If there's no endpoint for removing users, this code should be modified
       for (const userId of usersToRemove) {
@@ -472,18 +399,18 @@ const MemberPermissions = () => {
           console.error(`Error removing user ${userId} from group:`, error);
         }
       }
-      
+
       toast.success("Group members updated successfully!");
-      
+
       // Update the local state to reflect changes
-      setSecurityGroups(prev => 
-        prev.map(group => 
-          group.id === groupToManage.id 
-            ? { ...group, users: selectedUsers, userCount: selectedUsers.length } 
+      setSecurityGroups(prev =>
+        prev.map(group =>
+          group.id === groupToManage.id
+            ? { ...group, users: selectedUsers, userCount: selectedUsers.length }
             : group
         )
       );
-      
+
       setShowManageUsersModal(false);
     } catch (error) {
       console.error("Error updating group members:", error);
@@ -500,41 +427,31 @@ const MemberPermissions = () => {
       console.error("Cannot edit undefined group");
       return;
     }
-    
-    // Create a copy of the group for editing with guaranteed safe defaults
+
+    // Create a copy of the group for creating NEW permissions (start fresh)
     setEditingGroup({
       id: group.id || "",
       name: group.name || "",
       department: group.department || "",
-      permissions: Array.isArray(group.permissions) ? [...group.permissions] : [],
-      resources: Array.isArray(group.resources) ? [...group.resources] : [],
-      users: Array.isArray(group.users) 
+      permissions: [], // Start with empty permissions to create new ones
+      resources: [], // Start with empty resources to select new ones
+      users: Array.isArray(group.users)
         ? group.users.filter(user => user && user.id).map(user => user.id)
         : []
     });
-    
+
     setShowEditGroupForm(true);
   };
 
-  // Function to save group edits
+  // Function to save group edits using POST endpoints only
   const handleSaveGroupEdit = async () => {
     if (!editingGroup) return;
-    
+
     try {
       setSaving(true);
-      
-      // Update the group details
-      await apiCall.instance1.put(`security-group/${editingGroup.id}`, {
-        name: editingGroup.name,
-        description: editingGroup.department
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem("token")}`
-        }
-      });
-      
-      // Update permissions if they changed
+
+      console.log("Creating new permissions for group:", editingGroup.id);
+
       // Map permissions to expected format (READ, WRITE, DELETE)
       const mappedPermissions = editingGroup.permissions.map(perm => {
         if (perm === "READ_FILES") return "READ";
@@ -542,18 +459,27 @@ const MemberPermissions = () => {
         if (perm === "DELETE_FILES") return "DELETE";
         return perm;
       });
-      
+
+      // Only proceed with permissions if there are any selected
+      if (mappedPermissions.length === 0) {
+        toast.warning("No permissions selected for this group");
+        setShowEditGroupForm(false);
+        setSaving(false);
+        return;
+      }
+
       // Separate folders and files from the selected resources
       const folderIds = [];
       const fileIds = [];
-      
+
       editingGroup.resources.forEach(resourceId => {
         const resource = folders.find(item => item.id === resourceId);
         if (resource) {
-          const isFolder = resource.type === 'folder' || 
-                          (resource.mimeType && resource.mimeType.includes('folder')) ||
-                          (!resource.fileExtension);
-          
+          // Better detection logic
+          const isFolder = resource.type === 'folder' ||
+            resource.mimeType === 'application/vnd.google-apps.folder' ||
+            (!resource.fileName && !resource.fileExtension);
+
           if (isFolder) {
             folderIds.push(resourceId);
           } else {
@@ -561,48 +487,111 @@ const MemberPermissions = () => {
           }
         }
       });
-      
-      // Update folder permissions
+
+      console.log("Creating permissions for:", { folderIds, fileIds, mappedPermissions });
+
+      let folderSuccess = false;
+      let fileSuccess = false;
+
+      // CREATE folder permissions using POST
       if (folderIds.length > 0) {
-        await apiCall.createGroupFolderPermission(editingGroup.id, {
-          permissions: mappedPermissions,
-          folderIds: folderIds,
-          inherited: false
-        });
+        console.log("Creating NEW folder permissions for group:", editingGroup.id);
+        try {
+          const folderPermissionData = {
+            resourceType: "FOLDER",
+            permissions: mappedPermissions,
+            folderIds: folderIds,
+            groupId: editingGroup.id,
+            inherited: false
+          };
+
+          console.log("Creating folder permissions with data:", folderPermissionData);
+
+          const response = await apiCall.instance1.post("permissions/group/folder", folderPermissionData, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+          });
+
+          console.log("Folder permissions created successfully:", response.data);
+          folderSuccess = true;
+          toast.success(`Created folder permissions for ${folderIds.length} folders`);
+        } catch (error) {
+          console.error("Error creating folder permissions:", error);
+          console.error("Error response:", error.response?.data);
+
+          if (error.response?.data?.message) {
+            toast.error(`Folder permissions error: ${error.response.data.message}`);
+          } else {
+            toast.error("Failed to create folder permissions");
+          }
+        }
       }
-      
-      // Update file permissions
+
+      // CREATE file permissions using POST
       if (fileIds.length > 0) {
-        await apiCall.createGroupFilePermission(editingGroup.id, {
-          permissions: mappedPermissions,
-          fileIds: fileIds,
-          inherited: false
-        });
+        console.log("Creating NEW file permissions for group:", editingGroup.id);
+        try {
+          const filePermissionData = {
+            resourceType: "FILE",
+            permissions: mappedPermissions,
+            fileIds: fileIds,
+            groupId: editingGroup.id,
+            inherited: false
+          };
+
+          console.log("Creating file permissions with data:", filePermissionData);
+
+          const response = await apiCall.instance1.post("permissions/group/file", filePermissionData, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+          });
+
+          console.log("File permissions created successfully:", response.data);
+          fileSuccess = true;
+          toast.success(`Created file permissions for ${fileIds.length} files`);
+        } catch (error) {
+          console.error("Error creating file permissions:", error);
+          console.error("Error response:", error.response?.data);
+
+          if (error.response?.data?.message) {
+            toast.error(`File permissions error: ${error.response.data.message}`);
+          } else {
+            toast.error("Failed to create file permissions");
+          }
+        }
       }
-      
-      // Update users if needed (optional - we could also use the handleManageUsers function)
-      
-      toast.success("Group updated successfully!");
-      
-      // Update the UI to reflect changes
-      setSecurityGroups(prev => 
-        prev.map(group => 
-          group.id === editingGroup.id 
-            ? {
+
+      // Show overall success message
+      if (folderSuccess || fileSuccess) {
+        toast.success("New permissions created successfully!");
+
+        // Update the UI to reflect the new permissions
+        setSecurityGroups(prev =>
+          prev.map(group =>
+            group.id === editingGroup.id
+              ? {
                 ...group,
-                name: editingGroup.name,
-                department: editingGroup.department,
                 permissions: editingGroup.permissions,
                 resources: editingGroup.resources
-              } 
-            : group
-        )
-      );
-      
+              }
+              : group
+          )
+        );
+      } else if (folderIds.length === 0 && fileIds.length === 0) {
+        toast.info("No resources selected to create permissions for");
+      } else {
+        toast.error("Failed to create any permissions");
+      }
+
       setShowEditGroupForm(false);
+
     } catch (error) {
-      console.error("Error updating group:", error);
-      toast.error("Failed to update group. Please try again.");
+      console.error("Error in handleSaveGroupEdit:", error);
+      toast.error("Failed to create permissions. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -613,16 +602,16 @@ const MemberPermissions = () => {
     if (!window.confirm("Are you sure you want to delete this security group? This action cannot be undone.")) {
       return;
     }
-    
+
     try {
       await apiCall.instance1.delete(`security-group/${groupId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
         }
       });
-      
+
       toast.success("Security group deleted successfully");
-      
+
       // Update the UI to remove the deleted group
       setSecurityGroups(prev => prev.filter(group => group.id !== groupId));
     } catch (error) {
@@ -641,7 +630,7 @@ const MemberPermissions = () => {
           permissions: []
         }));
       }
-      
+
       // Make sure resources is always an array
       if (!Array.isArray(editingGroup.resources)) {
         setEditingGroup(prev => ({
@@ -664,7 +653,7 @@ const MemberPermissions = () => {
           permissions: []
         }));
       }
-      
+
       // Make sure resources is always an array
       if (!Array.isArray(newGroup.resources)) {
         setNewGroup(prev => ({
@@ -672,7 +661,7 @@ const MemberPermissions = () => {
           resources: []
         }));
       }
-      
+
       // Make sure users is always an array
       if (!Array.isArray(newGroup.users)) {
         setNewGroup(prev => ({
@@ -694,7 +683,7 @@ const MemberPermissions = () => {
               Member Permissions
             </span>
           </h1>
-          
+
           {/* Load initial data first */}
           {loading ? (
             <div className="flex items-center justify-center h-40">
@@ -852,26 +841,26 @@ const MemberPermissions = () => {
                               {group.department && (
                                 <p className="text-sm text-gray-600 mt-1">Department: {group.department}</p>
                               )}
-                              
+
                               {/* Group stats */}
                               <div className="mt-2 flex flex-wrap gap-2">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                   {group.userCount || 0} Users
                                 </span>
-                                
+
                                 {group.permissions && group.permissions.length > 0 && (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     {group.permissions.length} Permissions
                                   </span>
                                 )}
-                                
+
                                 {group.resources && group.resources.length > 0 && (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                     {group.resources.length} Resources
                                   </span>
                                 )}
                               </div>
-                              
+
                               {/* Collapsible sections for details */}
                               <div className="mt-3 space-y-2">
                                 {/* Permissions section */}
@@ -889,7 +878,7 @@ const MemberPermissions = () => {
                                     </div>
                                   </details>
                                 )}
-                                
+
                                 {/* Users section */}
                                 {group.users && group.users.length > 0 && (
                                   <details className="text-sm">
@@ -909,19 +898,19 @@ const MemberPermissions = () => {
                                 )}
                               </div>
                             </div>
-                            
+
                             {/* Action buttons */}
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => handleEditGroup(group)}
-                                className="px-3 py-1 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded border border-blue-200"
-                                title="Edit group properties and permissions"
+                                className="px-3 py-1 text-sm bg-green-50 text-green-600 hover:bg-green-100 rounded border border-green-200"
+                                title="Create new permissions and assign resources to this group"
                               >
-                                Edit
+                                Add Permissions
                               </button>
                               <button
                                 onClick={() => handleManageUsers(group)}
-                                className="px-3 py-1 text-sm bg-green-50 text-green-600 hover:bg-green-100 rounded border border-green-200"
+                                className="px-3 py-1 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded border border-blue-200"
                                 title="Manage group members"
                               >
                                 Members
@@ -949,7 +938,7 @@ const MemberPermissions = () => {
               {/* Create Security Group Modal */}
               {showNewGroupForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                  <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
+                  <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
                     <button
                       className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
                       onClick={() => {
@@ -959,116 +948,88 @@ const MemberPermissions = () => {
                           department: "",
                           permissions: [],
                           resources: [],
+                          users: []
                         });
                       }}
                     >
                       ✕
                     </button>
-                    <h3 className="text-lg font-bold mb-4 text-blue-700">
+
+                    <h3 className="text-xl font-bold mb-6 text-blue-700">
                       Create Security Group
                     </h3>
-                    <div className="mb-2">
-                      <input
-                        type="text"
-                        placeholder="Group Name"
-                        value={newGroup.name}
-                        onChange={(e) =>
-                          setNewGroup((g) => ({ ...g, name: e.target.value }))
-                        }
-                        className="border px-3 py-2 rounded w-full mb-2"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Department"
-                        value={newGroup.department}
-                        onChange={(e) =>
-                          setNewGroup((g) => ({ ...g, department: e.target.value }))
-                        }
-                        className="border px-3 py-2 rounded w-full"
-                      />
-                    </div>
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">Permissions:</span>
-                      <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
-                        {allPermissions.map((perm) => (
-                          <label key={perm} className="flex items-center">
-                            <input
-                              type="checkbox"
-                              // Add a safety check here
-                              checked={safeArrayCheck(newGroup.permissions).includes(perm)}
-                              onChange={() =>
-                                setNewGroup((g) => ({
-                                  ...g,
-                                  permissions: Array.isArray(g.permissions) 
-                                    ? (g.permissions.includes(perm)
-                                        ? g.permissions.filter((p) => p !== perm)
-                                        : [...g.permissions, perm])
-                                    : [perm]
-                                }))
-                              }
-                              className="form-checkbox h-4 w-4 text-blue-600"
-                            />
-                            <span className="ml-2 text-gray-700">
-                              {perm.replace(/_/g, " ")}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">
-                        Accessible Resources:
-                      </span>
-                      <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white mt-2">
-                        <FolderTree
-                          items={folders}
-                          selectedItems={safeArrayCheck(newGroup.resources)}
-                          onSelectionChange={(resources) => setNewGroup(prev => ({ ...prev, resources }))}
+
+                    <div className="space-y-4">
+                      {/* Group Name Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Group Name *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter group name"
+                          value={newGroup.name}
+                          onChange={(e) =>
+                            setNewGroup((g) => ({ ...g, name: e.target.value }))
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          required
                         />
                       </div>
-                    </div>
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">Group Members:</span>
-                      <div className="max-h-48 overflow-y-auto border rounded p-2 bg-white mt-2">
-                        {users.length === 0 ? (
-                          <div className="text-gray-500 text-center p-2">No users available</div>
-                        ) : (
-                          <div className="space-y-2">
-                            {users.map(user => (
-                              <label key={user.id} className={`flex items-center p-2 rounded ${
-                                newGroup.users.includes(user.id) ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
-                              }`}>
-                                <input
-                                  type="checkbox"
-                                  checked={safeArrayCheck(newGroup.users).includes(user.id)}
-                                  onChange={() =>
-                                    setNewGroup(g => ({
-                                      ...g,
-                                      users: g.users.includes(user.id)
-                                        ? g.users.filter(id => id !== user.id)
-                                        : [...g.users, user.id]
-                                    }))
-                                  }
-                                  className="form-checkbox h-4 w-4 text-blue-600"
-                                />
-                                <span className="ml-2 text-gray-700 font-medium">
-                                  {user.fullName || user.email || user.username}
-                                </span>
-                              </label>
-                            ))}
+
+                      {/* Department Input */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Department *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter department"
+                          value={newGroup.department}
+                          onChange={(e) =>
+                            setNewGroup((g) => ({ ...g, department: e.target.value }))
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                          required
+                        />
+                      </div>
+
+                      {/* Info Message */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex">
+                          <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="ml-3">
+                            <p className="text-sm text-blue-700">
+                              You can assign permissions and add members to this group after it's created.
+                            </p>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 mt-2">
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 mt-6">
                       <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={handleCreateGroup}
+                        disabled={saving || !newGroup.name.trim() || !newGroup.department.trim()}
                       >
-                        Create
+                        {saving ? (
+                          <span className="flex items-center justify-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Creating...
+                          </span>
+                        ) : (
+                          "Create Group"
+                        )}
                       </button>
                       <button
-                        className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded font-semibold"
+                        className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors"
                         onClick={() => {
                           setShowNewGroupForm(false);
                           setNewGroup({
@@ -1076,8 +1037,10 @@ const MemberPermissions = () => {
                             department: "",
                             permissions: [],
                             resources: [],
+                            users: []
                           });
                         }}
+                        disabled={saving}
                       >
                         Cancel
                       </button>
@@ -1103,7 +1066,7 @@ const MemberPermissions = () => {
                     <h3 className="text-lg font-bold mb-4 text-blue-700">
                       Manage Users for {groupToManage.name}
                     </h3>
-                    
+
                     <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white">
                       {users.length === 0 ? (
                         <div className="text-gray-500 text-center p-2">No users available</div>
@@ -1112,17 +1075,16 @@ const MemberPermissions = () => {
                           {users.map(user => {
                             // First, ensure the user has an ID
                             if (!user || !user.id) return null;
-                            
+
                             // Safely check if the user ID is in selectedUsers
-                            const isSelected = Array.isArray(selectedUsers) && 
-                                                selectedUsers.includes(user.id);
-                                                
+                            const isSelected = Array.isArray(selectedUsers) &&
+                              selectedUsers.includes(user.id);
+
                             return (
-                              <label 
-                                key={user.id} 
-                                className={`flex items-center p-2 rounded ${
-                                  isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
-                                }`}
+                              <label
+                                key={user.id}
+                                className={`flex items-center p-2 rounded ${isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                                  }`}
                               >
                                 <input
                                   type="checkbox"
@@ -1133,7 +1095,7 @@ const MemberPermissions = () => {
                                       setSelectedUsers([user.id]);
                                       return;
                                     }
-                                    
+
                                     setSelectedUsers(prev =>
                                       prev.includes(user.id)
                                         ? prev.filter(id => id !== user.id)
@@ -1151,7 +1113,7 @@ const MemberPermissions = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex gap-2 mt-4">
                       <button
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
@@ -1171,7 +1133,7 @@ const MemberPermissions = () => {
                 </div>
               )}
 
-              {/* Edit Security Group Modal */}
+              {/* Updated Edit Security Group Modal */}
               {showEditGroupForm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                   <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
@@ -1179,128 +1141,105 @@ const MemberPermissions = () => {
                       className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
                       onClick={() => {
                         setShowEditGroupForm(false);
-                        // Reset to a safe default state
-                        setEditingGroup({
-                          id: "",
-                          name: "",
-                          department: "",
-                          permissions: [],
-                          resources: [],
-                          users: []
-                        });
+                        setEditingGroup(null);
                       }}
                     >
                       ✕
                     </button>
                     <h3 className="text-lg font-bold mb-4 text-blue-700">
-                      Edit Security Group
+                      Create New Permissions for Group
                     </h3>
-                    <div className="mb-2">
-                      <input
-                        type="text"
-                        placeholder="Group Name"
-                        value={editingGroup?.name || ""}
-                        onChange={(e) =>
-                          setEditingGroup((g) => ({ ...g, name: e.target.value }))
-                        }
-                        className="border px-3 py-2 rounded w-full mb-2"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Department"
-                        value={editingGroup?.department || ""}
-                        onChange={(e) =>
-                          setEditingGroup((g) => ({ ...g, department: e.target.value }))
-                        }
-                        className="border px-3 py-2 rounded w-full"
-                      />
-                    </div>
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">Permissions:</span>
-                      <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
-                        {/* Key defensive check: conditionally render this section only if allPermissions exists */}
-                        {Array.isArray(allPermissions) && allPermissions.map((perm) => {
-                          // Extra defensive check for each permission
-                          if (!perm) return null;
-                          
-                          // Check with ultra-safe approach
-                          const permissionsArray = safeArrayCheck(editingGroup?.permissions);
-                          const isChecked = permissionsArray.includes(perm);
-                          
-                          return (
-                            <label key={perm} className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => {
-                                  if (!editingGroup) return;
-                                  
-                                  setEditingGroup((g) => {
-                                    if (!g) return {
-                                      id: "",
-                                      name: "",
-                                      department: "",
-                                      permissions: [perm],
-                                      resources: [],
-                                      users: []
-                                    };
-                                    
-                                    const currentPermissions = safeArrayCheck(g.permissions);
-                                    const newPermissions = isChecked
-                                      ? currentPermissions.filter(p => p !== perm)
-                                      : [...currentPermissions, perm];
-                                      
-                                    return {
-                                      ...g,
-                                      permissions: newPermissions
-                                    };
-                                  });
-                                }}
-                                className="form-checkbox h-4 w-4 text-blue-600"
-                              />
-                              <span className="ml-2 text-gray-700">
-                                {perm.replace(/_/g, " ")}
-                              </span>
-                            </label>
-                          );
-                        })}
+
+                    {/* Info about creating new permissions */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                      <div className="flex">
+                        <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <div className="ml-3">
+                          <p className="text-sm text-blue-700">
+                            <strong>Create Permissions:</strong> Select permissions and resources to create new access rules for this group.
+                            This will add new permissions without affecting existing ones.
+                          </p>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Show current group info (read-only) */}
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-600"><strong>Group:</strong> {editingGroup?.name}</p>
+                      <p className="text-sm text-gray-600"><strong>Department:</strong> {editingGroup?.department}</p>
+                    </div>
+
                     <div className="mb-2">
-                      <span className="font-medium text-gray-600">Resources:</span>
+                      <span className="font-medium text-gray-600">New Permissions to Create:</span>
+                      <div className="grid grid-cols-2 gap-2 mt-2 max-h-32 overflow-y-auto">
+                        {Array.isArray(allPermissions) && allPermissions.map((perm) => (
+                          <label key={perm} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setEditingGroup(prev => prev ? {
+                                    ...prev,
+                                    permissions: [...(prev.permissions || []), perm]
+                                  } : null);
+                                } else {
+                                  setEditingGroup(prev => prev ? {
+                                    ...prev,
+                                    permissions: (prev.permissions || []).filter(p => p !== perm)
+                                  } : null);
+                                }
+                              }}
+                              className="form-checkbox h-4 w-4 text-blue-600"
+                            />
+                            <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mb-2">
+                      <span className="font-medium text-gray-600">Resources to Grant Access:</span>
                       <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white mt-2">
                         {editingGroup && (
                           <FolderTree
                             items={folders}
                             selectedItems={safeArrayCheck(editingGroup.resources)}
-                            onSelectionChange={(resources) => 
+                            onSelectionChange={(resources) =>
                               setEditingGroup(prev => prev ? { ...prev, resources } : null)
                             }
                           />
                         )}
                       </div>
                     </div>
+
                     <div className="flex gap-2 mt-2">
                       <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold"
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold disabled:opacity-50"
                         onClick={handleSaveGroupEdit}
                         disabled={saving || !editingGroup}
                       >
-                        {saving ? "Saving..." : "Save Changes"}
+                        {saving ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Creating...
+                          </span>
+                        ) : (
+                          "Create Permissions"
+                        )}
                       </button>
                       <button
                         className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded font-semibold"
                         onClick={() => {
                           setShowEditGroupForm(false);
-                          setEditingGroup({
-                            id: "",
-                            name: "",
-                            department: "",
-                            permissions: [],
-                            resources: [],
-                            users: []
-                          });
+                          setEditingGroup(null);
                         }}
+                        disabled={saving}
                       >
                         Cancel
                       </button>
