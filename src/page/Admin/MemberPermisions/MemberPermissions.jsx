@@ -10,6 +10,20 @@ const MemberPermissions = () => {
     return Array.isArray(arr) ? arr : [];
   };
 
+  // Add this helper function at the top of your component (after safeArrayCheck):
+  const safeStringArray = (arr) => {https://www.youtube.com/watch?v=LO651UdyrcE&list=PLAV8AqZgfhJv5JMxEzh_bpou2_Ogzaaac&index=3
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(item => typeof item === 'string');
+  };
+
+  // Add this helper function after the safeArrayCheck function
+  const isSuperAdminByRole = (user) => {
+    if (!user || !user.role) return false;
+
+    // Check specifically for SUPER_ADMIN role
+    return user.role === 'SUPER_ADMIN';
+  };
+
   // Initialize ALL states with safe default values
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
@@ -72,14 +86,28 @@ const MemberPermissions = () => {
           usersData = res;
         }
 
-        // Ensure each user has an id
-        const validUsers = usersData.filter(user => user && user.id);
+        // Filter out super admins by role and ensure each user has an id
+        const validUsers = usersData.filter(user => {
+          // Basic validation - user must exist and have an ID
+          if (!user || !user.id) {
+            return false;
+          }
 
-        console.log("Processed users with IDs:", validUsers);
+          // Filter out SUPER_ADMIN users
+          if (isSuperAdminByRole(user)) {
+            console.log("Filtering out SUPER_ADMIN user:", user.fullName || user.email || user.username, "- Role:", user.role);
+            return false;
+          }
+
+          return true;
+        });
+
+        console.log("Processed users (excluding SUPER_ADMIN):", validUsers);
+        console.log(`Filtered out ${usersData.length - validUsers.length} SUPER_ADMIN users`);
         setUsers(validUsers);
 
         if (validUsers.length === 0) {
-          console.warn("No valid users found with IDs");
+          console.warn("No valid non-admin users found");
         }
       })
       .catch((err) => {
@@ -89,6 +117,31 @@ const MemberPermissions = () => {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Add this useEffect after the user fetching useEffect to log filtering results
+  useEffect(() => {
+    if (users.length > 0) {
+      const totalLoaded = users.length;
+      const superAdminUsersFiltered = users.filter(user => isSuperAdminByRole(user)).length;
+
+      console.log(`SUPER_ADMIN filtering results:
+      - Total users available: ${totalLoaded}
+      - SUPER_ADMIN users (filtered from UI): ${superAdminUsersFiltered}
+      - Regular users shown: ${totalLoaded - superAdminUsersFiltered}`);
+
+      // Log SUPER_ADMIN users that are in the filtered list (should be 0 if filtering works)
+      const superAdminUsersInList = users.filter(user => isSuperAdminByRole(user));
+      if (superAdminUsersInList.length > 0) {
+        console.warn("SUPER_ADMIN users found in filtered list (this should not happen):",
+          superAdminUsersInList.map(user => ({
+            id: user.id,
+            name: user.fullName || user.email || user.username,
+            role: user.role
+          }))
+        );
+      }
+    }
+  }, [users]);
 
   useEffect(() => {
     // Fetch static permissions
@@ -252,24 +305,7 @@ const MemberPermissions = () => {
 
       console.log("Group created:", createGroupResponse.data);
 
-      // Get the newly created group
-      const newGroupData = createGroupResponse.data.data?.securityGroup || createGroupResponse.data;
-
       toast.success(`Security group "${newGroup.name}" created successfully!`);
-
-      // Add the new group to the list
-      setSecurityGroups((prev) => [
-        ...prev,
-        {
-          id: newGroupData.id,
-          name: newGroup.name,
-          department: newGroup.department,
-          userCount: 0,
-          permissions: [],
-          resources: [],
-          users: []
-        }
-      ]);
 
       // Reset the form to initial state
       setNewGroup({
@@ -278,6 +314,9 @@ const MemberPermissions = () => {
       });
 
       setShowNewGroupForm(false);
+
+      // Refresh the groups list to include the new group
+      await refreshSecurityGroups();
 
     } catch (error) {
       console.error("Error creating group:", error);
@@ -294,38 +333,7 @@ const MemberPermissions = () => {
 
   // Fetch security groups
   useEffect(() => {
-    const fetchSecurityGroups = async () => {
-      setSecurityGroupsLoading(true);
-      try {
-        const response = await apiCall.getSecurityGroups();
-
-        console.log("Security groups response:", response);
-
-        // Handle the nested data structure correctly
-        if (response?.data?.securityGroups) {
-          // This is the correct path based on your console logs
-          setSecurityGroups(response.data.securityGroups);
-        } else if (response?.data && Array.isArray(response.data)) {
-          // Handle the case where data is directly an array
-          setSecurityGroups(response.data);
-        } else if (Array.isArray(response)) {
-          // Handle the case where the response itself is an array
-          setSecurityGroups(response);
-        } else {
-          console.warn("Unexpected security groups response format:", response);
-          // Initialize with an empty array to prevent mapping errors
-          setSecurityGroups([]);
-        }
-      } catch (error) {
-        console.error("Error fetching security groups:", error);
-        // Initialize with an empty array to prevent mapping errors
-        setSecurityGroups([]);
-      } finally {
-        setSecurityGroupsLoading(false);
-      }
-    };
-
-    fetchSecurityGroups();
+    refreshSecurityGroups();
   }, []);
 
   useEffect(() => {
@@ -359,34 +367,54 @@ const MemberPermissions = () => {
     try {
       setSaving(true);
 
-      // Get the current users in the group
-      const currentUsers = groupToManage.users?.map(user => user.id) || [];
+      // Filter out any SUPER_ADMIN users that might have been selected
+      const filteredSelectedUsers = selectedUsers.filter(userId => {
+        const user = users.find(u => u.id === userId);
+        return user && !isSuperAdminByRole(user);
+      });
+
+      if (filteredSelectedUsers.length !== selectedUsers.length) {
+        console.warn("Filtered out SUPER_ADMIN users from selection");
+        setSelectedUsers(filteredSelectedUsers);
+      }
+
+      // Get the current users in the group (also filter out SUPER_ADMIN)
+      const currentUsers = (groupToManage.users || [])
+        .map(user => user.id)
+        .filter(userId => {
+          const user = users.find(u => u.id === userId);
+          return user && !isSuperAdminByRole(user);
+        });
 
       // Figure out which users to add and which to remove
-      const usersToAdd = selectedUsers.filter(id => !currentUsers.includes(id));
-      const usersToRemove = currentUsers.filter(id => !selectedUsers.includes(id));
+      const usersToAdd = filteredSelectedUsers.filter(id => !currentUsers.includes(id));
+      const usersToRemove = currentUsers.filter(id => !filteredSelectedUsers.includes(id));
 
-      console.log(`Adding ${usersToAdd.length} users and removing ${usersToRemove.length} users`);
+      console.log(`Adding ${usersToAdd.length} users and removing ${usersToRemove.length} users (SUPER_ADMIN excluded)`);
 
       // Add new users to the group - one by one
       for (const userId of usersToAdd) {
         try {
-          await apiCall.instance1.post(`security-group/${groupToManage.id}/add-user`, {
-            userId: userId
-          }, {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-          });
-          console.log(`Added user ${userId} to group ${groupToManage.id}`);
+          const user = users.find(u => u.id === userId);
+          if (!isSuperAdminByRole(user)) { // Double-check by role
+            await apiCall.instance1.post(`security-group/${groupToManage.id}/add-user`, {
+              userId: userId
+            }, {
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              }
+            });
+            console.log(`Added user ${userId} to group ${groupToManage.id}`);
+          } else {
+            console.warn(`Skipped adding SUPER_ADMIN user ${userId} (role: ${user.role})`);
+          }
         } catch (error) {
           console.error(`Error adding user ${userId} to group:`, error);
         }
       }
 
-      // Remove users from the group if needed - assuming there's an endpoint for this
-      // If there's no endpoint for removing users, this code should be modified
+      // Remove users from the group if needed
       for (const userId of usersToRemove) {
         try {
           await apiCall.instance1.delete(`security-group/${groupToManage.id}/remove-user/${userId}`, {
@@ -400,13 +428,13 @@ const MemberPermissions = () => {
         }
       }
 
-      toast.success("Group members updated successfully!");
+      toast.success("Group members updated successfully! (SUPER_ADMIN users excluded)");
 
       // Update the local state to reflect changes
       setSecurityGroups(prev =>
         prev.map(group =>
           group.id === groupToManage.id
-            ? { ...group, users: selectedUsers, userCount: selectedUsers.length }
+            ? { ...group, users: filteredSelectedUsers, userCount: filteredSelectedUsers.length }
             : group
         )
       );
@@ -420,27 +448,114 @@ const MemberPermissions = () => {
     }
   };
 
-  // Replace your handleEditGroup function with this safer version
-
-  const handleEditGroup = (group) => {
+  // Replace your handleEditGroup function with this updated version:
+  const handleEditGroup = async (group) => {
     if (!group) {
       console.error("Cannot edit undefined group");
       return;
     }
 
-    // Create a copy of the group for creating NEW permissions (start fresh)
-    setEditingGroup({
-      id: group.id || "",
-      name: group.name || "",
-      department: group.department || "",
-      permissions: [], // Start with empty permissions to create new ones
-      resources: [], // Start with empty resources to select new ones
-      users: Array.isArray(group.users)
-        ? group.users.filter(user => user && user.id).map(user => user.id)
-        : []
-    });
+    try {
+      console.log("Fetching current permissions for group:", group.id);
+      
+      // Fetch current permissions from backend
+      const permissionsResponse = await apiCall.instance1.get(`permissions/group/${group.id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      });
 
-    setShowEditGroupForm(true);
+      console.log("Current group permissions from backend:", permissionsResponse.data);
+
+      // Extract permissions and resources with better error handling
+      let currentPermissions = [];
+      let currentResources = [];
+
+      if (permissionsResponse.data?.data?.permissions) {
+        const permissionEntries = permissionsResponse.data.data.permissions;
+        
+        // Extract unique permissions from all permission entries
+        const allPermissionsSet = new Set();
+        const allResourcesSet = new Set();
+        
+        permissionEntries.forEach(entry => {
+          // Extract permissions array from each entry
+          if (entry.permissions && Array.isArray(entry.permissions)) {
+            entry.permissions.forEach(perm => {
+              if (typeof perm === 'string') {
+                allPermissionsSet.add(perm);
+              }
+            });
+          }
+          
+          // Extract resource IDs
+          if (entry.resourceType === 'FOLDER' && entry.folderId) {
+            allResourcesSet.add(entry.folderId);
+          } else if (entry.resourceType === 'FILE' && entry.fileId) {
+            allResourcesSet.add(entry.fileId);
+          }
+        });
+        
+        currentPermissions = Array.from(allPermissionsSet);
+        currentResources = Array.from(allResourcesSet);
+        
+        console.log("Extracted permissions for editing:", currentPermissions);
+        console.log("Extracted resources for editing:", currentResources);
+      }
+
+      // Create a copy of the group with current permissions from backend
+      setEditingGroup({
+        id: group.id || "",
+        name: group.name || "",
+        department: group.department || "",
+        // Use extracted permissions from backend
+        permissions: currentPermissions,
+        // Use extracted resources from backend
+        resources: currentResources,
+        users: Array.isArray(group.users)
+          ? group.users.filter(user => user && user.id).map(user => user.id)
+          : []
+      });
+
+      setShowEditGroupForm(true);
+
+    } catch (error) {
+      console.error("Error fetching group permissions:", error);
+      
+      // Handle 404 specifically - group has no permissions yet
+      if (error.response?.status === 404) {
+        console.log(`Group ${group.id} has no permissions yet - starting with empty permissions`);
+        
+        setEditingGroup({
+          id: group.id || "",
+          name: group.name || "",
+          department: group.department || "",
+          permissions: [], // Start with empty permissions for new groups
+          resources: [],  // Start with empty resources for new groups
+          users: Array.isArray(group.users)
+            ? group.users.filter(user => user && user.id).map(user => user.id)
+            : []
+        });
+        
+        setShowEditGroupForm(true);
+      } else {
+        // For other errors, fallback to local state
+        setEditingGroup({
+          id: group.id || "",
+          name: group.name || "",
+          department: group.department || "",
+          permissions: Array.isArray(group.permissions) ? 
+            group.permissions.filter(perm => typeof perm === 'string') : [],
+          resources: Array.isArray(group.resources) ? group.resources : [],
+          users: Array.isArray(group.users)
+            ? group.users.filter(user => user && user.id).map(user => user.id)
+            : []
+        });
+
+        setShowEditGroupForm(true);
+        toast.warning("Could not fetch current permissions from server. Showing local data.");
+      }
+    }
   };
 
   // Function to save group edits using POST endpoints only
@@ -450,23 +565,14 @@ const MemberPermissions = () => {
     try {
       setSaving(true);
 
-      console.log("Creating new permissions for group:", editingGroup.id);
+      console.log("Creating/updating permissions for group:", editingGroup.id);
+      console.log("Selected permissions:", editingGroup.permissions);
+      console.log("Selected resources:", editingGroup.resources);
 
-      // Updated permission mapping for the new structure
+      // Convert permissions to uppercase format that backend expects
       const mappedPermissions = editingGroup.permissions.map(perm => {
-        // Keep the new permissions as-is since they're already in the correct format
-        switch (perm) {
-          // Legacy mapping for backward compatibility (if needed)
-          case "READ_FILES":
-            return "READ";
-          case "WRITE_FILES":
-            return "WRITE";
-          case "DELETE_FILES":
-            return "DELETE_FILE";
-          // New permissions are passed through unchanged
-          default:
-            return perm;
-        }
+        // Ensure permissions are in correct format
+        return perm.toUpperCase();
       });
 
       // Only proceed with permissions if there are any selected
@@ -504,7 +610,7 @@ const MemberPermissions = () => {
 
       // CREATE folder permissions using POST
       if (folderIds.length > 0) {
-        console.log("Creating NEW folder permissions for group:", editingGroup.id);
+        console.log("Creating folder permissions for group:", editingGroup.id);
         try {
           const folderPermissionData = {
             resourceType: "FOLDER",
@@ -514,7 +620,7 @@ const MemberPermissions = () => {
             inherited: false
           };
 
-          console.log("Creating folder permissions with data:", folderPermissionData);
+          console.log("Posting folder permissions with data:", folderPermissionData);
 
           const response = await apiCall.instance1.post("permissions/group/folder", folderPermissionData, {
             headers: {
@@ -523,24 +629,24 @@ const MemberPermissions = () => {
             }
           });
 
-          console.log("Folder permissions created successfully:", response.data);
+          console.log("Folder permissions posted successfully:", response.data);
           folderSuccess = true;
-          toast.success(`Created folder permissions for ${folderIds.length} folders`);
+          toast.success(`Posted folder permissions for ${folderIds.length} folders`);
         } catch (error) {
-          console.error("Error creating folder permissions:", error);
+          console.error("Error posting folder permissions:", error);
           console.error("Error response:", error.response?.data);
 
           if (error.response?.data?.message) {
             toast.error(`Folder permissions error: ${error.response.data.message}`);
           } else {
-            toast.error("Failed to create folder permissions");
+            toast.error("Failed to post folder permissions");
           }
         }
       }
 
       // CREATE file permissions using POST
       if (fileIds.length > 0) {
-        console.log("Creating NEW file permissions for group:", editingGroup.id);
+        console.log("Creating file permissions for group:", editingGroup.id);
         try {
           const filePermissionData = {
             resourceType: "FILE",
@@ -550,7 +656,7 @@ const MemberPermissions = () => {
             inherited: false
           };
 
-          console.log("Creating file permissions with data:", filePermissionData);
+          console.log("Posting file permissions with data:", filePermissionData);
 
           const response = await apiCall.instance1.post("permissions/group/file", filePermissionData, {
             headers: {
@@ -559,48 +665,38 @@ const MemberPermissions = () => {
             }
           });
 
-          console.log("File permissions created successfully:", response.data);
+          console.log("File permissions posted successfully:", response.data);
           fileSuccess = true;
-          toast.success(`Created file permissions for ${fileIds.length} files`);
+          toast.success(`Posted file permissions for ${fileIds.length} files`);
         } catch (error) {
-          console.error("Error creating file permissions:", error);
+          console.error("Error posting file permissions:", error);
           console.error("Error response:", error.response?.data);
 
           if (error.response?.data?.message) {
             toast.error(`File permissions error: ${error.response.data.message}`);
           } else {
-            toast.error("Failed to create file permissions");
+            toast.error("Failed to post file permissions");
           }
         }
       }
 
-      // Show overall success message
+      // Show overall success message and refresh group data
       if (folderSuccess || fileSuccess) {
-        toast.success("New permissions created successfully!");
-
-        // Update the UI to reflect the new permissions
-        setSecurityGroups(prev =>
-          prev.map(group =>
-            group.id === editingGroup.id
-              ? {
-                ...group,
-                permissions: editingGroup.permissions,
-                resources: editingGroup.resources
-              }
-              : group
-          )
-        );
+        toast.success("Permissions posted successfully!");
+        
+        // Refresh the security groups to get updated permissions from backend
+        await refreshSecurityGroups();
+        
+        setShowEditGroupForm(false);
       } else if (folderIds.length === 0 && fileIds.length === 0) {
         toast.info("No resources selected to create permissions for");
       } else {
-        toast.error("Failed to create any permissions");
+        toast.error("Failed to post any permissions");
       }
-
-      setShowEditGroupForm(false);
 
     } catch (error) {
       console.error("Error in handleSaveGroupEdit:", error);
-      toast.error("Failed to create permissions. Please try again.");
+      toast.error("Failed to post permissions. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -681,6 +777,110 @@ const MemberPermissions = () => {
     }
   }, [showNewGroupForm, newGroup]);
 
+  // Add this function to fetch groups with their permissions
+  const refreshSecurityGroups = async () => {
+    setSecurityGroupsLoading(true);
+    try {
+      const response = await apiCall.getSecurityGroups();
+      console.log("Security groups response:", response);
+
+      let groupsData = [];
+      
+      // Handle the nested data structure correctly
+      if (response?.data?.securityGroups) {
+        groupsData = response.data.securityGroups;
+      } else if (response?.data && Array.isArray(response.data)) {
+        groupsData = response.data;
+      } else if (Array.isArray(response)) {
+        groupsData = response;
+      }
+
+      // For each group, fetch its permissions
+      const groupsWithPermissions = await Promise.all(
+        groupsData.map(async (group) => {
+          try {
+            // Fetch group permissions from backend
+            const permissionsResponse = await apiCall.instance1.get(`permissions/group/${group.id}`, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              }
+            });
+
+            console.log(`Permissions for group ${group.id}:`, permissionsResponse.data);
+
+            // Extract permissions and resources from response with better error handling
+            let groupPermissions = [];
+            let groupResources = [];
+
+            if (permissionsResponse.data?.data?.permissions) {
+              const permissionEntries = permissionsResponse.data.data.permissions;
+              
+              // Extract unique permissions from all permission entries
+              const allPermissionsSet = new Set();
+              const allResourcesSet = new Set();
+              
+              permissionEntries.forEach(entry => {
+                // Extract permissions array from each entry
+                if (entry.permissions && Array.isArray(entry.permissions)) {
+                  entry.permissions.forEach(perm => {
+                    if (typeof perm === 'string') {
+                      allPermissionsSet.add(perm);
+                    }
+                  });
+                }
+                
+                // Extract resource IDs
+                if (entry.resourceType === 'FOLDER' && entry.folderId) {
+                  allResourcesSet.add(entry.folderId);
+                } else if (entry.resourceType === 'FILE' && entry.fileId) {
+                  allResourcesSet.add(entry.fileId);
+                }
+              });
+              
+              groupPermissions = Array.from(allPermissionsSet);
+              groupResources = Array.from(allResourcesSet);
+              
+              console.log(`Extracted permissions for group ${group.id}:`, groupPermissions);
+              console.log(`Extracted resources for group ${group.id}:`, groupResources);
+            }
+
+            return {
+              ...group,
+              permissions: groupPermissions,
+              resources: groupResources,
+              userCount: group.users ? group.users.length : 0
+            };
+          } catch (error) {
+            // Handle 404 and other errors gracefully - group simply has no permissions yet
+            if (error.response?.status === 404) {
+              console.log(`Group ${group.id} has no permissions yet (404 - this is normal for new groups)`);
+            } else {
+              console.error(`Error fetching permissions for group ${group.id}:`, error);
+            }
+            
+            // Return group without permissions if fetch fails
+            return {
+              ...group,
+              permissions: [],
+              resources: [],
+              userCount: group.users ? group.users.length : 0
+            };
+          }
+        })
+      );
+
+      console.log("Groups with permissions:", groupsWithPermissions);
+      setSecurityGroups(groupsWithPermissions);
+
+    } catch (error) {
+      console.error("Error fetching security groups:", error);
+      setSecurityGroups([]);
+      toast.error("Failed to refresh security groups");
+    } finally {
+      setSecurityGroupsLoading(false);
+    }
+  };
+
   // Inside your component return statement
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -706,6 +906,7 @@ const MemberPermissions = () => {
                 <h2 className="text-xl font-semibold mb-3 text-gray-700">
                   Set Individual User Permissions
                 </h2>
+                {/* User Selection Dropdown with SUPER_ADMIN filtering */}
                 <select
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
                   value={selectedUser?.id || ""}
@@ -721,12 +922,14 @@ const MemberPermissions = () => {
                     const user = users.find(user => user.id === userId);
                     console.log("Found user object:", user);
 
-                    if (user && user.id) {
+                    // Additional safety check to ensure selected user is not SUPER_ADMIN
+                    if (user && user.id && !isSuperAdminByRole(user)) {
                       setSelectedUser(user);
                       fetchUserPermissions(user.id);
                     } else {
-                      console.error("Invalid user selected:", user);
-                      toast.error("Error selecting user. Please try again.");
+                      console.error("Attempted to select SUPER_ADMIN user or invalid user:", user);
+                      toast.error("Cannot select super admin users for permission management.");
+                      setSelectedUser(null);
                     }
                   }}
                   disabled={users.length === 0}
@@ -734,10 +937,13 @@ const MemberPermissions = () => {
                   <option value="">Select a user</option>
                   {Array.isArray(users) && users.length > 0 ? (
                     users.map((user) => {
-                      // console.log("User in dropdown:", user);
+                      // Additional safety check in the dropdown
+                      if (isSuperAdminByRole(user)) return null;
+
                       return (
                         <option key={user.id} value={user.id}>
                           {user.fullName || user.email || user.username || user.id}
+                          {user.role && user.role !== 'USER' && ` (${user.role})`}
                         </option>
                       );
                     })
@@ -748,7 +954,7 @@ const MemberPermissions = () => {
                   )}
                 </select>
 
-                {/* Permissions Section for Selected User */}
+                {/* Permissions Section for Selected User - KEEP ONLY THIS ONE */}
                 {selectedUser && (
                   <>
                     <h3 className="text-lg font-semibold mb-2">Permissions</h3>
@@ -785,7 +991,7 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
                         <div className="grid grid-cols-2 gap-2">
-                          {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                          {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
@@ -878,29 +1084,6 @@ const MemberPermissions = () => {
                       </div>
                     </div>
                   </>
-                )}{selectedUser && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-2">Permissions</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                      {allPermissions.map((perm) => (
-                        <label key={perm} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={safeArrayCheck(permissions).includes(perm)}
-                            onChange={() =>
-                              setPermissions((prev) =>
-                                prev.includes(perm)
-                                  ? prev.filter((p) => p !== perm)
-                                  : [...prev, perm]
-                              )
-                            }
-                            className="form-checkbox h-5 w-5 text-blue-600"
-                          />
-                          <span className="ml-2">{perm.replace(/_/g, " ")}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </>
                 )}
 
                 {/* Accessible Folders Section */}
@@ -931,29 +1114,23 @@ const MemberPermissions = () => {
                     Security Groups
                   </h2>
                   <div className="flex gap-2">
+                    {/* Updated refresh button */}
                     <button
                       className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded font-medium"
-                      onClick={() => {
-                        setSecurityGroupsLoading(true);
-                        const fetchGroups = async () => {
-                          try {
-                            const response = await apiCall.getSecurityGroups();
-                            if (response?.data?.securityGroups) {
-                              setSecurityGroups(response.data.securityGroups);
-                            }
-                          } catch (error) {
-                            console.error("Error refreshing groups:", error);
-                          } finally {
-                            setSecurityGroupsLoading(false);
-                          }
-                        };
-                        fetchGroups();
-                      }}
-                      title="Refresh security groups"
+                      onClick={refreshSecurityGroups}
+                      title="Refresh security groups and their permissions"
+                      disabled={securityGroupsLoading}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
+                      {securityGroupsLoading ? (
+                        <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      )}
                     </button>
                     <button
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded font-semibold"
@@ -1008,11 +1185,18 @@ const MemberPermissions = () => {
                                       Permissions
                                     </summary>
                                     <div className="pl-4 pt-2 flex flex-wrap gap-1">
-                                      {group.permissions.map(perm => (
-                                        <span key={perm} className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">
-                                          {perm.replace(/_/g, " ")}
-                                        </span>
-                                      ))}
+                                      {group.permissions.map((perm, index) => {
+                                        // Ensure perm is a string before calling replace
+                                        const permissionText = typeof perm === 'string' ? 
+                                          perm.replace(/_/g, " ") : 
+                                          String(perm).replace(/_/g, " ");
+                                        
+                                        return (
+                                          <span key={`${perm}-${index}`} className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">
+                                            {permissionText}
+                                          </span>
+                                        );
+                                      })}
                                     </div>
                                   </details>
                                 )}
@@ -1187,7 +1371,7 @@ const MemberPermissions = () => {
                 </div>
               )}
 
-              {/* Manage Users in Group Modal */}
+              {/* Manage Users in Group Modal - Filter SUPER_ADMIN */}
               {showManageUsersModal && groupToManage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                   <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
@@ -1196,7 +1380,7 @@ const MemberPermissions = () => {
                       onClick={() => {
                         setShowManageUsersModal(false);
                         setGroupToManage(null);
-                        setSelectedUsers([]); // Reset to empty array
+                        setSelectedUsers([]);
                       }}
                     >
                       ✕
@@ -1205,49 +1389,70 @@ const MemberPermissions = () => {
                       Manage Users for {groupToManage.name}
                     </h3>
 
+                    {/* Info about filtering */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <div className="flex">
+                        <svg className="h-5 w-5 text-yellow-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <div className="ml-3">
+                          <p className="text-sm text-yellow-700">
+                            <strong>Note:</strong> SUPER_ADMIN users are automatically excluded from group management.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white">
-                      {users.length === 0 ? (
-                        <div className="text-gray-500 text-center p-2">No users available</div>
+                      {users.filter(user => !isSuperAdminByRole(user)).length === 0 ? (
+                        <div className="text-gray-500 text-center p-2">No regular users available</div>
                       ) : (
                         <div className="space-y-2">
-                          {users.map(user => {
-                            // First, ensure the user has an ID
-                            if (!user || !user.id) return null;
+                          {users
+                            .filter(user => !isSuperAdminByRole(user)) // Filter by SUPER_ADMIN role
+                            .map(user => {
+                              // First, ensure the user has an ID
+                              if (!user || !user.id) return null;
 
-                            // Safely check if the user ID is in selectedUsers
-                            const isSelected = Array.isArray(selectedUsers) &&
-                              selectedUsers.includes(user.id);
+                              // Safely check if the user ID is in selectedUsers
+                              const isSelected = Array.isArray(selectedUsers) &&
+                                selectedUsers.includes(user.id);
 
-                            return (
-                              <label
-                                key={user.id}
-                                className={`flex items-center p-2 rounded ${isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
-                                  }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    // Extra safety to ensure selectedUsers is always an array
-                                    if (!Array.isArray(selectedUsers)) {
-                                      setSelectedUsers([user.id]);
-                                      return;
-                                    }
+                              return (
+                                <label
+                                  key={user.id}
+                                  className={`flex items-center p-2 rounded ${isSelected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                                    }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      // Extra safety to ensure selectedUsers is always an array
+                                      if (!Array.isArray(selectedUsers)) {
+                                        setSelectedUsers([user.id]);
+                                        return;
+                                      }
 
-                                    setSelectedUsers(prev =>
-                                      prev.includes(user.id)
-                                        ? prev.filter(id => id !== user.id)
-                                        : [...prev, user.id]
-                                    );
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-blue-600"
-                                />
-                                <span className="ml-2 text-gray-700 font-medium">
-                                  {user.fullName || user.email || user.username || user.id}
-                                </span>
-                              </label>
-                            );
-                          })}
+                                      setSelectedUsers(prev =>
+                                        prev.includes(user.id)
+                                          ? prev.filter(id => id !== user.id)
+                                          : [...prev, user.id]
+                                      );
+                                    }}
+                                    className="form-checkbox h-4 w-4 text-blue-600"
+                                  />
+                                  <span className="ml-2 text-gray-700 font-medium">
+                                    {user.fullName || user.email || user.username || user.id}
+                                    {user.role && user.role !== 'USER' && (
+                                      <span className="ml-2 text-xs bg-gray-200 px-2 py-1 rounded">
+                                        {user.role}
+                                      </span>
+                                    )}
+                                  </span>
+                                </label>
+                              );
+                            })}
                         </div>
                       )}
                     </div>
@@ -1285,10 +1490,13 @@ const MemberPermissions = () => {
                       ✕
                     </button>
                     <h3 className="text-lg font-bold mb-4 text-blue-700">
-                      Create New Permissions for Group
+                      {(editingGroup?.permissions && editingGroup.permissions.length > 0) ?
+                        "Update Group Permissions" :
+                        "Create New Permissions for Group"
+                      }
                     </h3>
 
-                    {/* Info about creating new permissions */}
+                    {/* Updated info about creating/adding permissions */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                       <div className="flex">
                         <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -1296,8 +1504,8 @@ const MemberPermissions = () => {
                         </svg>
                         <div className="ml-3">
                           <p className="text-sm text-blue-700">
-                            <strong>Create Permissions:</strong> Select permissions and resources to create new access rules for this group.
-                            This will add new permissions without affecting existing ones.
+                            <strong>Add Permissions:</strong> Current permissions and resources are shown checked.
+                            You can add new permissions or modify existing ones. Changes will be applied to create new access rules.
                           </p>
                         </div>
                       </div>
@@ -1310,7 +1518,32 @@ const MemberPermissions = () => {
                     </div>
 
                     <div className="mb-2">
-                      <span className="font-medium text-gray-600">New Permissions to Create:</span>
+                      <span className="font-medium text-gray-600">
+                        {(editingGroup?.resources && editingGroup.resources.length > 0) ? 
+                          "Current Resources (modify as needed):" : 
+                          "Resources to Grant Access:"
+                        }
+                      </span>
+                      <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white mt-2">
+                        {editingGroup && (
+                          <FolderTree
+                            items={folders}
+                            selectedItems={safeArrayCheck(editingGroup.resources)}
+                            onSelectionChange={(resources) =>
+                              setEditingGroup(prev => prev ? { ...prev, resources } : null)
+                            }
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-2">
+                      <span className="font-medium text-gray-600">
+                        {(editingGroup?.permissions && editingGroup.permissions.length > 0) ? 
+                          "Current Permissions (modify as needed):" : 
+                          "New Permissions to Create:"
+                        }
+                      </span>
                       <div className="mt-2 max-h-48 overflow-y-auto">
                         {/* Master Permission */}
                         <div className="mb-3">
@@ -1350,12 +1583,14 @@ const MemberPermissions = () => {
                         <div className="mb-3">
                           <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
                           <div className="grid grid-cols-2 gap-1">
-                            {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                            {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
                               <label key={perm} className="flex items-center">
                                 <input
                                   type="checkbox"
-                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                  checked={hasPermission(editingGroup?.permissions, perm)}
                                   onChange={(e) => {
+                                    console.log(`Toggling permission ${perm}, current state:`, hasPermission(editingGroup?.permissions, perm));
+                                    
                                     if (e.target.checked) {
                                       setEditingGroup(prev => prev ? {
                                         ...prev,
@@ -1364,7 +1599,9 @@ const MemberPermissions = () => {
                                     } else {
                                       setEditingGroup(prev => prev ? {
                                         ...prev,
-                                        permissions: (prev.permissions || []).filter(p => p !== perm)
+                                        permissions: (prev.permissions || []).filter(p => 
+                                          p.toUpperCase() !== perm.toUpperCase()
+                                        )
                                       } : null);
                                     }
                                   }}
@@ -1468,21 +1705,6 @@ const MemberPermissions = () => {
                       </div>
                     </div>
 
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">Resources to Grant Access:</span>
-                      <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white mt-2">
-                        {editingGroup && (
-                          <FolderTree
-                            items={folders}
-                            selectedItems={safeArrayCheck(editingGroup.resources)}
-                            onSelectionChange={(resources) =>
-                              setEditingGroup(prev => prev ? { ...prev, resources } : null)
-                            }
-                          />
-                        )}
-                      </div>
-                    </div>
-
                     <div className="flex gap-2 mt-2">
                       <button
                         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold disabled:opacity-50"
@@ -1495,10 +1717,10 @@ const MemberPermissions = () => {
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Creating...
+                            {(editingGroup?.permissions && editingGroup.permissions.length > 0) ? "Updating..." : "Creating..."}
                           </span>
                         ) : (
-                          "Create Permissions"
+                          (editingGroup?.permissions && editingGroup.permissions.length > 0) ? "Update Permissions" : "Create Permissions"
                         )}
                       </button>
                       <button
@@ -1524,3 +1746,59 @@ const MemberPermissions = () => {
 };
 
 export default MemberPermissions;
+
+// Update the safeArrayCheck function to handle case-insensitive matching:
+const safeArrayCheck = (arr) => {
+  return Array.isArray(arr) ? arr : [];
+};
+
+// Add a new function for case-insensitive permission checking:
+const hasPermission = (permissions, permission) => {
+  if (!Array.isArray(permissions)) return false;
+  
+  // Check for exact match first
+  if (permissions.includes(permission)) return true;
+  
+  // Check for case-insensitive match
+  return permissions.some(perm => 
+    typeof perm === 'string' && perm.toUpperCase() === permission.toUpperCase()
+  );
+};
+
+// Add this temporarily in your security groups section for testing:
+<button
+  onClick={async () => {
+    // Test permission extraction for the first group
+    if (securityGroups.length > 0) {
+      const testGroup = securityGroups[0];
+      console.log("Testing permission extraction for group:", testGroup.name);
+      
+      try {
+        const response = await apiCall.instance1.get(`permissions/group/${testGroup.id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        
+        console.log("Raw response:", response.data);
+        
+        if (response.data?.data?.permissions) {
+          const entries = response.data.data.permissions;
+          console.log("Permission entries:", entries);
+          
+          const allPerms = new Set();
+          entries.forEach(entry => {
+            if (entry.permissions) {
+              entry.permissions.forEach(p => allPerms.add(p));
+            }
+          });
+          
+          console.log("Extracted unique permissions:", Array.from(allPerms));
+        }
+      } catch (error) {
+        console.error("Test error:", error);
+      }
+    }
+  }}
+  className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
+>
+  Test Permission Extraction
+</button>
