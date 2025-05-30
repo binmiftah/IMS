@@ -5,18 +5,25 @@ import apiCall from "../../../pkg/api/internal.js";
 import FolderTree from "../../../component/FolderTree.jsx";
 
 const MemberPermissions = () => {
-  // Safe array check utility function - defined first so it can be used in initial state
   const safeArrayCheck = (arr) => {
     return Array.isArray(arr) ? arr : [];
   };
 
-  // Add this helper function at the top of your component (after safeArrayCheck):
-  const safeStringArray = (arr) => {https://www.youtube.com/watch?v=LO651UdyrcE&list=PLAV8AqZgfhJv5JMxEzh_bpou2_Ogzaaac&index=3
+  const safeStringArray = (arr) => {
     if (!Array.isArray(arr)) return [];
     return arr.filter(item => typeof item === 'string');
   };
 
-  // Add this helper function after the safeArrayCheck function
+  const hasPermission = (permissions, permission) => {
+    if (!Array.isArray(permissions)) return false;
+
+    if (permissions.includes(permission)) return true;
+
+    return permissions.some(perm =>
+      typeof perm === 'string' && perm.toUpperCase() === permission.toUpperCase()
+    );
+  };
+
   const isSuperAdminByRole = (user) => {
     if (!user || !user.role) return false;
 
@@ -24,7 +31,7 @@ const MemberPermissions = () => {
     return user.role === 'SUPER_ADMIN';
   };
 
-  // Initialize ALL states with safe default values
+  // Initialize ALL states with safe default values - MAKE SURE THESE ARE INSIDE THE COMPONENT
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
   const [allPermissions, setAllPermissions] = useState([]);
@@ -60,9 +67,156 @@ const MemberPermissions = () => {
     users: []
   });
 
+  // Add the handleSaveGroupUsers function here (missing from your code):
+  const handleSaveGroupUsers = async () => {
+    if (!groupToManage) {
+      console.error("No group to manage");
+      return;
+    }
+
+    if (!groupToManage.id) {
+      console.error("Group has no ID:", groupToManage);
+      toast.error("Invalid group selected. Please try again.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      // Filter out any SUPER_ADMIN users that might have been selected
+      const filteredSelectedUsers = selectedUsers.filter(userId => {
+        const user = users.find(u => u.id === userId);
+        return user && !isSuperAdminByRole(user);
+      });
+
+      if (filteredSelectedUsers.length !== selectedUsers.length) {
+        console.warn("Filtered out SUPER_ADMIN users from selection");
+        setSelectedUsers(filteredSelectedUsers);
+      }
+
+      // Get the current users in the group (also filter out SUPER_ADMIN)
+      const currentUsers = (groupToManage.users || [])
+        .map(user => user.id)
+        .filter(userId => {
+          const user = users.find(u => u.id === userId);
+          return user && !isSuperAdminByRole(user);
+        });
+
+      // Figure out which users to add and which to remove
+      const usersToAdd = filteredSelectedUsers.filter(id => !currentUsers.includes(id));
+      const usersToRemove = currentUsers.filter(id => !filteredSelectedUsers.includes(id));
+
+      console.log(`Group ID: ${groupToManage.id}`);
+      console.log(`Users to add: ${usersToAdd.length}`, usersToAdd);
+      console.log(`Users to remove: ${usersToRemove.length}`, usersToRemove);
+
+      // Add new users to the group - send all at once as the API expects
+      if (usersToAdd.length > 0) {
+        try {
+          // FIX: Make sure the URL is properly constructed with the group ID
+          const addUserUrl = `security-group/${groupToManage.id}/add-user`;
+
+          console.log(`Making API call to add users:`, {
+            groupId: groupToManage.id,
+            userIds: usersToAdd,
+            url: addUserUrl,
+            fullUrl: `${apiCall.instance1.defaults.baseURL}/${addUserUrl}`
+          });
+
+          const addResponse = await apiCall.instance1.post(addUserUrl, {
+            userIds: usersToAdd // Send as array of user IDs
+          }, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+          });
+
+          console.log(`Add users API response:`, addResponse.data);
+
+          // Handle the response format
+          if (addResponse.data?.data?.user) {
+            const { results, errors, success, failed } = addResponse.data.data.user;
+
+            console.log(`API results:`, { results, errors, success, failed });
+
+            if (success > 0) {
+              toast.success(`Successfully added ${success} user(s) to the group`);
+            }
+
+            if (failed > 0 && errors.length > 0) {
+              // Show specific error messages
+              errors.forEach(error => {
+                console.log(`User error:`, error);
+                if (error.statusCode === 409) {
+                  console.log(`User ${error.name} already in group`);
+                  // Don't show error toast for "already in group" since it's not really an error
+                } else {
+                  toast.warning(`${error.name}: ${error.message}`);
+                }
+              });
+            }
+          } else {
+            toast.success(`API call completed for adding ${usersToAdd.length} user(s)`);
+          }
+        } catch (error) {
+          console.error(`Error adding users to group:`, error);
+          if (error.response) {
+            console.error(`Error response:`, error.response.data);
+            console.error(`Error status:`, error.response.status);
+            console.error(`Error headers:`, error.response.headers);
+          }
+          if (error.request) {
+            console.error(`Error request:`, error.request);
+          }
+          toast.error("Failed to add some users to the group");
+        }
+      }
+
+      if (usersToRemove.length > 0) {
+        for (const userId of usersToRemove) {
+          try {
+            const removeUserUrl = `security-group/${groupToManage.id}/remove-user/${userId}`;
+            console.log(`Removing user ${userId} from group via: ${removeUserUrl}`);
+
+            await apiCall.instance1.delete(removeUserUrl, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              }
+            });
+            console.log(`Successfully removed user ${userId} from group ${groupToManage.id}`);
+          } catch (error) {
+            console.error(`Error removing user ${userId} from group:`, error);
+            if (error.response) {
+              console.error(`Remove user error response:`, error.response.data);
+            }
+          }
+        }
+
+        if (usersToRemove.length > 0) {
+          toast.success(`Removed ${usersToRemove.length} user(s) from the group`);
+        }
+      }
+
+      if (usersToAdd.length > 0 || usersToRemove.length > 0) {
+        toast.success("Group members updated successfully!");
+      } else {
+        toast.info("No changes were made to group membership");
+      }
+
+      await refreshSecurityGroups();
+
+      setShowManageUsersModal(false);
+    } catch (error) {
+      console.error("Error updating group members:", error);
+      toast.error("Failed to update group members");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
-    // Ensure initial state arrays are valid
     setPermissions([]);
     setSelectedFolders([]);
     setSecurityGroups([]);
@@ -71,9 +225,8 @@ const MemberPermissions = () => {
     apiCall
       .getAllUsers("users")
       .then((res) => {
-        console.log("Raw API response for users:", res);
+        console.log("Raw users response:", res);
 
-        // Try to handle different response structures
         let usersData = [];
 
         if (res.data?.users) {
@@ -86,28 +239,26 @@ const MemberPermissions = () => {
           usersData = res;
         }
 
-        // Filter out super admins by role and ensure each user has an id
+        console.log("Extracted users data:", usersData);
+
         const validUsers = usersData.filter(user => {
-          // Basic validation - user must exist and have an ID
           if (!user || !user.id) {
+            console.log("Filtering out user without ID:", user);
             return false;
           }
 
-          // Filter out SUPER_ADMIN users
           if (isSuperAdminByRole(user)) {
-            console.log("Filtering out SUPER_ADMIN user:", user.fullName || user.email || user.username, "- Role:", user.role);
+            console.log("Filtering out SUPER_ADMIN user:", user);
             return false;
           }
 
           return true;
         });
 
-        console.log("Processed users (excluding SUPER_ADMIN):", validUsers);
-        console.log(`Filtered out ${usersData.length - validUsers.length} SUPER_ADMIN users`);
+        console.log("Valid users after filtering:", validUsers);
         setUsers(validUsers);
 
         if (validUsers.length === 0) {
-          console.warn("No valid non-admin users found");
         }
       })
       .catch((err) => {
@@ -118,43 +269,75 @@ const MemberPermissions = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Add this useEffect after the user fetching useEffect to log filtering results
   useEffect(() => {
-    if (users.length > 0) {
-      const totalLoaded = users.length;
-      const superAdminUsersFiltered = users.filter(user => isSuperAdminByRole(user)).length;
-
-      console.log(`SUPER_ADMIN filtering results:
-      - Total users available: ${totalLoaded}
-      - SUPER_ADMIN users (filtered from UI): ${superAdminUsersFiltered}
-      - Regular users shown: ${totalLoaded - superAdminUsersFiltered}`);
-
-      // Log SUPER_ADMIN users that are in the filtered list (should be 0 if filtering works)
-      const superAdminUsersInList = users.filter(user => isSuperAdminByRole(user));
-      if (superAdminUsersInList.length > 0) {
-        console.warn("SUPER_ADMIN users found in filtered list (this should not happen):",
-          superAdminUsersInList.map(user => ({
-            id: user.id,
-            name: user.fullName || user.email || user.username,
-            role: user.role
-          }))
-        );
-      }
-    }
-  }, [users]);
-
-  useEffect(() => {
-    // Fetch static permissions
     const staticPermissions = apiCall.getStaticPermissions();
     setAllPermissions(staticPermissions);
   }, []);
 
-  // Log all permissions for debugging
   useEffect(() => {
-    console.log("All Permissions:", allPermissions); // Debugging log
+    console.log("All Permissions:", allPermissions);
   }, [allPermissions]);
 
-  // Fetch user permissions when a user is selected
+  useEffect(() => {
+    if (selectedUser) {
+      fetchUserPermissions(selectedUser.id);
+    } else {
+      setPermissions([]);
+      setSelectedFolders([]);
+    }
+  }, [selectedUser]);
+  
+  useEffect(() => {
+    setLoading(true);
+    setPermissions([]);
+    setSelectedFolders([]);
+    setSecurityGroups([]);
+    setSelectedUsers([]);
+
+    apiCall
+      .getAllUsers("users")
+      .then((res) => {
+        console.log("Raw users response:", res);
+
+        let usersData = [];
+        if (res.data?.users) {
+          usersData = res.data.users;
+        } else if (res.data?.data) {
+          usersData = res.data.data;
+        } else if (Array.isArray(res.data)) {
+          usersData = res.data;
+        } else if (Array.isArray(res)) {
+          usersData = res;
+        }
+
+        const validUsers = usersData.filter(user => {
+          if (!user || !user.id) return false;
+          if (isSuperAdminByRole(user)) return false;
+          return true;
+        });
+
+        setUsers(validUsers);
+      })
+      .catch((err) => {
+        console.error("Error fetching users:", err);
+        setUsers([]);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const staticPermissions = apiCall.getStaticPermissions();
+    setAllPermissions(staticPermissions);
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, []);
+
+  useEffect(() => {
+    refreshSecurityGroups();
+  }, []);
+
   useEffect(() => {
     if (selectedUser) {
       fetchUserPermissions(selectedUser.id);
@@ -164,25 +347,165 @@ const MemberPermissions = () => {
     }
   }, [selectedUser]);
 
-  // Fetch permissions for a specific user
-  const fetchUserPermissions = async (userId) => {
+  const refreshSecurityGroups = async () => {
+    setSecurityGroupsLoading(true);
     try {
-      const res = await apiCall.getUserPermissions(`permissions/user/${userId}`);
-      console.log("Fetched User Permissions:", res); // Debugging log
+      const response = await apiCall.getSecurityGroups();
 
-      const userPermissions = res.data?.data?.permissions || [];
-      const userFolders = res.data?.data?.folderIds || [];
+      let groupsData = [];
 
-      setPermissions(userPermissions); // Set the user's permissions
-      setSelectedFolders(userFolders); // Set the user's accessible folders
+      // Handle the nested data structure correctly
+      if (response?.data?.securityGroups) {
+        groupsData = response.data.securityGroups;
+      } else if (response?.data && Array.isArray(response.data)) {
+        groupsData = response.data;
+      } else if (Array.isArray(response)) {
+        groupsData = response;
+      }
 
-      console.log("User Permissions:", userPermissions); // Debugging log
-      console.log("User Folders:", userFolders); // Debugging log
+      // For each group, fetch its permissions AND users
+      const groupsWithPermissions = await Promise.all(
+        groupsData.map(async (group) => {
+          try {
+            // Fetch group permissions from backend
+            const permissionsResponse = await apiCall.instance1.get(`permissions/group/${group.id}`, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+              }
+            });
+
+            // Extract permissions and resources from response with better error handling
+            let groupPermissions = [];
+            let groupResources = [];
+
+            if (permissionsResponse.data?.data?.permissions) {
+              const permissionEntries = permissionsResponse.data.data.permissions;
+
+              // Extract unique permissions from all permission entries
+              const allPermissionsSet = new Set();
+              const allResourcesSet = new Set();
+
+              permissionEntries.forEach(entry => {
+                // Extract permissions array from each entry
+                if (entry.permissions && Array.isArray(entry.permissions)) {
+                  entry.permissions.forEach(perm => {
+                    if (typeof perm === 'string') {
+                      allPermissionsSet.add(perm);
+                    }
+                  });
+                }
+
+                // Extract resource IDs
+                if (entry.resourceType === 'FOLDER' && entry.folderId) {
+                  allResourcesSet.add(entry.folderId);
+                } else if (entry.resourceType === 'FILE' && entry.fileId) {
+                  allResourcesSet.add(entry.fileId);
+                }
+              });
+
+              groupPermissions = Array.from(allPermissionsSet);
+              groupResources = Array.from(allResourcesSet);
+            }
+
+            // Now fetch the updated group users from the backend using the correct endpoint
+            let groupUsers = [];
+            try {
+              // FIX: Use group.id instead of permissions.id
+              const groupUsersResponse = await apiCall.instance1.get(`security-group/${group.id}/users`, {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+              });
+
+              console.log(`Raw users response for group ${group.id}:`, groupUsersResponse.data);
+
+              // Handle different possible response structures
+              if (groupUsersResponse.data?.data?.users && Array.isArray(groupUsersResponse.data.data.users)) {
+                groupUsers = groupUsersResponse.data.data.users;
+              } else if (groupUsersResponse.data?.data && Array.isArray(groupUsersResponse.data.data)) {
+                groupUsers = groupUsersResponse.data.data;
+              } else if (groupUsersResponse.data?.users && Array.isArray(groupUsersResponse.data.users)) {
+                groupUsers = groupUsersResponse.data.users;
+              } else if (Array.isArray(groupUsersResponse.data)) {
+                groupUsers = groupUsersResponse.data;
+              }
+
+              // Ensure each user has proper structure and filter out invalid entries
+              groupUsers = groupUsers
+                .filter(user => user && user.id) // Must have valid user object with ID
+                .map(user => ({
+                  id: user.id,
+                  fullName: user.fullName || user.name || '',
+                  email: user.email || '',
+                  username: user.username || '',
+                  role: user.role || 'USER'
+                }));
+
+              console.log(`Processed users for group ${group.id}:`, groupUsers);
+            } catch (userError) {
+              console.log(`Error fetching users for group ${group.id}:`, userError.message);
+              groupUsers = Array.isArray(group.users) ? group.users : [];
+            }
+
+            return {
+              ...group,
+              permissions: groupPermissions,
+              resources: groupResources,
+              users: groupUsers, // Use freshly fetched users
+              userCount: groupUsers.length // Update count based on actual users
+            };
+          } catch (error) {
+            // Handle 404 and other errors gracefully - group simply has no permissions yet
+            if (error.response?.status === 404) {
+              console.log(`Group "${group.name}" (${group.id}) has no permissions configured yet`);
+            } else {
+              // Only log actual errors
+              console.error(`Error fetching permissions for group ${group.id}:`, error);
+            }
+
+            // Still try to get users even if permissions fail
+            let groupUsers = [];
+            try {
+              // FIX: Use group.id instead of permissions.id here too
+              const groupUsersResponse = await apiCall.instance1.get(`security-group/${group.id}/users`, {
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+              });
+
+              if (groupUsersResponse.data?.data?.users) {
+                groupUsers = groupUsersResponse.data.data.users;
+              } else if (Array.isArray(groupUsersResponse.data?.data)) {
+                groupUsers = groupUsersResponse.data.data;
+              } else if (Array.isArray(groupUsersResponse.data)) {
+                groupUsers = groupUsersResponse.data;
+              }
+
+              groupUsers = groupUsers.filter(user => user && user.id);
+            } catch (userError) {
+              console.log(`Error fetching users for group ${group.id}:`, userError.message);
+              groupUsers = Array.isArray(group.users) ? group.users : [];
+            }
+
+            // Return group without permissions if fetch fails but with updated users
+            return {
+              ...group,
+              permissions: [],
+              resources: [],
+              users: groupUsers,
+              userCount: groupUsers.length
+            };
+          }
+        })
+      );
+
+      setSecurityGroups(groupsWithPermissions);
+
     } catch (error) {
-      console.error("Error fetching user permissions:", error);
-      toast.error("Failed to load user permissions.");
-      setPermissions([]); // Reset permissions on error
-      setSelectedFolders([]); // Reset folders on error
+      setSecurityGroups([]);
+      toast.error("Failed to refresh security groups");
+    } finally {
+      setSecurityGroupsLoading(false);
     }
   };
 
@@ -195,8 +518,6 @@ const MemberPermissions = () => {
         apiCall.getFile("files"), // Fetch files
       ]);
 
-      console.log("Fetched Folders:", foldersRes); // Debugging log
-      console.log("Fetched Files:", filesRes); // Debugging log
 
       const folderData = Array.isArray(foldersRes) ? foldersRes : [];
       const fileData = Array.isArray(filesRes) ? filesRes : [];
@@ -209,7 +530,6 @@ const MemberPermissions = () => {
 
       setFolders(resources); // Update the folders state with combined resources
     } catch (error) {
-      console.error("Error fetching resources:", error);
       toast.error("Failed to load resources.");
       setFolders([]); // Reset folders on error
     }
@@ -217,14 +537,12 @@ const MemberPermissions = () => {
 
   // Save individual user permissions
   const handleSaveUserPermissions = async () => {
-    console.log("Saving permissions for user:", selectedUser);
     if (!selectedUser) {
       toast.warning("Please select a user to update permissions");
       return;
     }
 
     if (!selectedUser.id) {
-      console.error("Selected user has no ID property:", selectedUser);
       toast.error("Invalid user selection. Please try selecting the user again.");
       return;
     }
@@ -251,7 +569,6 @@ const MemberPermissions = () => {
         inherited: false,
       };
 
-      console.log("Saving permissions for user:", permissionData);
 
       // Call API to save permissions
       const response = await apiCall.createMemberPermission("permissions", permissionData);
@@ -265,7 +582,6 @@ const MemberPermissions = () => {
         toast.error("Failed to update permissions");
       }
     } catch (error) {
-      console.error("Error saving permissions:", error);
 
       // More detailed error message
       if (error.response && error.response.data && error.response.data.message) {
@@ -303,7 +619,6 @@ const MemberPermissions = () => {
         }
       });
 
-      console.log("Group created:", createGroupResponse.data);
 
       toast.success(`Security group "${newGroup.name}" created successfully!`);
 
@@ -319,7 +634,6 @@ const MemberPermissions = () => {
       await refreshSecurityGroups();
 
     } catch (error) {
-      console.error("Error creating group:", error);
 
       if (error.response?.data?.message) {
         toast.error(`Error: ${error.response.data.message}`);
@@ -340,124 +654,100 @@ const MemberPermissions = () => {
     fetchResources(); // Fetch folders and files on component mount
   }, []);
 
-  // Add this function to handle opening the manage users modal
-  const handleManageUsers = (group) => {
-    setGroupToManage(group);
-
-    // Safely initialize selectedUsers
-    let initialUsers = [];
-
-    // Check if group.users exists and is an array
-    if (group.users && Array.isArray(group.users)) {
-      // Map user IDs with safety check
-      initialUsers = group.users
-        .filter(user => user && user.id) // Only include users with valid IDs
-        .map(user => user.id);
-    }
-
-    setSelectedUsers(initialUsers);
-    setShowManageUsersModal(true);
-  };
-
-  // Update the handleSaveGroupUsers function to use the correct endpoint
-
-  const handleSaveGroupUsers = async () => {
-    if (!groupToManage) return;
-
+  // Replace your handleManageUsers function with this corrected version:
+  const handleManageUsers = async (group) => {
     try {
-      setSaving(true);
-
-      // Filter out any SUPER_ADMIN users that might have been selected
-      const filteredSelectedUsers = selectedUsers.filter(userId => {
-        const user = users.find(u => u.id === userId);
-        return user && !isSuperAdminByRole(user);
-      });
-
-      if (filteredSelectedUsers.length !== selectedUsers.length) {
-        console.warn("Filtered out SUPER_ADMIN users from selection");
-        setSelectedUsers(filteredSelectedUsers);
-      }
-
-      // Get the current users in the group (also filter out SUPER_ADMIN)
-      const currentUsers = (groupToManage.users || [])
-        .map(user => user.id)
-        .filter(userId => {
-          const user = users.find(u => u.id === userId);
-          return user && !isSuperAdminByRole(user);
+      console.log(`Opening manage users modal for group: ${group.name} (${group.id})`);
+      
+      // Try to fetch fresh user data using the correct security-group endpoint
+      let freshGroupUsers = [];
+      
+      try {
+        const groupUsersResponse = await apiCall.instance1.get(`security-group/${group.id}/users`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
         });
 
-      // Figure out which users to add and which to remove
-      const usersToAdd = filteredSelectedUsers.filter(id => !currentUsers.includes(id));
-      const usersToRemove = currentUsers.filter(id => !filteredSelectedUsers.includes(id));
+        console.log("Fresh group users response:", groupUsersResponse.data);
 
-      console.log(`Adding ${usersToAdd.length} users and removing ${usersToRemove.length} users (SUPER_ADMIN excluded)`);
-
-      // Add new users to the group - one by one
-      for (const userId of usersToAdd) {
-        try {
-          const user = users.find(u => u.id === userId);
-          if (!isSuperAdminByRole(user)) { // Double-check by role
-            await apiCall.instance1.post(`security-group/${groupToManage.id}/add-user`, {
-              userId: userId
-            }, {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-              }
-            });
-            console.log(`Added user ${userId} to group ${groupToManage.id}`);
-          } else {
-            console.warn(`Skipped adding SUPER_ADMIN user ${userId} (role: ${user.role})`);
-          }
-        } catch (error) {
-          console.error(`Error adding user ${userId} to group:`, error);
+        // Handle different possible response structures
+        if (groupUsersResponse.data?.data?.users && Array.isArray(groupUsersResponse.data.data.users)) {
+          freshGroupUsers = groupUsersResponse.data.data.users;
+        } else if (groupUsersResponse.data?.data && Array.isArray(groupUsersResponse.data.data)) {
+          freshGroupUsers = groupUsersResponse.data.data;
+        } else if (groupUsersResponse.data?.users && Array.isArray(groupUsersResponse.data.users)) {
+          freshGroupUsers = groupUsersResponse.data.users;
+        } else if (Array.isArray(groupUsersResponse.data)) {
+          freshGroupUsers = groupUsersResponse.data;
+        }
+      } catch (userFetchError) {
+        if (userFetchError.response?.status === 404) {
+          console.log(`Group ${group.id} has no users (404 - starting with empty user list)`);
+          freshGroupUsers = []; // Start with empty array
+        } else {
+          console.error("Error fetching group users:", userFetchError);
+          // Use existing group users as fallback
+          freshGroupUsers = Array.isArray(group.users) ? group.users : [];
         }
       }
 
-      // Remove users from the group if needed
-      for (const userId of usersToRemove) {
-        try {
-          await apiCall.instance1.delete(`security-group/${groupToManage.id}/remove-user/${userId}`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-          });
-          console.log(`Removed user ${userId} from group ${groupToManage.id}`);
-        } catch (error) {
-          console.error(`Error removing user ${userId} from group:`, error);
-        }
-      }
+      // Process and normalize user data
+      const processedUsers = freshGroupUsers
+        .filter(user => user && user.id)
+        .map(user => ({
+          id: user.id,
+          fullName: user.fullName || user.name || '',
+          email: user.email || '',
+          username: user.username || '',
+          role: user.role || 'USER'
+        }));
 
-      toast.success("Group members updated successfully! (SUPER_ADMIN users excluded)");
+      // Get user IDs for selection state
+      const freshUserIds = processedUsers.map(user => user.id);
 
-      // Update the local state to reflect changes
-      setSecurityGroups(prev =>
-        prev.map(group =>
-          group.id === groupToManage.id
-            ? { ...group, users: filteredSelectedUsers, userCount: filteredSelectedUsers.length }
-            : group
-        )
-      );
+      console.log("Fresh user IDs for group:", freshUserIds);
+      console.log("Processed users:", processedUsers);
 
-      setShowManageUsersModal(false);
+      // Update the group object with fresh user data
+      const updatedGroup = {
+        ...group,
+        users: processedUsers,
+        userCount: processedUsers.length
+      };
+
+      setGroupToManage(updatedGroup);
+      setSelectedUsers(freshUserIds);
+      setShowManageUsersModal(true);
+
     } catch (error) {
-      console.error("Error updating group members:", error);
-      toast.error("Failed to update group members");
-    } finally {
-      setSaving(false);
+      console.error("Error in handleManageUsers:", error);
+      
+      // Fallback to existing group data
+      setGroupToManage(group);
+      
+      let initialUsers = [];
+      if (group.users && Array.isArray(group.users)) {
+        initialUsers = group.users
+          .filter(user => user && user.id)
+          .map(user => user.id);
+      }
+
+      setSelectedUsers(initialUsers);
+      setShowManageUsersModal(true);
+      
+      console.log("Using fallback group data for manage users modal");
     }
   };
 
   // Replace your handleEditGroup function with this updated version:
   const handleEditGroup = async (group) => {
     if (!group) {
-      console.error("Cannot edit undefined group");
       return;
     }
 
     try {
-      console.log("Fetching current permissions for group:", group.id);
-      
+
       // Fetch current permissions from backend
       const permissionsResponse = await apiCall.instance1.get(`permissions/group/${group.id}`, {
         headers: {
@@ -465,7 +755,6 @@ const MemberPermissions = () => {
         }
       });
 
-      console.log("Current group permissions from backend:", permissionsResponse.data);
 
       // Extract permissions and resources with better error handling
       let currentPermissions = [];
@@ -473,11 +762,11 @@ const MemberPermissions = () => {
 
       if (permissionsResponse.data?.data?.permissions) {
         const permissionEntries = permissionsResponse.data.data.permissions;
-        
+
         // Extract unique permissions from all permission entries
         const allPermissionsSet = new Set();
         const allResourcesSet = new Set();
-        
+
         permissionEntries.forEach(entry => {
           // Extract permissions array from each entry
           if (entry.permissions && Array.isArray(entry.permissions)) {
@@ -487,7 +776,7 @@ const MemberPermissions = () => {
               }
             });
           }
-          
+
           // Extract resource IDs
           if (entry.resourceType === 'FOLDER' && entry.folderId) {
             allResourcesSet.add(entry.folderId);
@@ -495,12 +784,10 @@ const MemberPermissions = () => {
             allResourcesSet.add(entry.fileId);
           }
         });
-        
+
         currentPermissions = Array.from(allPermissionsSet);
         currentResources = Array.from(allResourcesSet);
-        
-        console.log("Extracted permissions for editing:", currentPermissions);
-        console.log("Extracted resources for editing:", currentResources);
+
       }
 
       // Create a copy of the group with current permissions from backend
@@ -520,12 +807,10 @@ const MemberPermissions = () => {
       setShowEditGroupForm(true);
 
     } catch (error) {
-      console.error("Error fetching group permissions:", error);
-      
+
       // Handle 404 specifically - group has no permissions yet
       if (error.response?.status === 404) {
-        console.log(`Group ${group.id} has no permissions yet - starting with empty permissions`);
-        
+
         setEditingGroup({
           id: group.id || "",
           name: group.name || "",
@@ -536,7 +821,7 @@ const MemberPermissions = () => {
             ? group.users.filter(user => user && user.id).map(user => user.id)
             : []
         });
-        
+
         setShowEditGroupForm(true);
       } else {
         // For other errors, fallback to local state
@@ -544,7 +829,7 @@ const MemberPermissions = () => {
           id: group.id || "",
           name: group.name || "",
           department: group.department || "",
-          permissions: Array.isArray(group.permissions) ? 
+          permissions: Array.isArray(group.permissions) ?
             group.permissions.filter(perm => typeof perm === 'string') : [],
           resources: Array.isArray(group.resources) ? group.resources : [],
           users: Array.isArray(group.users)
@@ -564,10 +849,6 @@ const MemberPermissions = () => {
 
     try {
       setSaving(true);
-
-      console.log("Creating/updating permissions for group:", editingGroup.id);
-      console.log("Selected permissions:", editingGroup.permissions);
-      console.log("Selected resources:", editingGroup.resources);
 
       // Convert permissions to uppercase format that backend expects
       const mappedPermissions = editingGroup.permissions.map(perm => {
@@ -603,14 +884,11 @@ const MemberPermissions = () => {
         }
       });
 
-      console.log("Creating permissions for:", { folderIds, fileIds, mappedPermissions });
-
       let folderSuccess = false;
       let fileSuccess = false;
 
       // CREATE folder permissions using POST
       if (folderIds.length > 0) {
-        console.log("Creating folder permissions for group:", editingGroup.id);
         try {
           const folderPermissionData = {
             resourceType: "FOLDER",
@@ -620,7 +898,6 @@ const MemberPermissions = () => {
             inherited: false
           };
 
-          console.log("Posting folder permissions with data:", folderPermissionData);
 
           const response = await apiCall.instance1.post("permissions/group/folder", folderPermissionData, {
             headers: {
@@ -629,13 +906,9 @@ const MemberPermissions = () => {
             }
           });
 
-          console.log("Folder permissions posted successfully:", response.data);
           folderSuccess = true;
           toast.success(`Posted folder permissions for ${folderIds.length} folders`);
         } catch (error) {
-          console.error("Error posting folder permissions:", error);
-          console.error("Error response:", error.response?.data);
-
           if (error.response?.data?.message) {
             toast.error(`Folder permissions error: ${error.response.data.message}`);
           } else {
@@ -646,7 +919,6 @@ const MemberPermissions = () => {
 
       // CREATE file permissions using POST
       if (fileIds.length > 0) {
-        console.log("Creating file permissions for group:", editingGroup.id);
         try {
           const filePermissionData = {
             resourceType: "FILE",
@@ -656,8 +928,6 @@ const MemberPermissions = () => {
             inherited: false
           };
 
-          console.log("Posting file permissions with data:", filePermissionData);
-
           const response = await apiCall.instance1.post("permissions/group/file", filePermissionData, {
             headers: {
               'Content-Type': 'application/json',
@@ -665,12 +935,9 @@ const MemberPermissions = () => {
             }
           });
 
-          console.log("File permissions posted successfully:", response.data);
           fileSuccess = true;
           toast.success(`Posted file permissions for ${fileIds.length} files`);
         } catch (error) {
-          console.error("Error posting file permissions:", error);
-          console.error("Error response:", error.response?.data);
 
           if (error.response?.data?.message) {
             toast.error(`File permissions error: ${error.response.data.message}`);
@@ -683,10 +950,10 @@ const MemberPermissions = () => {
       // Show overall success message and refresh group data
       if (folderSuccess || fileSuccess) {
         toast.success("Permissions posted successfully!");
-        
+
         // Refresh the security groups to get updated permissions from backend
         await refreshSecurityGroups();
-        
+
         setShowEditGroupForm(false);
       } else if (folderIds.length === 0 && fileIds.length === 0) {
         toast.info("No resources selected to create permissions for");
@@ -695,7 +962,6 @@ const MemberPermissions = () => {
       }
 
     } catch (error) {
-      console.error("Error in handleSaveGroupEdit:", error);
       toast.error("Failed to post permissions. Please try again.");
     } finally {
       setSaving(false);
@@ -720,7 +986,6 @@ const MemberPermissions = () => {
       // Update the UI to remove the deleted group
       setSecurityGroups(prev => prev.filter(group => group.id !== groupId));
     } catch (error) {
-      console.error("Error deleting group:", error);
       toast.error("Failed to delete security group");
     }
   };
@@ -777,110 +1042,6 @@ const MemberPermissions = () => {
     }
   }, [showNewGroupForm, newGroup]);
 
-  // Add this function to fetch groups with their permissions
-  const refreshSecurityGroups = async () => {
-    setSecurityGroupsLoading(true);
-    try {
-      const response = await apiCall.getSecurityGroups();
-      console.log("Security groups response:", response);
-
-      let groupsData = [];
-      
-      // Handle the nested data structure correctly
-      if (response?.data?.securityGroups) {
-        groupsData = response.data.securityGroups;
-      } else if (response?.data && Array.isArray(response.data)) {
-        groupsData = response.data;
-      } else if (Array.isArray(response)) {
-        groupsData = response;
-      }
-
-      // For each group, fetch its permissions
-      const groupsWithPermissions = await Promise.all(
-        groupsData.map(async (group) => {
-          try {
-            // Fetch group permissions from backend
-            const permissionsResponse = await apiCall.instance1.get(`permissions/group/${group.id}`, {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-              }
-            });
-
-            console.log(`Permissions for group ${group.id}:`, permissionsResponse.data);
-
-            // Extract permissions and resources from response with better error handling
-            let groupPermissions = [];
-            let groupResources = [];
-
-            if (permissionsResponse.data?.data?.permissions) {
-              const permissionEntries = permissionsResponse.data.data.permissions;
-              
-              // Extract unique permissions from all permission entries
-              const allPermissionsSet = new Set();
-              const allResourcesSet = new Set();
-              
-              permissionEntries.forEach(entry => {
-                // Extract permissions array from each entry
-                if (entry.permissions && Array.isArray(entry.permissions)) {
-                  entry.permissions.forEach(perm => {
-                    if (typeof perm === 'string') {
-                      allPermissionsSet.add(perm);
-                    }
-                  });
-                }
-                
-                // Extract resource IDs
-                if (entry.resourceType === 'FOLDER' && entry.folderId) {
-                  allResourcesSet.add(entry.folderId);
-                } else if (entry.resourceType === 'FILE' && entry.fileId) {
-                  allResourcesSet.add(entry.fileId);
-                }
-              });
-              
-              groupPermissions = Array.from(allPermissionsSet);
-              groupResources = Array.from(allResourcesSet);
-              
-              console.log(`Extracted permissions for group ${group.id}:`, groupPermissions);
-              console.log(`Extracted resources for group ${group.id}:`, groupResources);
-            }
-
-            return {
-              ...group,
-              permissions: groupPermissions,
-              resources: groupResources,
-              userCount: group.users ? group.users.length : 0
-            };
-          } catch (error) {
-            // Handle 404 and other errors gracefully - group simply has no permissions yet
-            if (error.response?.status === 404) {
-              console.log(`Group ${group.id} has no permissions yet (404 - this is normal for new groups)`);
-            } else {
-              console.error(`Error fetching permissions for group ${group.id}:`, error);
-            }
-            
-            // Return group without permissions if fetch fails
-            return {
-              ...group,
-              permissions: [],
-              resources: [],
-              userCount: group.users ? group.users.length : 0
-            };
-          }
-        })
-      );
-
-      console.log("Groups with permissions:", groupsWithPermissions);
-      setSecurityGroups(groupsWithPermissions);
-
-    } catch (error) {
-      console.error("Error fetching security groups:", error);
-      setSecurityGroups([]);
-      toast.error("Failed to refresh security groups");
-    } finally {
-      setSecurityGroupsLoading(false);
-    }
-  };
-
   // Inside your component return statement
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -896,7 +1057,10 @@ const MemberPermissions = () => {
           {/* Load initial data first */}
           {loading ? (
             <div className="flex items-center justify-center h-40">
-              <span className="text-gray-500 text-lg">Loading permissions data...</span>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <span className="text-gray-500 text-lg">Loading permissions data...</span>
+              </div>
             </div>
           ) : (
             <div>
@@ -912,7 +1076,6 @@ const MemberPermissions = () => {
                   value={selectedUser?.id || ""}
                   onChange={(e) => {
                     const userId = e.target.value;
-                    console.log("Selected user ID from dropdown:", userId);
 
                     if (!userId) {
                       setSelectedUser(null);
@@ -920,14 +1083,12 @@ const MemberPermissions = () => {
                     }
 
                     const user = users.find(user => user.id === userId);
-                    console.log("Found user object:", user);
 
                     // Additional safety check to ensure selected user is not SUPER_ADMIN
                     if (user && user.id && !isSuperAdminByRole(user)) {
                       setSelectedUser(user);
                       fetchUserPermissions(user.id);
                     } else {
-                      console.error("Attempted to select SUPER_ADMIN user or invalid user:", user);
                       toast.error("Cannot select super admin users for permission management.");
                       setSelectedUser(null);
                     }
@@ -991,7 +1152,7 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
                         <div className="grid grid-cols-2 gap-2">
-                          {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                          {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
@@ -1187,10 +1348,10 @@ const MemberPermissions = () => {
                                     <div className="pl-4 pt-2 flex flex-wrap gap-1">
                                       {group.permissions.map((perm, index) => {
                                         // Ensure perm is a string before calling replace
-                                        const permissionText = typeof perm === 'string' ? 
-                                          perm.replace(/_/g, " ") : 
+                                        const permissionText = typeof perm === 'string' ?
+                                          perm.replace(/_/g, " ") :
                                           String(perm).replace(/_/g, " ");
-                                        
+
                                         return (
                                           <span key={`${perm}-${index}`} className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">
                                             {permissionText}
@@ -1320,7 +1481,7 @@ const MemberPermissions = () => {
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <div className="flex">
                           <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 5a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                           </svg>
                           <div className="ml-3">
                             <p className="text-sm text-blue-700">
@@ -1500,7 +1661,7 @@ const MemberPermissions = () => {
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                       <div className="flex">
                         <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zm-1 5a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                         </svg>
                         <div className="ml-3">
                           <p className="text-sm text-blue-700">
@@ -1519,8 +1680,8 @@ const MemberPermissions = () => {
 
                     <div className="mb-2">
                       <span className="font-medium text-gray-600">
-                        {(editingGroup?.resources && editingGroup.resources.length > 0) ? 
-                          "Current Resources (modify as needed):" : 
+                        {(editingGroup?.resources && editingGroup.resources.length > 0) ?
+                          "Current Resources (modify as needed):" :
                           "Resources to Grant Access:"
                         }
                       </span>
@@ -1539,8 +1700,8 @@ const MemberPermissions = () => {
 
                     <div className="mb-2">
                       <span className="font-medium text-gray-600">
-                        {(editingGroup?.permissions && editingGroup.permissions.length > 0) ? 
-                          "Current Permissions (modify as needed):" : 
+                        {(editingGroup?.permissions && editingGroup.permissions.length > 0) ?
+                          "Current Permissions (modify as needed):" :
                           "New Permissions to Create:"
                         }
                       </span>
@@ -1589,8 +1750,7 @@ const MemberPermissions = () => {
                                   type="checkbox"
                                   checked={hasPermission(editingGroup?.permissions, perm)}
                                   onChange={(e) => {
-                                    console.log(`Toggling permission ${perm}, current state:`, hasPermission(editingGroup?.permissions, perm));
-                                    
+
                                     if (e.target.checked) {
                                       setEditingGroup(prev => prev ? {
                                         ...prev,
@@ -1599,7 +1759,7 @@ const MemberPermissions = () => {
                                     } else {
                                       setEditingGroup(prev => prev ? {
                                         ...prev,
-                                        permissions: (prev.permissions || []).filter(p => 
+                                        permissions: (prev.permissions || []).filter(p =>
                                           p.toUpperCase() !== perm.toUpperCase()
                                         )
                                       } : null);
@@ -1747,58 +1907,3 @@ const MemberPermissions = () => {
 
 export default MemberPermissions;
 
-// Update the safeArrayCheck function to handle case-insensitive matching:
-const safeArrayCheck = (arr) => {
-  return Array.isArray(arr) ? arr : [];
-};
-
-// Add a new function for case-insensitive permission checking:
-const hasPermission = (permissions, permission) => {
-  if (!Array.isArray(permissions)) return false;
-  
-  // Check for exact match first
-  if (permissions.includes(permission)) return true;
-  
-  // Check for case-insensitive match
-  return permissions.some(perm => 
-    typeof perm === 'string' && perm.toUpperCase() === permission.toUpperCase()
-  );
-};
-
-// Add this temporarily in your security groups section for testing:
-<button
-  onClick={async () => {
-    // Test permission extraction for the first group
-    if (securityGroups.length > 0) {
-      const testGroup = securityGroups[0];
-      console.log("Testing permission extraction for group:", testGroup.name);
-      
-      try {
-        const response = await apiCall.instance1.get(`permissions/group/${testGroup.id}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        });
-        
-        console.log("Raw response:", response.data);
-        
-        if (response.data?.data?.permissions) {
-          const entries = response.data.data.permissions;
-          console.log("Permission entries:", entries);
-          
-          const allPerms = new Set();
-          entries.forEach(entry => {
-            if (entry.permissions) {
-              entry.permissions.forEach(p => allPerms.add(p));
-            }
-          });
-          
-          console.log("Extracted unique permissions:", Array.from(allPerms));
-        }
-      } catch (error) {
-        console.error("Test error:", error);
-      }
-    }
-  }}
-  className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
->
-  Test Permission Extraction
-</button>
