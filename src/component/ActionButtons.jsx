@@ -19,92 +19,98 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
         if (!selectedFile) return;
 
         try {
-            // Get the current folder ID
-            let folderId = null;
-            if (getFolderId) folderId = getFolderId();
+            let folderId = currentFolderId;
 
-            // Create a new FormData object with the file
+            if (!folderId && getFolderId) {
+                folderId = getFolderId();
+            }
+
             const formData = new FormData();
+            formData.append("file", selectedFile);
 
-            // Generate a unique identifier for the file if needed
-            const originalFileName = selectedFile.name;
-            let fileNameToUse = originalFileName;
+            // const originalFileName = selectedFile.name;
+            // let fileNameToUse = originalFileName;
 
-            // Always add a timestamp to the filename to ensure uniqueness
-            // but preserve the original file extension
-            const timestamp = new Date().getTime();
-            const lastDot = originalFileName.lastIndexOf('.');
-            const extension = lastDot > 0 ? originalFileName.substring(lastDot) : '';
-            const baseName = lastDot > 0 ? originalFileName.substring(0, lastDot) : originalFileName;
+            // const timestamp = new Date().getTime();
+            // const lastDot = originalFileName.lastIndexOf('.');
+            // const extension = lastDot > 0 ? originalFileName.substring(lastDot) : '';
+            // const baseName = lastDot > 0 ? originalFileName.substring(0, lastDot) : originalFileName;
 
+            // const lastDot = originalFileName.lastIndexOf('.');
+            // const extension = lastDot > 0 ? originalFileName.substring(lastDot) : '';
+            // const baseName = lastDot > 0 ? originalFileNa
             // Create a modified file with a guaranteed unique name
-            const uniqueFileName = `${baseName}_${timestamp}${extension}`;
-            const uniqueFile = new File([selectedFile], uniqueFileName, {
-                type: selectedFile.type,
-                lastModified: selectedFile.lastModified
-            });
+            // const uniqueFileName = `${baseName}_${timestamp}${extension}`;
+            // const uniqueFile = new File([selectedFile], uniqueFileName, {
+            //     type: selectedFile.type,
+            //     lastModified: selectedFile.lastModified
+            // });
 
             // Add the file with the unique name to prevent conflicts
-            formData.append("file", uniqueFile);
+            // formData.append("file", uniqueFile);
 
             // Add metadata to explicitly specify the folder path
             if (folderId) {
-                formData.append("file", uniqueFile);
                 formData.append("folderId", folderId);
-                formData.append("parentId", folderId);  // Explicitly set parentId to match folder ID
-                formData.append("restrictToFolder", "true");
+                formData.append("parentId", folderId);
+                console.log("Uploading to folder:", folderId);
+                // formData.append("restrictToFolder", "true");
             } else {
-                formData.append("file", uniqueFile);
                 formData.append("isRootFile", "true");
-                formData.append("parentId", "null");  // Explicitly set null parentId for root files
+                formData.append("parentId", "null");
+                console.log("Uploading to root folder");
             }
 
             // Upload the file
             const uploadEndpoint = folderId
                 ? `files/upload/file/${folderId}`
                 : `files/upload/file`;
+            console.log("Upload endpoint:", uploadEndpoint);
 
-            try {
-                const res = await apiCall.uploadFile(uploadEndpoint, formData);
+            // try {
+            const res = await apiCall.uploadFile(uploadEndpoint, formData);
+            console.log("Upload response:", res);
 
-                // Show success message
-                toast.success(`File uploaded successfully!`, {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                    className: "bg-green-50 border-l-4 border-green-500 text-green-700 p-4",
-                });
+            // Show success message
+            toast.success(`File "${selectedFile.name}" uploaded successfully!`, {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                className: "bg-green-50 border-l-4 border-green-500 text-green-700 p-4",
+            });
 
-                // Refresh the current folder view
-                onActionComplete?.();
-            } catch (uploadError) {
-                console.error("Error uploading file:", uploadError);
-
-                // If it's a 409 Conflict error, try again with a different name
-                if (uploadError.response && uploadError.response.status === 409) {
-                    // Show warning about renaming
-                    toast.info(`File was uploaded as "${uniqueFileName}" to avoid name conflict.`, {
-                        position: "top-right",
-                        autoClose: 4000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                        progress: undefined,
-                        className: "bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4",
-                    });
-
-                    // Refresh the current folder view
-                    onActionComplete?.();
-                } else {
-                    // For other errors, throw to be caught by the outer catch
-                    throw uploadError;
-                }
+            // Refresh the current folder view
+            if (onActionComplete) {
+                onActionComplete();
             }
+            // } catch (error) {
+            //     // } catch (uploadError) {
+            //     //     console.error("Error uploading file:", uploadError);
+
+            //     // If it's a 409 Conflict error, try again with a different name
+            //     if (uploadError.response && uploadError.response.status === 409) {
+            //         // Show warning about renaming
+            //         toast.info(`File was uploaded as "${uniqueFileName}" to avoid name conflict.`, {
+            //             position: "top-right",
+            //             autoClose: 4000,
+            //             hideProgressBar: false,
+            //             closeOnClick: true,
+            //             pauseOnHover: true,
+            //             draggable: true,
+            //             progress: undefined,
+            //             className: "bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4",
+            //         });
+
+            //         // Refresh the current folder view
+            //         onActionComplete?.();
+            //     } else {
+            //         // For other errors, throw to be caught by the outer catch
+            //         throw uploadError;
+            //     }
         } catch (error) {
             console.error("Error uploading file:", error);
             toast.error(`Upload failed: ${error.response?.data?.message || error.message}`, {
