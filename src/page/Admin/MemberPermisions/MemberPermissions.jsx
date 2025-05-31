@@ -215,6 +215,82 @@ const MemberPermissions = () => {
     }
   };
 
+  const fetchUserPermissions = async (userId) => {
+    if (!userId) {
+      console.log("No user ID provided to fetchUserPermissions");
+      return;
+    }
+
+    try {
+      console.log(`Fetching permissions for user: ${userId}`);
+
+      // Fetch user's current permissions from the backend
+      const response = await apiCall.instance1.get(`permissions/user/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+
+      console.log("User permissions response:", response.data);
+
+      // Initialize empty arrays for permissions and resources
+      let userPermissions = [];
+      let userResources = [];
+
+      // Handle the response structure
+      if (response.data?.data?.permissions && Array.isArray(response.data.data.permissions)) {
+        const permissionEntries = response.data.data.permissions;
+
+        // Extract unique permissions from all permission entries
+        const allPermissionsSet = new Set();
+        const allResourcesSet = new Set();
+
+        permissionEntries.forEach(entry => {
+          // Extract permissions array from each entry
+          if (entry.permissions && Array.isArray(entry.permissions)) {
+            entry.permissions.forEach(perm => {
+              if (typeof perm === 'string') {
+                allPermissionsSet.add(perm);
+              }
+            });
+          }
+
+          // Extract resource IDs
+          if (entry.resourceType === 'FOLDER' && entry.folderId) {
+            allResourcesSet.add(entry.folderId);
+          } else if (entry.resourceType === 'FILE' && entry.fileId) {
+            allResourcesSet.add(entry.fileId);
+          }
+        });
+
+        userPermissions = Array.from(allPermissionsSet);
+        userResources = Array.from(allResourcesSet);
+      }
+
+      console.log("Processed user permissions:", userPermissions);
+      console.log("Processed user resources:", userResources);
+
+      // Update the state with fetched permissions and resources
+      setPermissions(userPermissions);
+      setSelectedFolders(userResources);
+
+    } catch (error) {
+      console.error("Error fetching user permissions:", error);
+
+      // Handle 404 specifically - user has no permissions yet
+      if (error.response?.status === 404) {
+        console.log(`User ${userId} has no permissions configured yet`);
+        setPermissions([]);
+        setSelectedFolders([]);
+      } else {
+        // For other errors, clear the permissions and show error
+        setPermissions([]);
+        setSelectedFolders([]);
+        toast.error("Failed to fetch user permissions");
+      }
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     setPermissions([]);
@@ -259,6 +335,7 @@ const MemberPermissions = () => {
         setUsers(validUsers);
 
         if (validUsers.length === 0) {
+          console.warn("No valid users found after filtering");
         }
       })
       .catch((err) => {
@@ -286,49 +363,6 @@ const MemberPermissions = () => {
       setSelectedFolders([]);
     }
   }, [selectedUser]);
-  
-  useEffect(() => {
-    setLoading(true);
-    setPermissions([]);
-    setSelectedFolders([]);
-    setSecurityGroups([]);
-    setSelectedUsers([]);
-
-    apiCall
-      .getAllUsers("users")
-      .then((res) => {
-        console.log("Raw users response:", res);
-
-        let usersData = [];
-        if (res.data?.users) {
-          usersData = res.data.users;
-        } else if (res.data?.data) {
-          usersData = res.data.data;
-        } else if (Array.isArray(res.data)) {
-          usersData = res.data;
-        } else if (Array.isArray(res)) {
-          usersData = res;
-        }
-
-        const validUsers = usersData.filter(user => {
-          if (!user || !user.id) return false;
-          if (isSuperAdminByRole(user)) return false;
-          return true;
-        });
-
-        setUsers(validUsers);
-      })
-      .catch((err) => {
-        console.error("Error fetching users:", err);
-        setUsers([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    const staticPermissions = apiCall.getStaticPermissions();
-    setAllPermissions(staticPermissions);
-  }, []);
 
   useEffect(() => {
     fetchResources();
@@ -337,15 +371,6 @@ const MemberPermissions = () => {
   useEffect(() => {
     refreshSecurityGroups();
   }, []);
-
-  useEffect(() => {
-    if (selectedUser) {
-      fetchUserPermissions(selectedUser.id);
-    } else {
-      setPermissions([]);
-      setSelectedFolders([]);
-    }
-  }, [selectedUser]);
 
   const refreshSecurityGroups = async () => {
     setSecurityGroupsLoading(true);
@@ -555,40 +580,147 @@ const MemberPermissions = () => {
     try {
       setSaving(true);
 
-      // Ensure we have a valid account ID
-      if (!selectedUser.id) {
-        throw new Error("Selected user has no ID");
+      // Separate folders and files from the selected resources
+      const folderIds = [];
+      const fileIds = [];
+
+      selectedFolders.forEach(resourceId => {
+        const resource = folders.find(item => item.id === resourceId);
+        if (resource) {
+          const isFolder = resource.type === 'folder' ||
+            resource.mimeType === 'application/vnd.google-apps.folder' ||
+            (!resource.fileName && !resource.fileExtension);
+
+          if (isFolder) {
+            folderIds.push(resourceId);
+          } else {
+            fileIds.push(resourceId);
+          }
+        }
+      });
+
+      console.log("Separated resources:", { folderIds, fileIds, permissions });
+
+      let folderSuccess = false;
+      let fileSuccess = false;
+
+      // Create folder permissions using individual requests (like curl example)
+      if (folderIds.length > 0) {
+        try {
+          // Create individual permission for each folder (matching curl format)
+          for (const folderId of folderIds) {
+            const folderPermissionData = {
+              resourceType: "FOLDER",
+              permissions: permissions,
+              folderId: folderId,           // Single folder ID (not array)
+              accountId: selectedUser.id,   // Make sure this is populated
+              inherited: false
+            };
+
+            console.log("Creating folder permission with data:", folderPermissionData);
+
+            // Try /permissions/member first, then fallback to /permissions
+            let response;
+            try {
+              response = await apiCall.instance1.post("permissions/member", folderPermissionData, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+              });
+              console.log("✅ Folder permission created via /permissions/member:", response.data);
+            } catch (memberError) {
+              console.log("❌ /permissions/member failed, trying /permissions:", memberError.response?.status);
+              
+              // Fallback to regular permissions endpoint
+              response = await apiCall.instance1.post("permissions", folderPermissionData, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+              });
+              console.log("✅ Folder permission created via /permissions:", response.data);
+            }
+          }
+
+          folderSuccess = true;
+          toast.success(`Created folder permissions for ${folderIds.length} folders`);
+        } catch (error) {
+          console.error("❌ Failed to create folder permissions:", error);
+          if (error.response?.data?.message) {
+            toast.error(`Folder permissions error: ${error.response.data.message}`);
+          } else {
+            toast.error("Failed to create folder permissions");
+          }
+        }
       }
 
-      // Format the data correctly for the API
-      const permissionData = {
-        accountId: selectedUser.id,
-        resourceType: "FOLDER",
-        permissions: permissions.length > 0 ? permissions : ["READ_FILES"],
-        folderIds: selectedFolders,
-        inherited: false,
-      };
+      // Create file permissions using individual requests
+      if (fileIds.length > 0) {
+        try {
+          // Create individual permission for each file
+          for (const fileId of fileIds) {
+            const filePermissionData = {
+              resourceType: "FILE",
+              permissions: permissions,
+              fileId: fileId,              // Single file ID (not array)
+              accountId: selectedUser.id,   // Make sure this is populated
+              inherited: false
+            };
 
+            console.log("Creating file permission with data:", filePermissionData);
 
-      // Call API to save permissions
-      const response = await apiCall.createMemberPermission("permissions", permissionData);
+            // Try /permissions/member first, then fallback to /permissions
+            let response;
+            try {
+              response = await apiCall.instance1.post("permissions/member", filePermissionData, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+              });
+              console.log("✅ File permission created via /permissions/member:", response.data);
+            } catch (memberError) {
+              console.log("❌ /permissions/member failed, trying /permissions:", memberError.response?.status);
+              
+              // Fallback to regular permissions endpoint
+              response = await apiCall.instance1.post("permissions", filePermissionData, {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+              });
+              console.log("✅ File permission created via /permissions:", response.data);
+            }
+          }
 
-      if (response && response.status === "success") {
-        toast.success("Permissions updated successfully");
+          fileSuccess = true;
+          toast.success(`Created file permissions for ${fileIds.length} files`);
+        } catch (error) {
+          console.error("❌ Failed to create file permissions:", error);
+          if (error.response?.data?.message) {
+            toast.error(`File permissions error: ${error.response.data.message}`);
+          } else {
+            toast.error("Failed to create file permissions");
+          }
+        }
+      }
 
+      // Show overall success message and refresh user permissions
+      if (folderSuccess || fileSuccess) {
+        toast.success("User permissions created successfully!");
+        
         // Refresh user permissions to show the updated state
         fetchUserPermissions(selectedUser.id);
+      } else if (folderIds.length === 0 && fileIds.length === 0) {
+        toast.info("No resources selected to create permissions for");
       } else {
-        toast.error("Failed to update permissions");
+        toast.error("Failed to create any permissions");
       }
-    } catch (error) {
 
-      // More detailed error message
-      if (error.response && error.response.data && error.response.data.message) {
-        toast.error(`Error: ${error.response.data.message}`);
-      } else {
-        toast.error("Failed to update permissions. Please try again.");
-      }
+    } catch (error) {
+      console.error("Error in handleSaveUserPermissions:", error);
+      toast.error("Failed to create permissions. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -658,10 +790,10 @@ const MemberPermissions = () => {
   const handleManageUsers = async (group) => {
     try {
       console.log(`Opening manage users modal for group: ${group.name} (${group.id})`);
-      
+
       // Try to fetch fresh user data using the correct security-group endpoint
       let freshGroupUsers = [];
-      
+
       try {
         const groupUsersResponse = await apiCall.instance1.get(`security-group/${group.id}/users`, {
           headers: {
@@ -722,10 +854,10 @@ const MemberPermissions = () => {
 
     } catch (error) {
       console.error("Error in handleManageUsers:", error);
-      
+
       // Fallback to existing group data
       setGroupToManage(group);
-      
+
       let initialUsers = [];
       if (group.users && Array.isArray(group.users)) {
         initialUsers = group.users
@@ -735,7 +867,7 @@ const MemberPermissions = () => {
 
       setSelectedUsers(initialUsers);
       setShowManageUsersModal(true);
-      
+
       console.log("Using fallback group data for manage users modal");
     }
   };
@@ -1041,6 +1173,56 @@ const MemberPermissions = () => {
       }
     }
   }, [showNewGroupForm, newGroup]);
+
+  // Add this temporary function to test endpoints:
+
+  const testPermissionEndpoints = async () => {
+    if (!selectedUser) {
+      toast.warning("Please select a user first");
+      return;
+    }
+
+    const testEndpoints = [
+      { method: 'GET', url: `permissions/user/${selectedUser.id}` },
+      { method: 'GET', url: `user/${selectedUser.id}/permissions` },
+      { method: 'GET', url: `users/${selectedUser.id}/permissions` },
+      { method: 'GET', url: 'permissions' },
+      { method: 'POST', url: 'permissions/user', data: { userId: selectedUser.id } },
+      { method: 'POST', url: `permissions/user/${selectedUser.id}`, data: { permissions: ['READ'] } },
+      { method: 'POST', url: 'permissions', data: { accountId: selectedUser.id, permissions: ['READ'] } }
+    ];
+
+    console.log("=== TESTING PERMISSION ENDPOINTS ===");
+
+    for (const test of testEndpoints) {
+      try {
+        console.log(`Testing ${test.method} ${test.url}`);
+
+        let response;
+        if (test.method === 'GET') {
+          response = await apiCall.instance1.get(test.url, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+          });
+        } else {
+          response = await apiCall.instance1.post(test.url, test.data || {}, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+          });
+        }
+
+        console.log(`✅ WORKING: ${test.method} ${test.url}`, response.data);
+      } catch (error) {
+        console.log(`❌ Failed: ${test.method} ${test.url} - ${error.response?.status || error.message}`);
+        if (error.response?.data) {
+          console.log(`   Error details:`, error.response.data);
+        }
+      }
+    }
+  };
 
   // Inside your component return statement
   return (
