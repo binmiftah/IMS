@@ -265,30 +265,21 @@ class ApiCall {
     //     return response.data;
     // }
 
-    async createMemberPermission(urlPath, data) {
+    async createMemberPermission(data) {
         try {
-            // Ensure proper format - API might expect a specific structure
-            const formattedData = {
-                accountId: data.accountId,
-                resourceType: data.resourceType,
-                permissions: data.permissions,
-                folderIds: data.folderIds,
-                inherited: data.inherited
-            };
+            console.log("Creating member permission with data:", data);
 
-            const response = await this.instance1.post(urlPath, formattedData, {
+            const response = await this.instance1.post("permissions/member", data, {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${localStorage.getItem("token")}`
                 }
             });
 
+            console.log("Member permission API response:", response.data);
             return response.data;
         } catch (error) {
-            // Log the specific error for debugging
-            if (error.response && error.response.data) {
-                console.error("API Error Details:", error.response.data);
-            }
+            console.log("Member permission API Error:", error.response?.data);
             throw error;
         }
     }
