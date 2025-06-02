@@ -101,23 +101,30 @@ class ApiCall {
     // In the ApiCall class, update the uploadFile method:
     async uploadFile(urlPath, data) {
         // Check if the URL already has query parameters
+        const hasParams = urlPath.includes('?');
+        const separator = hasParams ? '&' : '?';
+
         console.log("API uploadFile called with:", {
             urlPath,
             formDataEntries: Array.from(data.entries()).map(([key, value]) =>
                 key === 'file' ? `${key}: [File: ${value.name}]` : `${key}: ${value}`
             )
         });
-        const hasParams = urlPath.includes('?');
-        const separator = hasParams ? '&' : '?';
-        const response = await this.instance2.post(`${urlPath}${separator}resourceType=FILE`, data, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        });
 
-        console.log("Upload response:", response.data);
-        return response.data;
+        try {
+            const response = await this.instance2.post(`${urlPath}${separator}resourceType=FILE`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            
+            console.log("Upload successful:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Upload error:", error);
+            throw error;
+        }
     }
 
     async getFile(urlPath) {
