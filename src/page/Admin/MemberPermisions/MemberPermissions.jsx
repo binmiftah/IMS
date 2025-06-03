@@ -16,9 +16,7 @@ const MemberPermissions = () => {
 
   const hasPermission = (permissions, permission) => {
     if (!Array.isArray(permissions)) return false;
-
     if (permissions.includes(permission)) return true;
-
     return permissions.some(perm =>
       typeof perm === 'string' && perm.toUpperCase() === permission.toUpperCase()
     );
@@ -26,12 +24,47 @@ const MemberPermissions = () => {
 
   const isSuperAdminByRole = (user) => {
     if (!user || !user.role) return false;
-
-    // Check specifically for SUPER_ADMIN role
     return user.role === 'SUPER_ADMIN';
   };
 
-  // Initialize ALL states with safe default values - MAKE SURE THESE ARE INSIDE THE COMPONENT
+  // ✅ FIXED: Proper handlePermissionChange function inside component
+  // const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
+  //   if (permission === "FULL_ACCESS") {
+  //     if (isChecked) {
+  //       // If FULL_ACCESS is checked, select all permissions
+  //       setPermissions(allPermissions);
+  //     } else {
+  //       // If FULL_ACCESS is unchecked, clear all permissions
+  //       setPermissions([]);
+  //     }
+  //   } else {
+  //     // Handle individual permission changes
+  //     let newPermissions;
+  //     if (isChecked) {
+  //       // Add the permission if not already present
+  //       newPermissions = currentPermissions.includes(permission) 
+  //         ? currentPermissions 
+  //         : [...currentPermissions, permission];
+        
+  //       // Check if all other permissions (excluding FULL_ACCESS) are now selected
+  //       const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+  //       const hasAllOtherPermissions = allOtherPermissions.every(p => 
+  //         newPermissions.includes(p)
+  //       );
+        
+  //       // If all other permissions are selected, also add FULL_ACCESS
+  //       if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+  //         newPermissions = [...newPermissions, "FULL_ACCESS"];
+  //       }
+  //     } else {
+  //       // Remove the permission and also remove FULL_ACCESS if it was selected
+  //       newPermissions = currentPermissions.filter(p => p !== permission && p !== "FULL_ACCESS");
+  //     }
+  //     setPermissions(newPermissions);
+  //   }
+  // };
+
+  // Initialize ALL states with safe default values
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
   const [allPermissions, setAllPermissions] = useState([]);
@@ -43,6 +76,7 @@ const MemberPermissions = () => {
   const [files, setFiles] = useState([]);
   const [securityGroups, setSecurityGroups] = useState([]);
   const [securityGroupsLoading, setSecurityGroupsLoading] = useState(false);
+  const [foldersLoading, setFoldersLoading] = useState(true);
 
   // Initialize form states with safe defaults
   const [showNewGroupForm, setShowNewGroupForm] = useState(false);
@@ -348,7 +382,15 @@ const MemberPermissions = () => {
 
   useEffect(() => {
     const staticPermissions = apiCall.getStaticPermissions();
-    setAllPermissions(staticPermissions);
+    
+    // Ensure FULL_ACCESS is included in allPermissions
+    const permissionsWithFullAccess = staticPermissions.includes("FULL_ACCESS") 
+      ? staticPermissions 
+      : ["FULL_ACCESS", ...staticPermissions];
+      
+    setAllPermissions(permissionsWithFullAccess);
+    
+    console.log("All Permissions with FULL_ACCESS:", permissionsWithFullAccess);
   }, []);
 
   useEffect(() => {
@@ -365,8 +407,27 @@ const MemberPermissions = () => {
   }, [selectedUser]);
 
   useEffect(() => {
-    fetchResources();
-  }, []);
+    let isMounted = true; // Prevent state updates if component unmounts
+    
+    const initializeResources = async () => {
+      try {
+        setFoldersLoading(true);
+        await fetchResources();
+      } catch (error) {
+        console.error("Error initializing resources:", error);
+      } finally {
+        if (isMounted) {
+          setFoldersLoading(false);
+        }
+      }
+    };
+
+    initializeResources();
+    
+    return () => {
+      isMounted = false; // Cleanup
+    };
+  }, []); // Empty dependency array - run only once
 
   useEffect(() => {
     refreshSecurityGroups();
@@ -537,26 +598,319 @@ const MemberPermissions = () => {
   // Fetch resources (folders and files)
   const fetchResources = async () => {
     try {
-      // Fetch folders and files concurrently
-      const [foldersRes, filesRes] = await Promise.all([
-        apiCall.getFolder("files/folders"), // Fetch folders
-        apiCall.getFile("files"), // Fetch files
-      ]);
+      console.log("🔍 Starting to fetch ALL resources with complete folder tree...");
 
+      // First, get the list of all root folder and file IDs
+      const [foldersRes, filesRes] = await Promise.all([
+        apiCall.getFolder("files/folders").catch(() => []),
+        apiCall.getFile("files").catch(() => [])
+      ]);
 
       const folderData = Array.isArray(foldersRes) ? foldersRes : [];
       const fileData = Array.isArray(filesRes) ? filesRes : [];
 
-      // Combine folders and files into a single list
-      const resources = [
-        ...folderData.map((folder) => ({ ...folder, type: "folder" })),
-        ...fileData.map((file) => ({ ...file, type: "file" })),
-      ];
+      console.log("Initial folder data:", folderData);
+      console.log("Initial file data:", fileData);
 
-      setFolders(resources); // Update the folders state with combined resources
+      // Recursive function to fetch ALL children for a folder (like Files.jsx does)
+      const fetchAllFolderChildren = async (folderId, parentId = null, processedFolders = new Set()) => {
+        // Prevent infinite loops
+        if (processedFolders.has(folderId)) {
+          console.warn(`Circular reference detected for folder ${folderId}, skipping`);
+          return { folders: [], files: [] };
+        }
+        
+        processedFolders.add(folderId);
+        
+        try {
+          console.log(`🔍 Fetching ALL children for folder: ${folderId}`);
+          
+          // Use the same method as Files.jsx - get folder by ID to get its children
+          const folderData = await apiCall.getFolderById(`files/folders/${folderId}`);
+          
+          if (!folderData) {
+            console.log(`No data found for folder: ${folderId}`);
+            return { folders: [], files: [] };
+          }
+
+          console.log(`📁 Folder "${folderData.name}" data:`, folderData);
+
+          // Get children from the folder data (same as Files.jsx)
+          const children = folderData.children || [];
+          const folderFiles = folderData.files || [];
+
+          console.log(`📁 Found ${children.length} children and ${folderFiles.length} files in folder: ${folderData.name}`);
+          
+          const allChildFolders = [];
+          const allChildFiles = [];
+          
+          // Process folder files (add parent relationship)
+          folderFiles.forEach(file => {
+            allChildFiles.push({
+              ...file,
+              type: "file",
+              fileName: file.fileName || file.name,
+              parentId: folderId // Set correct parent
+            });
+          });
+
+          // Process immediate children folders
+          for (const child of children) {
+            if (child.type === 'folder') {
+              console.log(`📁 Processing child folder: "${child.name}" (${child.id})`);
+              
+              const childFolder = {
+                ...child,
+                type: "folder",
+                parentId: folderId, // Set correct parent
+                mimeType: child.mimeType || 'application/vnd.google-apps.folder'
+              };
+              
+              allChildFolders.push(childFolder);
+              
+              // 🔄 RECURSIVE CALL: Fetch ALL descendants of this child folder
+              const grandChildren = await fetchAllFolderChildren(child.id, folderId, new Set(processedFolders));
+              
+              // Add all descendants to our collections
+              allChildFolders.push(...grandChildren.folders);
+              allChildFiles.push(...grandChildren.files);
+              
+            } else if (child.type === 'file') {
+              console.log(`📄 Processing child file: "${child.name || child.fileName}" (${child.id})`);
+              
+              allChildFiles.push({
+                ...child,
+                type: "file",
+                fileName: child.fileName || child.name,
+                parentId: folderId // Set correct parent
+              });
+            }
+          }
+          
+          console.log(`✅ Folder ${folderData.name} total descendants: ${allChildFolders.length} folders, ${allChildFiles.length} files`);
+          
+          return { folders: allChildFolders, files: allChildFiles };
+          
+        } catch (error) {
+          console.error(`Error fetching children for folder ${folderId}:`, error);
+          return { folders: [], files: [] };
+        }
+      };
+
+      // 🌲 Build COMPLETE folder/file tree - fetch ALL descendants for EVERY folder
+      const allFoldersFromAPI = [];
+      const allFilesFromAPI = [];
+      
+      // First, get detailed information for each root folder
+      for (const folder of folderData) {
+        try {
+          console.log(`🔍 Fetching detailed data for ROOT folder: ${folder.id}`);
+          const detailedFolder = await apiCall.getFolderById(`files/folders/${folder.id}`);
+          
+          const rootFolder = {
+            ...detailedFolder,
+            type: "folder",
+            mimeType: detailedFolder.mimeType || 'application/vnd.google-apps.folder',
+            parentId: null, // Root folders have no parent
+          };
+          
+          allFoldersFromAPI.push(rootFolder);
+          
+          // 🔄 RECURSIVELY fetch ALL descendants of this root folder
+          console.log(`🌲 Starting complete traversal for root folder: ${rootFolder.name} (${rootFolder.id})`);
+          const allDescendants = await fetchAllFolderChildren(rootFolder.id);
+          
+          // Add ALL descendant folders and files
+          allFoldersFromAPI.push(...allDescendants.folders);
+          allFilesFromAPI.push(...allDescendants.files);
+          
+          console.log(`✅ Completed FULL traversal for ${rootFolder.name}: +${allDescendants.folders.length} folders, +${allDescendants.files.length} files`);
+          
+        } catch (error) {
+          console.error(`Error processing root folder ${folder.id}:`, error);
+          // Add basic folder info even if detailed fetch fails
+          allFoldersFromAPI.push({
+            ...folder,
+            type: "folder",
+            mimeType: folder.mimeType || 'application/vnd.google-apps.folder',
+            parentId: null,
+          });
+        }
+      }
+
+      // Process root files (files with no parent)
+      for (const file of fileData) {
+        try {
+          // Skip problematic files
+          if (file.id === '1ZAcAA-V0q-VJ6CWB9X9EKH5meyCoTjrO') {
+            console.log(`⚠️ Skipping problematic file: ${file.id}`);
+            allFilesFromAPI.push({
+              ...file,
+              type: "file",
+              fileName: file.fileName || file.name,
+              parentId: null
+            });
+            continue;
+          }
+
+          console.log(`🔍 Fetching detailed data for ROOT file: ${file.id}`);
+          const detailedFile = await apiCall.getFileById(`files/${file.id}`);
+          
+          allFilesFromAPI.push({
+            ...detailedFile,
+            type: "file",
+            fileName: detailedFile.fileName || detailedFile.name || file.fileName || file.name,
+            parentId: null, // Root files have no parent
+          });
+          
+        } catch (error) {
+          console.error(`Error fetching file ${file.id}:`, error);
+          allFilesFromAPI.push({
+            ...file,
+            type: "file",
+            fileName: file.fileName || file.name,
+            parentId: null,
+          });
+        }
+      }
+
+      // Combine all resources and deduplicate by ID
+      const allResourcesMap = new Map();
+
+      // Add all folders (root + ALL nested subfolders)
+      allFoldersFromAPI.forEach(folder => {
+        if (folder && folder.id) {
+          allResourcesMap.set(folder.id, folder);
+        }
+      });
+
+      // Add all files (root + ALL nested files)
+      allFilesFromAPI.forEach(file => {
+        if (file && file.id && !allResourcesMap.has(file.id)) {
+          allResourcesMap.set(file.id, file);
+        }
+      });
+
+      const allResources = Array.from(allResourcesMap.values());
+
+      console.log("🎯 FINAL COMPLETE RESULTS:");
+      console.log(`📊 Total resources: ${allResources.length}`);
+      
+      // Enhanced analysis
+      const folders = allResources.filter(r => r.type === 'folder');
+      const files = allResources.filter(r => r.type === 'file');
+      const resourcesWithParents = allResources.filter(r => r.parentId && r.parentId !== null && r.parentId !== "null");
+      const rootResources = allResources.filter(r => !r.parentId || r.parentId === null || r.parentId === "null");
+
+      console.log(`📁 Total Folders: ${folders.length}`);
+      console.log(`📄 Total Files: ${files.length}`);
+      console.log(`🔗 Resources with parents: ${resourcesWithParents.length}`);
+      console.log(`🌳 Root resources: ${rootResources.length}`);
+
+      // Show the COMPLETE hierarchy for debugging
+      console.log("🌲 COMPLETE folder structure with ALL descendants:");
+      const logCompleteHierarchy = (resources) => {
+        const buildTree = (parentId = null, indent = '') => {
+          const children = resources.filter(r => 
+            (parentId === null && (!r.parentId || r.parentId === null || r.parentId === "null")) ||
+            (parentId !== null && r.parentId === parentId)
+          );
+          
+          children
+            .sort((a, b) => {
+              // Folders first, then files
+              if (a.type === 'folder' && b.type !== 'folder') return -1;
+              if (a.type !== 'folder' && b.type === 'folder') return 1;
+              // Then alphabetically
+              const aName = a.name || a.fileName || '';
+              const bName = b.name || b.fileName || '';
+              return aName.localeCompare(bName);
+            })
+            .forEach(resource => {
+              const icon = resource.type === 'folder' ? '📁' : '📄';
+              const name = resource.name || resource.fileName || 'Unnamed';
+              console.log(`${indent}${icon} ${name} (${resource.id})`);
+              
+              if (resource.type === 'folder') {
+                buildTree(resource.id, indent + '  ');
+              }
+            });
+        };
+        
+        buildTree();
+      };
+      
+      logCompleteHierarchy(allResources);
+
+      // Build hierarchical structure for the UI
+      if (resourcesWithParents.length > 0) {
+        console.log("🌲 Building hierarchical tree structure for UI...");
+        
+        // Create a map for quick lookup
+        const resourceMap = new Map();
+        allResources.forEach(resource => {
+          resourceMap.set(resource.id, {
+            ...resource,
+            children: []
+          });
+        });
+
+        // Build the hierarchy
+        const hierarchicalStructure = [];
+        
+        allResources.forEach(resource => {
+          const resourceWithChildren = resourceMap.get(resource.id);
+          
+          if (!resource.parentId || resource.parentId === null || resource.parentId === "null") {
+            // This is a root item
+            hierarchicalStructure.push(resourceWithChildren);
+          } else {
+            // This is a child item
+            const parent = resourceMap.get(resource.parentId);
+            if (parent) {
+              parent.children.push(resourceWithChildren);
+            } else {
+              // Parent not found, treat as root
+              console.warn(`⚠️ Parent ${resource.parentId} not found for resource ${resource.id}, treating as root`);
+              hierarchicalStructure.push(resourceWithChildren);
+            }
+          }
+        });
+
+        // Sort the hierarchy (folders first, then alphabetically)
+        const sortHierarchy = (nodes) => {
+          return nodes
+            .sort((a, b) => {
+              // Folders first
+              if (a.type === 'folder' && b.type !== 'folder') return -1;
+              if (a.type !== 'folder' && b.type === 'folder') return 1;
+              // Then alphabetically
+              const aName = a.name || a.fileName || '';
+              const bName = b.name || b.fileName || '';
+              return aName.localeCompare(bName);
+            })
+            .map(node => ({
+              ...node,
+              children: node.children ? sortHierarchy(node.children) : []
+            }));
+        };
+
+        const sortedHierarchy = sortHierarchy(hierarchicalStructure);
+
+        console.log("✅ COMPLETE hierarchical structure ready for UI!");
+        setFolders(sortedHierarchy);
+        return;
+      }
+
+      // Fallback: if no parent-child relationships found, use flat structure
+      console.log("⚠️ No parent-child relationships found, using flat structure");
+      setFolders(allResources);
+
     } catch (error) {
+      console.error("❌ Error in fetchResources:", error);
       toast.error("Failed to load resources.");
-      setFolders([]); // Reset folders on error
+      setFolders([]);
+      throw error;
     }
   };
 
@@ -710,8 +1064,15 @@ const MemberPermissions = () => {
       if (folderSuccess || fileSuccess) {
         toast.success("User permissions created successfully!");
         
-        // Refresh user permissions to show the updated state
+        // Refresh the user permissions to show the updated state
         fetchUserPermissions(selectedUser.id);
+        
+        // ADDED: Clear the user selection and close the dropdown
+        console.log("Permissions saved successfully, clearing user selection");
+        setSelectedUser(null);
+        setPermissions([]);
+        setSelectedFolders([]);
+        
       } else if (folderIds.length === 0 && fileIds.length === 0) {
         toast.info("No resources selected to create permissions for");
       } else {
@@ -780,10 +1141,6 @@ const MemberPermissions = () => {
   // Fetch security groups
   useEffect(() => {
     refreshSecurityGroups();
-  }, []);
-
-  useEffect(() => {
-    fetchResources(); // Fetch folders and files on component mount
   }, []);
 
   // Replace your handleManageUsers function with this corrected version:
@@ -1224,6 +1581,71 @@ const MemberPermissions = () => {
     }
   };
 
+  // Replace the FolderTree section with conditional rendering
+  {/* Accessible Folders Section */}
+  {selectedUser && (
+    <>
+      <h3 className="text-lg font-semibold mb-2">Accessible Resources</h3>
+      <div className="border rounded-lg p-3 max-h-96 overflow-auto">
+        {foldersLoading ? (
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <span className="text-gray-500">Loading folders...</span>
+            </div>
+          </div>
+        ) : folders.length === 0 ? (
+          <div className="text-center p-4 text-gray-500">
+            No folders available
+          </div>
+        ) : (
+          <FolderTree
+            key={`folder-tree-${folders.length}`} // Force re-render when folders change
+            items={folders}
+            selectedItems={safeArrayCheck(selectedFolders)}
+            onSelectionChange={setSelectedFolders}
+          />
+        )}
+      </div>
+    </>
+  )}
+
+  const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
+    if (permission === "FULL_ACCESS") {
+      if (isChecked) {
+        // If FULL_ACCESS is checked, select all permissions
+        setPermissions(allPermissions);
+      } else {
+        // If FULL_ACCESS is unchecked, clear all permissions
+        setPermissions([]);
+      }
+    } else {
+      // Handle individual permission changes
+      let newPermissions;
+      if (isChecked) {
+        // Add the permission if not already present
+        newPermissions = currentPermissions.includes(permission) 
+          ? currentPermissions 
+          : [...currentPermissions, permission];
+        
+        // Check if all other permissions (excluding FULL_ACCESS) are now selected
+        const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+        const hasAllOtherPermissions = allOtherPermissions.every(p => 
+          newPermissions.includes(p)
+        );
+        
+        // If all other permissions are selected, also add FULL_ACCESS
+        if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+          newPermissions = [...newPermissions, "FULL_ACCESS"];
+        }
+      } else {
+        // Remove the permission and also remove FULL_ACCESS if it was selected
+        newPermissions = currentPermissions.filter(p => p !== permission && p !== "FULL_ACCESS");
+      }
+      setPermissions(newPermissions);
+    }
+  };
+
   // Inside your component return statement
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -1311,15 +1733,7 @@ const MemberPermissions = () => {
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(permissions).includes(perm)}
-                                onChange={() => {
-                                  if (permissions.includes(perm)) {
-                                    // Remove FULL_ACCESS
-                                    setPermissions(prev => prev.filter(p => p !== perm));
-                                  } else {
-                                    // Add all permissions
-                                    setPermissions(allPermissions);
-                                  }
-                                }}
+                                onChange={(e) => handlePermissionChange(perm, e.target.checked, permissions, setPermissions)}
                                 className="form-checkbox h-5 w-5 text-red-600"
                               />
                               <span className="ml-2 font-medium text-red-600">
@@ -1334,18 +1748,12 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
                         <div className="grid grid-cols-2 gap-2">
-                          {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                          {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(permissions).includes(perm)}
-                                onChange={() =>
-                                  setPermissions((prev) =>
-                                    prev.includes(perm)
-                                      ? prev.filter((p) => p !== perm)
-                                      : [...prev, perm]
-                                  )
-                                }
+                                onChange={(e) => handlePermissionChange(perm, e.target.checked, permissions, setPermissions)}
                                 className="form-checkbox h-5 w-5 text-blue-600"
                               />
                               <span className="ml-2">{perm.replace(/_/g, " ")}</span>
@@ -1363,13 +1771,7 @@ const MemberPermissions = () => {
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(permissions).includes(perm)}
-                                onChange={() =>
-                                  setPermissions((prev) =>
-                                    prev.includes(perm)
-                                      ? prev.filter((p) => p !== perm)
-                                      : [...prev, perm]
-                                  )
-                                }
+                                onChange={(e) => handlePermissionChange(perm, e.target.checked, permissions, setPermissions)}
                                 className="form-checkbox h-5 w-5 text-green-600"
                               />
                               <span className="ml-2">{perm.replace(/_/g, " ")}</span>
@@ -1387,13 +1789,7 @@ const MemberPermissions = () => {
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(permissions).includes(perm)}
-                                onChange={() =>
-                                  setPermissions((prev) =>
-                                    prev.includes(perm)
-                                      ? prev.filter((p) => p !== perm)
-                                      : [...prev, perm]
-                                  )
-                                }
+                                onChange={(e) => handlePermissionChange(perm, e.target.checked, permissions, setPermissions)}
                                 className="form-checkbox h-5 w-5 text-purple-600"
                               />
                               <span className="ml-2">{perm.replace(/_/g, " ")}</span>
@@ -1411,13 +1807,7 @@ const MemberPermissions = () => {
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(permissions).includes(perm)}
-                                onChange={() =>
-                                  setPermissions((prev) =>
-                                    prev.includes(perm)
-                                      ? prev.filter((p) => p !== perm)
-                                      : [...prev, perm]
-                                  )
-                                }
+                                onChange={(e) => handlePermissionChange(perm, e.target.checked, permissions, setPermissions)}
                                 className="form-checkbox h-5 w-5 text-orange-600"
                               />
                               <span className="ml-2">{perm.replace(/_/g, " ")}</span>
@@ -1426,28 +1816,43 @@ const MemberPermissions = () => {
                         </div>
                       </div>
                     </div>
-                  </>
-                )}
 
-                {/* Accessible Folders Section */}
-                {selectedUser && (
-                  <>
-                    <h3 className="text-lg font-semibold mb-2">Accessible Resources</h3>
-                    <div className="border rounded-lg p-3 max-h-96 overflow-auto">
-                      <FolderTree
-                        items={folders}
-                        selectedItems={safeArrayCheck(selectedFolders)}
-                        onSelectionChange={setSelectedFolders}
-                      />
-                    </div>
+                    {/* ✅ FIXED: Properly placed Accessible Resources Section */}
+                    {selectedUser && (
+                      <>
+                        <h3 className="text-lg font-semibold mb-2">Accessible Resources</h3>
+                        <div className="border rounded-lg p-3 max-h-96 overflow-auto">
+                          {foldersLoading ? (
+                            <div className="flex items-center justify-center p-8">
+                              <div className="text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                <span className="text-gray-500">Loading folders...</span>
+                              </div>
+                            </div>
+                          ) : folders.length === 0 ? (
+                            <div className="text-center p-4 text-gray-500">
+                              No folders available
+                            </div>
+                          ) : (
+                            <FolderTree
+                              key={`folder-tree-${folders.length}`}
+                              items={folders}
+                              selectedItems={safeArrayCheck(selectedFolders)}
+                              onSelectionChange={setSelectedFolders}
+                            />
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    <button
+                      className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                      onClick={handleSaveUserPermissions}
+                    >
+                      Save User Permissions
+                    </button>
                   </>
                 )}
-                <button
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                  onClick={handleSaveUserPermissions}
-                >
-                  Save User Permissions
-                </button>
               </div>
 
               {/* Security Groups Section */}
@@ -1798,6 +2203,7 @@ const MemberPermissions = () => {
                             })}
                         </div>
                       )}
+
                     </div>
 
                     <div className="flex gap-2 mt-4">
@@ -1855,194 +2261,245 @@ const MemberPermissions = () => {
                     </div>
 
                     {/* Show current group info (read-only) */}
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-600"><strong>Group:</strong> {editingGroup?.name}</p>
-                      <p className="text-sm text-gray-600"><strong>Department:</strong> {editingGroup?.department}</p>
+                    <div className="mb-4">
+                                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Group Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingGroup.name}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                      />
                     </div>
 
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">
-                        {(editingGroup?.resources && editingGroup.resources.length > 0) ?
-                          "Current Resources (modify as needed):" :
-                          "Resources to Grant Access:"
-                        }
-                      </span>
-                      <div className="max-h-64 overflow-y-auto border rounded p-2 bg-white mt-2">
-                        {editingGroup && (
-                          <FolderTree
-                            items={folders}
-                            selectedItems={safeArrayCheck(editingGroup.resources)}
-                            onSelectionChange={(resources) =>
-                              setEditingGroup(prev => prev ? { ...prev, resources } : null)
-                            }
-                          />
-                        )}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Department
+                      </label>
+                      <input
+                        type="text"
+                        value={editingGroup.department}
+                        readOnly
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Permissions and Resources - Editable */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2">
+                        Permissions
+                      </h4>
+
+                      {/* Master Permission */}
+                      <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-2">Master Permission</h5>
+                        <div className="grid grid-cols-1 gap-2">
+                          {["FULL_ACCESS"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
+                                    
+                                    // Check if all other permissions are now selected
+                                    const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+                                    const hasAllOtherPermissions = allOtherPermissions.every(p => 
+                                      newPermissions.includes(p)
+                                    );
+                                    
+                                    if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+                                      newPermissions.push("FULL_ACCESS");
+                                    }
+                                    
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: newPermissions
+                                    } : null);
+                                  } else {
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: (prev.permissions || []).filter(p => p !== perm && p !== "FULL_ACCESS")
+                                    } : null);
+                                  }
+                                }}
+                                className="form-checkbox h-4 w-4 text-red-600"
+                              />
+                              <span className="ml-2 font-medium text-red-600">
+                                {perm.replace(/_/g, " ")} <span className="text-xs text-gray-500">(All permissions)</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="mb-2">
-                      <span className="font-medium text-gray-600">
-                        {(editingGroup?.permissions && editingGroup.permissions.length > 0) ?
-                          "Current Permissions (modify as needed):" :
-                          "New Permissions to Create:"
-                        }
-                      </span>
-                      <div className="mt-2 max-h-48 overflow-y-auto">
-                        {/* Master Permission */}
-                        <div className="mb-3">
-                          <h4 className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-2">Master Permission</h4>
-                          <div className="grid grid-cols-1 gap-1">
-                            {["FULL_ACCESS"].map((perm) => (
-                              <label key={perm} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      // If FULL_ACCESS is selected, select all permissions
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: allPermissions
-                                      } : null);
-                                    } else {
-                                      // If FULL_ACCESS is deselected, only remove FULL_ACCESS
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: (prev.permissions || []).filter(p => p !== perm)
-                                      } : null);
+                      {/* Basic Resource Permissions */}
+                      <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h5>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
+                                    
+                                    // Check if all other permissions are now selected
+                                    const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+                                    const hasAllOtherPermissions = allOtherPermissions.every(p => 
+                                      newPermissions.includes(p)
+                                    );
+                                    
+                                    if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+                                      newPermissions.push("FULL_ACCESS");
                                     }
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-red-600"
-                                />
-                                <span className="ml-2 text-sm font-medium text-red-600">
-                                  {perm.replace(/_/g, " ")} <span className="text-xs text-gray-500">(All permissions)</span>
-                                </span>
-                              </label>
-                            ))}
-                          </div>
+                                    
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: newPermissions
+                                    } : null);
+                                  } else {
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: (prev.permissions || []).filter(p => p !== perm && p !== "FULL_ACCESS")
+                                    } : null);
+                                  }
+                                }}
+                                className="form-checkbox h-4 w-4 text-blue-600"
+                              />
+                              <span className="ml-2">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
                         </div>
+                      </div>
 
-                        {/* Basic Resource Permissions */}
-                        <div className="mb-3">
-                          <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
-                          <div className="grid grid-cols-2 gap-1">
-                            {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
-                              <label key={perm} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={hasPermission(editingGroup?.permissions, perm)}
-                                  onChange={(e) => {
-
-                                    if (e.target.checked) {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: [...(prev.permissions || []), perm]
-                                      } : null);
-                                    } else {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: (prev.permissions || []).filter(p =>
-                                          p.toUpperCase() !== perm.toUpperCase()
-                                        )
-                                      } : null);
+                      {/* File-specific Permissions */}
+                      <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">File-specific</h5>
+                        <div className="grid grid-cols-2 gap-1">
+                          {["OPEN_FILE", "DELETE_FILE", "SHARE_FILE"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
+                                    
+                                    // Check if all other permissions are now selected
+                                    const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+                                    const hasAllOtherPermissions = allOtherPermissions.every(p => 
+                                      newPermissions.includes(p)
+                                    );
+                                    
+                                    if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+                                      newPermissions.push("FULL_ACCESS");
                                     }
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-blue-600"
-                                />
-                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
-                              </label>
-                            ))}
-                          </div>
+                                    
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: newPermissions
+                                    } : null);
+                                  } else {
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: (prev.permissions || []).filter(p => p !== perm && p !== "FULL_ACCESS")
+                                    } : null);
+                                  }
+                                }}
+                                className="form-checkbox h-4 w-4 text-green-600"
+                              />
+                              <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
                         </div>
+                      </div>
 
-                        {/* File-specific Permissions */}
-                        <div className="mb-3">
-                          <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">File-specific</h4>
-                          <div className="grid grid-cols-2 gap-1">
-                            {["OPEN_FILE", "DELETE_FILE", "SHARE_FILE"].map((perm) => (
-                              <label key={perm} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: [...(prev.permissions || []), perm]
-                                      } : null);
-                                    } else {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: (prev.permissions || []).filter(p => p !== perm)
-                                      } : null);
+                      {/* Folder-specific Permissions */}
+                      <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-2">Folder-specific</h5>
+                        <div className="grid grid-cols-2 gap-1">
+                          {["CREATE_FOLDER", "OPEN_FOLDER", "DELETE_FOLDER", "SHARE_FOLDER", "ARCHIVE", "RESTORE"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
+                                    
+                                    // Check if all other permissions are now selected
+                                    const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+                                    const hasAllOtherPermissions = allOtherPermissions.every(p => 
+                                      newPermissions.includes(p)
+                                    );
+                                    
+                                    if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+                                      newPermissions.push("FULL_ACCESS");
                                     }
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-green-600"
-                                />
-                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
-                              </label>
-                            ))}
-                          </div>
+                                    
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: newPermissions
+                                    } : null);
+                                  } else {
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: (prev.permissions || []).filter(p => p !== perm && p !== "FULL_ACCESS")
+                                    } : null);
+                                  }
+                                }}
+                                className="form-checkbox h-4 w-4 text-purple-600"
+                              />
+                              <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
                         </div>
+                      </div>
 
-                        {/* Folder-specific Permissions */}
-                        <div className="mb-3">
-                          <h4 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-2">Folder-specific</h4>
-                          <div className="grid grid-cols-2 gap-1">
-                            {["CREATE_FOLDER", "OPEN_FOLDER", "DELETE_FOLDER", "SHARE_FOLDER", "ARCHIVE", "RESTORE"].map((perm) => (
-                              <label key={perm} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: [...(prev.permissions || []), perm]
-                                      } : null);
-                                    } else {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: (prev.permissions || []).filter(p => p !== perm)
-                                      } : null);
+                      {/* Administrative Permissions */}
+                      <div className="mb-3">
+                        <h5 className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-2">Administrative</h5>
+                        <div className="grid grid-cols-1 gap-1">
+                          {["MANAGE_PERMISSIONS", "MANAGE_USERS", "MANAGE_ROLES"].map((perm) => (
+                            <label key={perm} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
+                                    
+                                    // Check if all other permissions are now selected
+                                    const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+                                    const hasAllOtherPermissions = allOtherPermissions.every(p => 
+                                      newPermissions.includes(p)
+                                    );
+                                    
+                                    if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+                                      newPermissions.push("FULL_ACCESS");
                                     }
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-purple-600"
-                                />
-                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Administrative Permissions */}
-                        <div className="mb-3">
-                          <h4 className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-2">Administrative</h4>
-                          <div className="grid grid-cols-1 gap-1">
-                            {["MANAGE_PERMISSIONS", "MANAGE_USERS", "MANAGE_ROLES"].map((perm) => (
-                              <label key={perm} className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: [...(prev.permissions || []), perm]
-                                      } : null);
-                                    } else {
-                                      setEditingGroup(prev => prev ? {
-                                        ...prev,
-                                        permissions: (prev.permissions || []).filter(p => p !== perm)
-                                      } : null);
-                                    }
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-orange-600"
-                                />
-                                <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
-                              </label>
-                            ))}
-                          </div>
+                                    
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: newPermissions
+                                    } : null);
+                                  } else {
+                                    setEditingGroup(prev => prev ? {
+                                      ...prev,
+                                      permissions: (prev.permissions || []).filter(p => p !== perm && p !== "FULL_ACCESS")
+                                    } : null);
+                                  }
+                                }}
+                                className="form-checkbox h-4 w-4 text-orange-600"
+                              />
+                              <span className="ml-2 text-sm">{perm.replace(/_/g, " ")}</span>
+                            </label>
+                          ))}
                         </div>
                       </div>
                     </div>
