@@ -118,7 +118,7 @@ class ApiCall {
                     Authorization: `Bearer ${localStorage.getItem("token")}`
                 }
             });
-            
+
             console.log("Upload successful:", response.data);
             return response.data;
         } catch (error) {
@@ -178,13 +178,26 @@ class ApiCall {
         return response.data;
     }
 
-    async deleteFolder(urlPath) {
-        const response = await this.instance1.delete(urlPath, {
+    async deleteFolder(urlPath, data) {
+        const response = await this.instance2.delete(urlPath, {
             headers: {
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        return response.data.data
+            },
+            data: data // axios DELETE with body
+        });
+        return response.data;
+    }
+
+    async deleteFile(urlPath, data) {
+        const response = await this.instance2.delete(urlPath, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            },
+            data: data // axios DELETE with body
+        });
+        return response.data;
     }
 
 

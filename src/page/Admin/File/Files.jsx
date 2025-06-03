@@ -138,7 +138,7 @@ const Files = () => {
 
             // Force update items state
             setItems([...allItems]); // Use spread to force re-render
-            
+
             console.log("Items state updated with:", allItems.length, "items");
 
         } catch (error) {
@@ -252,18 +252,37 @@ const Files = () => {
 
     const handleDelete = async (item) => {
         try {
+            console.log("🗑️ Deleting item:", item);
+
             if (item.type === 'folder') {
-                await apiCall.deleteFolder(`files/folders/${item.id}`);
+                // Delete folder using the new API endpoint
+                await apiCall.deleteFolder(`files/folders/?resourceType=Folder`, {
+                    folderName: item.name
+                });
             } else {
-                await apiCall.deleteFile(`files/${item.id}`);
+                // Delete file using the new API endpoint  
+                await apiCall.deleteFile(`files/folders/?resourceType=Folder`, {
+                    fileName: item.fileName || item.name
+                });
             }
 
             // Refresh current folder instead of always going to root
             await handleRefresh();
-            toast.success(`${item.type === 'folder' ? 'Folder' : 'File'} deleted successfully`);
+
+            const itemType = item.type === 'folder' ? 'Folder' : 'File';
+            const itemName = item.name || item.fileName;
+            toast.success(`${itemType} "${itemName}" deleted successfully and moved to trash`);
+
         } catch (error) {
             console.error("Error deleting item:", error);
-            toast.error(`Failed to delete ${item.type === 'folder' ? 'folder' : 'file'}`);
+            const itemType = item.type === 'folder' ? 'folder' : 'file';
+            const itemName = item.name || item.fileName;
+
+            if (error.response?.data?.message) {
+                toast.error(`Failed to delete ${itemType}: ${error.response.data.message}`);
+            } else {
+                toast.error(`Failed to delete ${itemType} "${itemName}"`);
+            }
         }
     };
 
@@ -280,11 +299,11 @@ const Files = () => {
             console.log("Current folder ID:", currentFolderId);
             console.log("Current path:", currentPath);
 
-            const data = { 
+            const data = {
                 folderName,
                 parentId: currentFolderId // Add parent folder context
             };
-            
+
             const result = await apiCall.createFolder("files/create/folder", data);
             console.log("Folder created:", result);
 
@@ -433,7 +452,7 @@ const Files = () => {
                             console.log("=== UPLOAD COMPLETE CALLBACK ===");
                             console.log("Current folder ID:", currentFolderId);
                             console.log("Current path:", currentPath);
-                            
+
                             // Force immediate refresh without any navigation changes
                             if (currentFolderId) {
                                 console.log("Refreshing current folder immediately");
@@ -547,7 +566,7 @@ const Files = () => {
                                         <MdFolder size={64} className="mb-4 opacity-50" />
                                         <p className="text-lg font-medium">No items found</p>
                                         <p className="text-sm">
-                                            {currentFolderId 
+                                            {currentFolderId
                                                 ? "This folder is empty. Upload a file or create a new folder to get started."
                                                 : "No files or folders found. Upload a file or create a new folder to get started."
                                             }
