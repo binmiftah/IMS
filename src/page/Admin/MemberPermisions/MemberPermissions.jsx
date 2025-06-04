@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Navbar from "../../../component/Navbar.jsx";
 import { toast } from "react-toastify";
 import apiCall from "../../../pkg/api/internal.js";
@@ -28,46 +28,61 @@ const MemberPermissions = () => {
   };
 
   // ✅ FIXED: Proper handlePermissionChange function inside component
-  // const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
-  //   if (permission === "FULL_ACCESS") {
-  //     if (isChecked) {
-  //       // If FULL_ACCESS is checked, select all permissions
-  //       setPermissions(allPermissions);
-  //     } else {
-  //       // If FULL_ACCESS is unchecked, clear all permissions
-  //       setPermissions([]);
-  //     }
-  //   } else {
-  //     // Handle individual permission changes
-  //     let newPermissions;
-  //     if (isChecked) {
-  //       // Add the permission if not already present
-  //       newPermissions = currentPermissions.includes(permission) 
-  //         ? currentPermissions 
-  //         : [...currentPermissions, permission];
+  const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
+    if (permission === "FULL_ACCESS") {
+      if (isChecked) {
+        setPermissions([...allPermissions]);
+      } else {
+        setPermissions([]);
+      }
+    } else {
+      let newPermissions;
+      if (isChecked) {
+        newPermissions = currentPermissions.filter(p => p !== permission);
+        newPermissions = [...newPermissions, permission];
         
-  //       // Check if all other permissions (excluding FULL_ACCESS) are now selected
-  //       const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
-  //       const hasAllOtherPermissions = allOtherPermissions.every(p => 
-  //         newPermissions.includes(p)
-  //       );
+        const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
+        const hasAllOtherPermissions = allOtherPermissions.every(p => 
+          newPermissions.includes(p)
+        );
         
-  //       // If all other permissions are selected, also add FULL_ACCESS
-  //       if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
-  //         newPermissions = [...newPermissions, "FULL_ACCESS"];
-  //       }
-  //     } else {
-  //       // Remove the permission and also remove FULL_ACCESS if it was selected
-  //       newPermissions = currentPermissions.filter(p => p !== permission && p !== "FULL_ACCESS");
-  //     }
-  //     setPermissions(newPermissions);
-  //   }
-  // };
+        if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
+          newPermissions = [...newPermissions, "FULL_ACCESS"];
+        }
+      } else {
+        newPermissions = currentPermissions.filter(p => p !== permission && p !== "FULL_ACCESS");
+      }
+      
+      const uniquePermissions = [...new Set(newPermissions)];
+      setPermissions(uniquePermissions);
+    }
+  };
 
-  // Initialize ALL states with safe default values
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
-  const [allPermissions, setAllPermissions] = useState([]);
+  const [allPermissions, setAllPermissions] = useState([
+    "FULL_ACCESS",
+    "READ", 
+    "WRITE",
+    "EXECUTE",
+    "UPLOAD",
+    "DOWNLOAD", 
+    "RENAME",
+    "MOVE",
+    "COPY",
+    "OPEN_FILE",
+    "DELETE_FILE",
+    "SHARE_FILE",
+    "CREATE_FOLDER", 
+    "OPEN_FOLDER",
+    "DELETE_FOLDER",
+    "SHARE_FOLDER",
+    "ARCHIVE", 
+    "RESTORE",
+    "MANAGE_PERMISSIONS",
+    "MANAGE_USERS",
+    "MANAGE_ROLES"
+  ]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [selectedFolders, setSelectedFolders] = useState([]);
@@ -194,15 +209,6 @@ const MemberPermissions = () => {
             toast.success(`API call completed for adding ${usersToAdd.length} user(s)`);
           }
         } catch (error) {
-          console.error(`Error adding users to group:`, error);
-          if (error.response) {
-            console.error(`Error response:`, error.response.data);
-            console.error(`Error status:`, error.response.status);
-            console.error(`Error headers:`, error.response.headers);
-          }
-          if (error.request) {
-            console.error(`Error request:`, error.request);
-          }
           toast.error("Failed to add some users to the group");
         }
       }
@@ -390,12 +396,7 @@ const MemberPermissions = () => {
       
     setAllPermissions(permissionsWithFullAccess);
     
-    console.log("All Permissions with FULL_ACCESS:", permissionsWithFullAccess);
   }, []);
-
-  useEffect(() => {
-    console.log("All Permissions:", allPermissions);
-  }, [allPermissions]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -599,18 +600,27 @@ const MemberPermissions = () => {
   const fetchResources = async () => {
     try {
       console.log("🔍 Starting to fetch ALL resources with complete folder tree...");
-
-      // First, get the list of all root folder and file IDs
-      const [foldersRes, filesRes] = await Promise.all([
-        apiCall.getFolder("files/folders").catch(() => []),
-        apiCall.getFile("files").catch(() => [])
+      
+      // Initialize the variable that's missing
+      let resourcesWithParents = []; // ✅ ADD THIS LINE
+      
+      // Get initial folder and file data
+      const [folderData, fileData] = await Promise.all([
+        apiCall.getFolder("files/folders"),
+        apiCall.getFile("files?parentId=null")
       ]);
-
-      const folderData = Array.isArray(foldersRes) ? foldersRes : [];
-      const fileData = Array.isArray(filesRes) ? filesRes : [];
 
       console.log("Initial folder data:", folderData);
       console.log("Initial file data:", fileData);
+
+      // Process folders and files
+      const allFolders = Array.isArray(folderData) ? folderData : [];
+      const rootFiles = Array.isArray(fileData) ? fileData.filter(file => 
+          !file.parentId || file.parentId === null || file.parentId === "null"
+      ) : [];
+
+      // Build your resources array
+      resourcesWithParents = [...allFolders, ...rootFiles]; // ✅ NOW IT'S DEFINED
 
       // Recursive function to fetch ALL children for a folder (like Files.jsx does)
       const fetchAllFolderChildren = async (folderId, parentId = null, processedFolders = new Set()) => {
@@ -623,24 +633,17 @@ const MemberPermissions = () => {
         processedFolders.add(folderId);
         
         try {
-          console.log(`🔍 Fetching ALL children for folder: ${folderId}`);
-          
           // Use the same method as Files.jsx - get folder by ID to get its children
           const folderData = await apiCall.getFolderById(`files/folders/${folderId}`);
           
           if (!folderData) {
-            console.log(`No data found for folder: ${folderId}`);
             return { folders: [], files: [] };
           }
-
-          console.log(`📁 Folder "${folderData.name}" data:`, folderData);
 
           // Get children from the folder data (same as Files.jsx)
           const children = folderData.children || [];
           const folderFiles = folderData.files || [];
 
-          console.log(`📁 Found ${children.length} children and ${folderFiles.length} files in folder: ${folderData.name}`);
-          
           const allChildFolders = [];
           const allChildFiles = [];
           
@@ -657,8 +660,6 @@ const MemberPermissions = () => {
           // Process immediate children folders
           for (const child of children) {
             if (child.type === 'folder') {
-              console.log(`📁 Processing child folder: "${child.name}" (${child.id})`);
-              
               const childFolder = {
                 ...child,
                 type: "folder",
@@ -676,8 +677,6 @@ const MemberPermissions = () => {
               allChildFiles.push(...grandChildren.files);
               
             } else if (child.type === 'file') {
-              console.log(`📄 Processing child file: "${child.name || child.fileName}" (${child.id})`);
-              
               allChildFiles.push({
                 ...child,
                 type: "file",
@@ -686,8 +685,6 @@ const MemberPermissions = () => {
               });
             }
           }
-          
-          console.log(`✅ Folder ${folderData.name} total descendants: ${allChildFolders.length} folders, ${allChildFiles.length} files`);
           
           return { folders: allChildFolders, files: allChildFiles };
           
@@ -704,7 +701,6 @@ const MemberPermissions = () => {
       // First, get detailed information for each root folder
       for (const folder of folderData) {
         try {
-          console.log(`🔍 Fetching detailed data for ROOT folder: ${folder.id}`);
           const detailedFolder = await apiCall.getFolderById(`files/folders/${folder.id}`);
           
           const rootFolder = {
@@ -717,14 +713,11 @@ const MemberPermissions = () => {
           allFoldersFromAPI.push(rootFolder);
           
           // 🔄 RECURSIVELY fetch ALL descendants of this root folder
-          console.log(`🌲 Starting complete traversal for root folder: ${rootFolder.name} (${rootFolder.id})`);
           const allDescendants = await fetchAllFolderChildren(rootFolder.id);
           
           // Add ALL descendant folders and files
           allFoldersFromAPI.push(...allDescendants.folders);
           allFilesFromAPI.push(...allDescendants.files);
-          
-          console.log(`✅ Completed FULL traversal for ${rootFolder.name}: +${allDescendants.folders.length} folders, +${allDescendants.files.length} files`);
           
         } catch (error) {
           console.error(`Error processing root folder ${folder.id}:`, error);
@@ -753,7 +746,6 @@ const MemberPermissions = () => {
             continue;
           }
 
-          console.log(`🔍 Fetching detailed data for ROOT file: ${file.id}`);
           const detailedFile = await apiCall.getFileById(`files/${file.id}`);
           
           allFilesFromAPI.push({
@@ -792,20 +784,6 @@ const MemberPermissions = () => {
       });
 
       const allResources = Array.from(allResourcesMap.values());
-
-      console.log("🎯 FINAL COMPLETE RESULTS:");
-      console.log(`📊 Total resources: ${allResources.length}`);
-      
-      // Enhanced analysis
-      const folders = allResources.filter(r => r.type === 'folder');
-      const files = allResources.filter(r => r.type === 'file');
-      const resourcesWithParents = allResources.filter(r => r.parentId && r.parentId !== null && r.parentId !== "null");
-      const rootResources = allResources.filter(r => !r.parentId || r.parentId === null || r.parentId === "null");
-
-      console.log(`📁 Total Folders: ${folders.length}`);
-      console.log(`📄 Total Files: ${files.length}`);
-      console.log(`🔗 Resources with parents: ${resourcesWithParents.length}`);
-      console.log(`🌳 Root resources: ${rootResources.length}`);
 
       // Show the COMPLETE hierarchy for debugging
       console.log("🌲 COMPLETE folder structure with ALL descendants:");
@@ -916,174 +894,116 @@ const MemberPermissions = () => {
 
   // Save individual user permissions
   const handleSaveUserPermissions = async () => {
-    if (!selectedUser) {
-      toast.warning("Please select a user to update permissions");
-      return;
+    if (!selectedUser || !selectedUser.id) {
+        toast.error("Please select a user first");
+        return;
     }
 
-    if (!selectedUser.id) {
-      toast.error("Invalid user selection. Please try selecting the user again.");
-      return;
+    const uniquePermissions = [...new Set(permissions)];
+    
+    if (uniquePermissions.length === 0 && selectedFolders.length === 0) {
+        toast.error("Please select at least one permission or resource");
+        return;
     }
 
-    if (permissions.length === 0 || selectedFolders.length === 0) {
-      toast.warning("Please select at least one permission and resource");
-      return;
-    }
-
+    setSaving(true);
     try {
-      setSaving(true);
+        console.log("💾 Saving permissions for user:", selectedUser.id);
 
-      // Separate folders and files from the selected resources
-      const folderIds = [];
-      const fileIds = [];
+        // Separate folder and file IDs properly
+        const folderIds = selectedFolders.filter(id => {
+            const resource = folders.find(f => f.id === id);
+            return resource && resource.type === 'folder';
+        });
 
-      selectedFolders.forEach(resourceId => {
-        const resource = folders.find(item => item.id === resourceId);
-        if (resource) {
-          const isFolder = resource.type === 'folder' ||
-            resource.mimeType === 'application/vnd.google-apps.folder' ||
-            (!resource.fileName && !resource.fileExtension);
+        const fileIds = selectedFolders.filter(id => {
+            const resource = folders.find(f => f.id === id);
+            return resource && resource.type !== 'folder';
+        });
 
-          if (isFolder) {
-            folderIds.push(resourceId);
-          } else {
-            fileIds.push(resourceId);
-          }
-        }
-      });
+        console.log("📊 Separated resources:", { folderIds, fileIds, permissions: uniquePermissions });
 
-      console.log("Separated resources:", { folderIds, fileIds, permissions });
+        // ✅ Create requests using the EXACT format from your curl example
+        const requests = [];
 
-      let folderSuccess = false;
-      let fileSuccess = false;
-
-      // Create folder permissions using individual requests (like curl example)
-      if (folderIds.length > 0) {
-        try {
-          // Create individual permission for each folder (matching curl format)
-          for (const folderId of folderIds) {
-            const folderPermissionData = {
-              resourceType: "FOLDER",
-              permissions: permissions,
-              folderId: folderId,           // Single folder ID (not array)
-              accountId: selectedUser.id,   // Make sure this is populated
-              inherited: false
-            };
-
-            console.log("Creating folder permission with data:", folderPermissionData);
-
-            // Try /permissions/member first, then fallback to /permissions
-            let response;
-            try {
-              response = await apiCall.instance1.post("permissions/member", folderPermissionData, {
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-              });
-              console.log("✅ Folder permission created via /permissions/member:", response.data);
-            } catch (memberError) {
-              console.log("❌ /permissions/member failed, trying /permissions:", memberError.response?.status);
-              
-              // Fallback to regular permissions endpoint
-              response = await apiCall.instance1.post("permissions", folderPermissionData, {
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-              });
-              console.log("✅ Folder permission created via /permissions:", response.data);
+        // Create folder permissions
+        if (folderIds.length > 0) {
+            for (const folderId of folderIds) {
+                requests.push({
+                    resourceType: "FOLDER",
+                    permissions: uniquePermissions, // Array format as shown in curl
+                    folderId: folderId,
+                    accountId: selectedUser.id,
+                    inherited: false
+                });
             }
-          }
-
-          folderSuccess = true;
-          toast.success(`Created folder permissions for ${folderIds.length} folders`);
-        } catch (error) {
-          console.error("❌ Failed to create folder permissions:", error);
-          if (error.response?.data?.message) {
-            toast.error(`Folder permissions error: ${error.response.data.message}`);
-          } else {
-            toast.error("Failed to create folder permissions");
-          }
         }
-      }
 
-      // Create file permissions using individual requests
-      if (fileIds.length > 0) {
-        try {
-          // Create individual permission for each file
-          for (const fileId of fileIds) {
-            const filePermissionData = {
-              resourceType: "FILE",
-              permissions: permissions,
-              fileId: fileId,              // Single file ID (not array)
-              accountId: selectedUser.id,   // Make sure this is populated
-              inherited: false
-            };
-
-            console.log("Creating file permission with data:", filePermissionData);
-
-            // Try /permissions/member first, then fallback to /permissions
-            let response;
-            try {
-              response = await apiCall.instance1.post("permissions/member", filePermissionData, {
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-              });
-              console.log("✅ File permission created via /permissions/member:", response.data);
-            } catch (memberError) {
-              console.log("❌ /permissions/member failed, trying /permissions:", memberError.response?.status);
-              
-              // Fallback to regular permissions endpoint
-              response = await apiCall.instance1.post("permissions", filePermissionData, {
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
-              });
-              console.log("✅ File permission created via /permissions:", response.data);
+        // Create file permissions  
+        if (fileIds.length > 0) {
+            for (const fileId of fileIds) {
+                requests.push({
+                    resourceType: "FILE",
+                    permissions: uniquePermissions,
+                    fileId: fileId, // Use fileId for files instead of folderId
+                    accountId: selectedUser.id,
+                    inherited: false
+                });
             }
-          }
-
-          fileSuccess = true;
-          toast.success(`Created file permissions for ${fileIds.length} files`);
-        } catch (error) {
-          console.error("❌ Failed to create file permissions:", error);
-          if (error.response?.data?.message) {
-            toast.error(`File permissions error: ${error.response.data.message}`);
-          } else {
-            toast.error("Failed to create file permissions");
-          }
         }
-      }
 
-      // Show overall success message and refresh user permissions
-      if (folderSuccess || fileSuccess) {
-        toast.success("User permissions created successfully!");
-        
-        // Refresh the user permissions to show the updated state
-        fetchUserPermissions(selectedUser.id);
-        
-        // ADDED: Clear the user selection and close the dropdown
-        console.log("Permissions saved successfully, clearing user selection");
-        setSelectedUser(null);
-        setPermissions([]);
-        setSelectedFolders([]);
-        
-      } else if (folderIds.length === 0 && fileIds.length === 0) {
-        toast.info("No resources selected to create permissions for");
-      } else {
-        toast.error("Failed to create any permissions");
-      }
+        console.log("📋 Permission requests to send:", requests);
+
+        // Send each permission request
+        const results = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const permissionData of requests) {
+            try {
+                console.log("🔄 Creating permission:", permissionData);
+                
+                const response = await apiCall.createMemberPermission(permissionData);
+                console.log("✅ Permission created successfully:", response);
+                
+                results.push({ success: true, data: response });
+                successCount++;
+                
+            } catch (error) {
+                console.error("❌ Failed to create permission:", error);
+                console.error("❌ Error details:", error.response?.data);
+                
+                results.push({ 
+                    success: false, 
+                    error: error.response?.data?.message || error.message,
+                    data: permissionData
+                });
+                errorCount++;
+            }
+        }
+
+        // Show results
+        if (successCount > 0) {
+            toast.success(`Successfully created ${successCount} permission(s)!`);
+            
+            // Refresh user permissions to show updated state
+            await fetchUserPermissions(selectedUser.id);
+        }
+
+        if (errorCount > 0) {
+            toast.error(`Failed to create ${errorCount} permission(s). Check console for details.`);
+        }
+
+        // If no requests were created
+        if (requests.length === 0) {
+            toast.warning("No valid resources selected for permission assignment.");
+        }
 
     } catch (error) {
-      console.error("Error in handleSaveUserPermissions:", error);
-      toast.error("Failed to create permissions. Please try again.");
+        console.error("❌ Failed to save user permissions:", error);
+        toast.error("Failed to save user permissions. Please try again.");
     } finally {
-      setSaving(false);
+        setSaving(false);
     }
   };
 
@@ -1600,7 +1520,7 @@ const MemberPermissions = () => {
           </div>
         ) : (
           <FolderTree
-            key={`folder-tree-${folders.length}`} // Force re-render when folders change
+            key={`folder-tree-${selectedUser?.id || 'none'}`} // Only re-render when user changes
             items={folders}
             selectedItems={safeArrayCheck(selectedFolders)}
             onSelectionChange={setSelectedFolders}
@@ -1609,42 +1529,6 @@ const MemberPermissions = () => {
       </div>
     </>
   )}
-
-  const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
-    if (permission === "FULL_ACCESS") {
-      if (isChecked) {
-        // If FULL_ACCESS is checked, select all permissions
-        setPermissions(allPermissions);
-      } else {
-        // If FULL_ACCESS is unchecked, clear all permissions
-        setPermissions([]);
-      }
-    } else {
-      // Handle individual permission changes
-      let newPermissions;
-      if (isChecked) {
-        // Add the permission if not already present
-        newPermissions = currentPermissions.includes(permission) 
-          ? currentPermissions 
-          : [...currentPermissions, permission];
-        
-        // Check if all other permissions (excluding FULL_ACCESS) are now selected
-        const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
-        const hasAllOtherPermissions = allOtherPermissions.every(p => 
-          newPermissions.includes(p)
-        );
-        
-        // If all other permissions are selected, also add FULL_ACCESS
-        if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
-          newPermissions = [...newPermissions, "FULL_ACCESS"];
-        }
-      } else {
-        // Remove the permission and also remove FULL_ACCESS if it was selected
-        newPermissions = currentPermissions.filter(p => p !== permission && p !== "FULL_ACCESS");
-      }
-      setPermissions(newPermissions);
-    }
-  };
 
   // Inside your component return statement
   return (
@@ -1748,7 +1632,7 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h4 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h4>
                         <div className="grid grid-cols-2 gap-2">
-                          {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                          {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
@@ -1835,7 +1719,7 @@ const MemberPermissions = () => {
                             </div>
                           ) : (
                             <FolderTree
-                              key={`folder-tree-${folders.length}`}
+                              key={`folder-tree-${selectedUser?.id || 'none'}`} // Only re-render when user changes
                               items={folders}
                               selectedItems={safeArrayCheck(selectedFolders)}
                               onSelectionChange={setSelectedFolders}
@@ -2157,6 +2041,7 @@ const MemberPermissions = () => {
                       ) : (
                         <div className="space-y-2">
                           {users
+                           
                             .filter(user => !isSuperAdminByRole(user)) // Filter by SUPER_ADMIN role
                             .map(user => {
                               // First, ensure the user has an ID
@@ -2219,6 +2104,7 @@ const MemberPermissions = () => {
                         onClick={() => setShowManageUsersModal(false)}
                       >
                         Cancel
+
                       </button>
                     </div>
                   </div>
@@ -2339,7 +2225,7 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h5 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Basic Resource</h5>
                         <div className="grid grid-cols-2 gap-2">
-                          {["read", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
+                          {["READ", "WRITE", "EXECUTE", "UPLOAD", "DOWNLOAD", "RENAME", "MOVE", "COPY"].map((perm) => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
@@ -2545,4 +2431,3 @@ const MemberPermissions = () => {
 };
 
 export default MemberPermissions;
-

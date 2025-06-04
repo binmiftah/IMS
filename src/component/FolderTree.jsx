@@ -32,24 +32,15 @@ const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
         const childrenMap = {};
         const allItemIds = new Set(items.map(item => item.id));
 
-        console.log("🔍 DEBUG: Building tree from items:", items.length);
-        console.log("🔍 DEBUG: Sample items:", items.slice(0, 3));
-
         // If items already have a children property, use that structure
         const hasPrebuiltStructure = items.some(item => item.children && Array.isArray(item.children));
         
         if (hasPrebuiltStructure) {
-            console.log("🔍 DEBUG: Using pre-built hierarchical structure");
-            
             // Filter to get only root items (items without parentId)
             const rootNodes = items.filter(item => !item.parentId || item.parentId === null || item.parentId === "null");
             
-            console.log("🔍 DEBUG: Found root nodes:", rootNodes.length);
-            
             // Recursively process the tree structure
             const processNode = (node, depth = 0) => {
-                console.log(`🔍 DEBUG: Processing node ${node.id} at depth ${depth}`);
-                
                 const isFolder = node.type === 'folder' || 
                                node.type === 'FOLDER' || 
                                node.mimeType === 'application/vnd.google-apps.folder' ||
@@ -71,32 +62,19 @@ const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
             
             const processedTree = rootNodes.map(node => processNode(node));
             
-            console.log("🔍 DEBUG: Processed tree structure:", processedTree.map(node => ({
-                id: node.id,
-                name: node.name || node.fileName,
-                isFolder: node.isFolder,
-                childCount: node.children?.length || 0
-            })));
-            
             return processedTree;
         }
 
         // Fallback to the original flat structure processing
-        console.log("🔍 DEBUG: Using flat structure, building hierarchy from parent IDs");
-        
         // First, group all items by their parentId
         items.forEach(item => {
             // Check for parent relationship using multiple possible fields
             const parentId = item.parentId || item.parent_id || item.folderId;
             
-            console.log(`🔍 DEBUG: Item ${item.id} (${item.name || item.fileName}) has parentId: ${parentId}`);
-            
             // Only consider it a child if the parent actually exists in our items
             if (!parentId || parentId === null || parentId === "null" || !allItemIds.has(parentId)) {
-                console.log(`  ✅ Adding ${item.id} as ROOT item`);
                 rootItems.push(item);
             } else {
-                console.log(`  ➡️ Adding ${item.id} as CHILD of ${parentId}`);
                 if (!childrenMap[parentId]) {
                     childrenMap[parentId] = [];
                 }
@@ -104,13 +82,8 @@ const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
             }
         });
 
-        console.log("🔍 DEBUG: Root items found:", rootItems.length, rootItems.map(i => i.name || i.fileName));
-        console.log("🔍 DEBUG: Children map:", Object.keys(childrenMap).length, "parents");
-
         // Function to recursively build the tree
         const buildTree = (items, depth = 0) => {
-            console.log(`🔍 DEBUG: Building tree at depth ${depth} with ${items.length} items`);
-            
             return items
                 .sort((a, b) => {
                     // Sort folders first, then files
@@ -138,8 +111,6 @@ const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
                                    item.mimeType === 'application/vnd.google-apps.folder' ||
                                    (!item.fileName && !item.fileExtension);
                     
-                    console.log(`🔍 DEBUG: Item ${item.id} (${item.name || item.fileName}) - isFolder: ${isFolder}, children: ${children.length}`);
-                    
                     return {
                         ...item,
                         children: children,
@@ -149,7 +120,6 @@ const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
         };
 
         const tree = buildTree(rootItems);
-        console.log("🔍 DEBUG: Built tree with", tree.length, "root nodes");
         
         return tree;
     };
@@ -413,49 +383,6 @@ const FolderTree = ({ items, selectedItems, onSelectionChange }) => {
             </div>
         );
     }
-
-    // Add this function right after the buildTreeData function:
-    const debugDataStructure = () => {
-        console.log("🔍 DEBUG: Full data structure analysis:");
-        console.log("Total items:", items.length);
-        
-        // Check all possible parent field names
-        const parentFields = ['parentId', 'parent_id', 'folderId', 'parentFolderId', 'parent'];
-        
-        parentFields.forEach(field => {
-            const itemsWithField = items.filter(item => item[field] !== undefined && item[field] !== null);
-            console.log(`Items with ${field}:`, itemsWithField.length);
-            if (itemsWithField.length > 0) {
-                console.log(`Sample ${field} values:`, itemsWithField.slice(0, 3).map(item => ({
-                    id: item.id,
-                    name: item.name || item.fileName,
-                    [field]: item[field]
-                })));
-            }
-        });
-        
-        // Check for items that look like folders
-        const potentialFolders = items.filter(item => 
-            item.type === 'folder' || 
-            item.type === 'FOLDER' || 
-            item.mimeType === 'application/vnd.google-apps.folder' ||
-            (!item.fileName && !item.fileExtension)
-        );
-        console.log("Potential folders found:", potentialFolders.length);
-        
-        // Check for items that look like files
-        const potentialFiles = items.filter(item => 
-            item.fileName || item.fileExtension || (item.mimeType && !item.mimeType.includes('folder'))
-        );
-        console.log("Potential files found:", potentialFiles.length);
-    };
-
-    // Call this function at the beginning of your component
-    useEffect(() => {
-        if (items.length > 0) {
-            debugDataStructure();
-        }
-    }, [items]);
 
     return (
         <div className="folder-tree border rounded-lg bg-white">
