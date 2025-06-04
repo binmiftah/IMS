@@ -252,18 +252,12 @@ const Files = () => {
 
     const handleDelete = async (item) => {
         try {
-            console.log("🗑️ Deleting item:", item);
-
             if (item.type === 'folder') {
                 // Delete folder using the new API endpoint
-                await apiCall.deleteFolder(`files/folders/?resourceType=Folder`, {
-                    folderName: item.name
-                });
+                await apiCall.deleteFolder(`files/folders/${item.id}?resourceType=Folder`);
             } else {
                 // Delete file using the new API endpoint  
-                await apiCall.deleteFile(`files/folders/?resourceType=Folder`, {
-                    fileName: item.fileName || item.name
-                });
+                await apiCall.deleteFile(`files/file/${item.id}?resourceType=File`);
             }
 
             // Refresh current folder instead of always going to root
