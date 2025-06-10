@@ -253,6 +253,21 @@ class ApiCall {
         return response;
     }
 
+    async getAccessibleFiles() {
+        try {
+            console.log("Fetching all accessible files and folders...");
+            const response = await this.instance2.get(`files/accessible`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            console.log("Accessible files API response:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching accessible files:", error);
+            throw error;
+        }
+    }
 
     /**
      * PERMISSIONS API CALLS
@@ -374,6 +389,7 @@ class ApiCall {
      * Get folder permissions for a security group
      * Retrieves all folder permissions assigned to a specific group
      */
+
     async getGroupFolderPermissions(groupId) {
         try {
             if (!groupId) {
@@ -644,6 +660,7 @@ class ApiCall {
             };
         }
     }
+
 }
 
 

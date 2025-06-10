@@ -33,40 +33,40 @@ const UserFiles = () => {
         type: "all",
     });
 
-    const getFolderId = () => {
-        if (!currentFolderId) {
-            console.log("Current Folder ID: Root");
-            return null;
-        }
-        return currentFolderId;
-    };
+    // const getFolderId = () => {
+    //     if (!currentFolderId) {
+    //         console.log("Current Folder ID: Root");
+    //         return null;
+    //     }
+    //     return currentFolderId;
+    // };
 
     const getRootFiles = async () => {
         try {
-            console.log("Fetching root files and folders");
+            console.log("Fetching accessible files and folders for user");
+            const accessibleData = await apiCall.getAccessibleFiles();
+            console.log("Accessible data response:", accessibleData);
 
-            const [folders, files] = await Promise.all([
-                apiCall.getFolder("files/folders"),
-                apiCall.getFile("files?parentId=null")
-            ]);
-
-            const folderItems = Array.isArray(folders) ? folders : [];
-            const fileItems = Array.isArray(files) ? files : [];
-
-            // Ensure we only include root files (files with no parent)
-            const rootFiles = fileItems.filter(file =>
-                !file.parentId ||
-                file.parentId === null ||
-                file.parentId === "null" ||
-                file.isRootFile === true
+            // Extract files from the response structure
+            const allItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
+            console.log("All accessible items:", allItems);
+            
+            // Filter for root level items only (no parentId)
+            const rootItems = allItems.filter(item =>
+                !item.parentId ||
+                item.parentId === null ||
+                item.parentId === "null" ||
+                item.parentId === ""
             );
 
-            const allItems = [...folderItems, ...rootFiles];
-            setItems(allItems);
+            console.log("Root accessible items:", rootItems);
+
+            setItems(rootItems);
             setCurrentFolderId(null);
             setCurrentPath('/');
 
         } catch (error) {
+            console.error("Failed to load accessible files:", error);
             toast.error("Failed to load files");
         }
     };
@@ -97,54 +97,45 @@ const UserFiles = () => {
         }
     };
 
-    // Create a separate function for refreshing folder contents
     const refreshFolderContents = async (folderId) => {
         try {
-            console.log("Refreshing folder contents for ID:", folderId);
+            console.log("Refreshing accessible folder contents for ID:", folderId);
+            const accessibleData = await apiCall.getAccessibleFiles();
+            const allAccessibleItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
 
-            // Get folder data
-            const folderData = await apiCall.getFolderById(`files/folders/${folderId}`);
-            console.log("Folder data:", folderData);
-
-            // Get files specifically for this folder
-            const filesData = await apiCall.getFile(`files?parentId=${folderId}`);
-            console.log("Files data for folder:", filesData);
-
-            // Combine folder children with files
-            const children = folderData.children || [];
-            const files = Array.isArray(filesData) ? filesData : [];
-
-            // Filter files to ensure they belong to this folder
-            const folderFiles = files.filter(file =>
-                file.parentId === folderId ||
-                file.folderId === folderId
+            // Filter for items that belong to this specific folder
+            const folderContents = allAccessibleItems.filter(item =>
+                item.parentId === folderId || item.folderId === folderId
             );
 
-            const allItems = [...children, ...folderFiles];
-            console.log("Combined items:", allItems);
+            console.log("Accessible items in folder:", folderContents);
 
-            setItems(allItems);
+            setItems(folderContents);
             setCurrentFolderId(folderId);
 
-            // Update navigation path
-            const folderPath = folderData.fullPath || `/folder-${folderId}`;
+            const currentFolder = allAccessibleItems.find(item =>
+                item.id === folderId && item.type === 'folder'
+            );
+            const folderPath = currentFolder?.fullPath || `/folder-${folderId}`;
             setCurrentPath(folderPath);
 
         } catch (error) {
-            console.error("Error refreshing folder:", error);
+            console.error("Error refreshing accessible folder:", error);
             toast.error("Failed to load folder contents");
-        }
+        }hh
     };
 
     const handleRefresh = async () => {
         try {
             if (currentFolderId) {
-                // We're in a specific folder - refresh its contents
                 await refreshFolderContents(currentFolderId);
             } else {
-                // We're at the root level
                 await getRootFiles();
             }
+            toast.success("Refreshed successfully", {
+                position: "top-right",
+                autoClose: 2000,
+            });
         } catch (error) {
             console.error("Error refreshing:", error);
             handleError(error);
@@ -170,36 +161,10 @@ const UserFiles = () => {
             setNavigationHistory(prev => prev.slice(0, -1));
 
             if (lastNav.id) {
-                console.log("Refreshing folder contents for:", lastNav.id);
-                try {
-                    // Use a direct API call here to ensure fresh data
-                    const folderData = await apiCall.getFolderById(`files/folders/${lastNav.id}`);
-                    const filesData = await apiCall.getFile(`files?parentId=${lastNav.id}`);
-
-                    // Ensure we have arrays to work with
-                    const children = Array.isArray(folderData.children) ? folderData.children : [];
-                    const files = Array.isArray(filesData) ? filesData : [];
-
-                    // Filter files to ensure they belong to this folder
-                    const folderFiles = files.filter(file =>
-                        file.parentId === lastNav.id ||
-                        file.folderId === lastNav.id
-                    );
-
-                    console.log("Back navigation - combining items:", {
-                        folderChildren: children.length,
-                        folderFiles: folderFiles.length
-                    });
-
-                    setItems([...children, ...folderFiles]);
-
-                } catch (folderError) {
-                    console.error("Error fetching back folder:", folderError);
-                    toast.error("Failed to navigate back to folder");
-                    await getRootFiles();
-                }
+                console.log("Refreshing accessible folder contents for:", lastNav.id);
+                await refreshFolderContents(lastNav.id);
             } else {
-                console.log("Going back to root folder");
+                console.log("Going back to accessible root folder");
                 await getRootFiles();
             }
         } catch (error) {
@@ -301,7 +266,7 @@ const UserFiles = () => {
         try {
             // Implement file download logic
             const response = await apiCall.downloadFile(`files/download/${file.id}`);
-            
+
             // Create download link
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
@@ -311,7 +276,7 @@ const UserFiles = () => {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-            
+
             toast.success('File downloaded successfully!');
         } catch (error) {
             console.error('Error downloading file:', error);
@@ -464,24 +429,18 @@ const UserFiles = () => {
                             const isFolder = item.type === 'folder';
                             const isDisabled = isPasteMode && !isFolder;
 
-                            // Skip files that don't belong in this folder
-                            const belongsInCurrentFolder = isFolder ||
-                                (!isFolder && (
-                                    (currentFolderId === null && !item.parentId) ||
-                                    (currentFolderId && item.parentId === currentFolderId)
-                                ));
-
-                            if (!belongsInCurrentFolder) return null;
+                            // ✅ Simplified - show all items that are in the current items array
+                            // The filtering should already be done in getRootFiles() and refreshFolderContents()
 
                             return (
                                 <div
-                                    key={index}
+                                    key={item.id || index}
                                     onClick={() => {
                                         if (isDisabled) return; // Prevent click if disabled
                                         if (isFolder) handleNavigate(item);
                                         else handleFileOpen(item);
                                     }}
-                                    className={`p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer
+                                    className={`p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors
                                         ${isDisabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
                                 >
                                     <div className="flex items-center justify-between">
@@ -491,12 +450,29 @@ const UserFiles = () => {
                                             ) : (
                                                 <MdInsertDriveFile size={24} className="text-blue-500" />
                                             )}
-                                            <span
-                                                className="text-gray-700 truncate max-w-[150px] block"
-                                                title={item.name || item.fileName}
-                                            >
-                                                {item.name || item.fileName}
-                                            </span>
+                                            <div className="flex flex-col">
+                                                <span
+                                                    className="text-gray-700 truncate max-w-[150px] block font-medium"
+                                                    title={item.name || item.fileName}
+                                                >
+                                                    {item.name || item.fileName}
+                                                </span>
+                                                {/* ✅ Add file size and date for better UX */}
+                                                {!isFolder && (
+                                                    <div className="flex text-xs text-gray-500 space-x-2">
+                                                        {item.size && <span>{formatFileSize(item.size)}</span>}
+                                                        {item.createdAt && (
+                                                            <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {/* ✅ Show folder item count if available */}
+                                                {isFolder && (
+                                                    <span className="text-xs text-gray-500">
+                                                        Folder • {item.AclEntry?.length || 0} permissions
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="relative">
                                             <Button
@@ -579,9 +555,28 @@ const UserFiles = () => {
                                 </div>
                             );
                         }) : (
-                            <p className="col-span-4 text-center text-gray-500">
-                                No files or folders found in this location.
-                            </p>
+                            <div className="col-span-4 text-center py-12">
+                                <div className="flex flex-col items-center space-y-3">
+                                    <div className="p-4 bg-gray-100 rounded-full">
+                                        <MdFolder size={48} className="text-gray-400" />
+                                    </div>
+                                    <p className="text-gray-500 text-lg">No accessible files or folders found</p>
+                                    <p className="text-gray-400 text-sm">
+                                        {currentPath === '/' 
+                                            ? 'You may not have access to any files yet.' 
+                                            : 'This folder appears to be empty or you don\'t have access to its contents.'
+                                        }
+                                    </p>
+                                    <Button
+                                        onClick={handleRefresh}
+                                        variant="outline"
+                                        className="mt-4 px-4 py-2"
+                                        icon={<MdRefresh size={16} />}
+                                    >
+                                        Refresh
+                                    </Button>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
