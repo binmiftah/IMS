@@ -27,6 +27,8 @@ const Files = () => {
     const [clickedItem, setClickedItem] = useState(null)
     const [isOpenFile, setIsOpenFile] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const dropdownRef = useRef(null);
 
@@ -78,7 +80,10 @@ const Files = () => {
 
     const handleNavigate = async (item) => {
         try {
-            console.log("Navigating to folder with ID:", item.id);
+            console.log("=== NAVIGATING TO FOLDER ===");
+            console.log("Folder item:", item);
+            console.log("Previous folder ID:", currentFolderId);
+            console.log("New folder ID:", item.id);
 
             // Save current state for back navigation with more details
             const historyEntry = {
@@ -92,7 +97,10 @@ const Files = () => {
             // Update current folder info
             setNavigationHistory(prev => [...prev, historyEntry]);
             setCurrentPath(item.fullPath || `/folder-${item.id}`);
-            setCurrentFolderId(item.id);
+            setCurrentFolderId(item.id); // This should set the folder ID
+
+            console.log("=== FOLDER ID UPDATED ===");
+            console.log("New currentFolderId should be:", item.id);
 
             // Force refresh folder contents
             await refreshFolderContents(item.id);
@@ -102,7 +110,7 @@ const Files = () => {
         }
     };
 
-    // Create a separate function for refreshing folder contents
+    // Replace the refreshFolderContents function:
     const refreshFolderContents = async (folderId) => {
         try {
             console.log("Refreshing folder contents for ID:", folderId);
@@ -110,31 +118,28 @@ const Files = () => {
             // Get folder data
             const folderData = await apiCall.getFolderById(`files/folders/${folderId}`);
             console.log("Folder data:", folderData);
-            console.log("folderid")
 
-            // Get files specifically for this folder
-            const filesData = await apiCall.getFile(`files?parentId=${folderId}`);
-            console.log("Files data for folder:", filesData);
+            // Get files from the folder data itself
+            const folderFiles = folderData.files || [];
+            console.log("Files from folderData.files:", folderFiles);
 
-            // Combine folder children with files
+            // Get folder children (subfolders)
             const children = folderData.children || [];
-            const files = Array.isArray(filesData) ? filesData : [];
+            console.log("Children folders:", children);
 
-            // Filter files to ensure they belong to this folder
-            const folderFiles = files.filter(file =>
-                file.parentId === folderId ||
-                file.folderId === folderId
-            );
-
+            // Combine all items - files and subfolders
             const allItems = [...children, ...folderFiles];
-            console.log("Combined items:", allItems);
+            console.log("Combined items:", {
+                children: children.length,
+                folderFiles: folderFiles.length,
+                total: allItems.length,
+                items: allItems
+            });
 
-            setItems(allItems);
-            setCurrentFolderId(folderId);
+            // Force update items state
+            setItems([...allItems]); // Use spread to force re-render
 
-            // Update navigation path
-            const folderPath = folderData.fullPath || `/folder-${folderId}`;
-            setCurrentPath(folderPath);
+            console.log("Items state updated with:", allItems.length, "items");
 
         } catch (error) {
             console.error("Error refreshing folder:", error);
@@ -144,11 +149,16 @@ const Files = () => {
 
     const handleRefresh = async () => {
         try {
+            console.log("Refreshing - current folder ID:", currentFolderId);
+            console.log("Refreshing - current path:", currentPath);
+
             if (currentFolderId) {
                 // We're in a specific folder - refresh its contents
+                console.log("Refreshing folder contents for:", currentFolderId);
                 await refreshFolderContents(currentFolderId);
             } else {
                 // We're at the root level
+                console.log("Refreshing root files");
                 await getRootFiles();
             }
         } catch (error) {
@@ -241,13 +251,33 @@ const Files = () => {
     };
 
     const handleDelete = async (item) => {
-        if (item.type === 'folder') {
-            await apiCall.deleteFolder(`files/folders/${item.id}`);
+        try {
+            if (item.type === 'folder') {
+                // Delete folder using the new API endpoint
+                await apiCall.deleteFolder(`files/folders/${item.id}?resourceType=Folder`);
+            } else {
+                // Delete file using the new API endpoint  
+                await apiCall.deleteFile(`files/file/${item.id}?resourceType=File`);
+            }
+
+            // Refresh current folder instead of always going to root
+            await handleRefresh();
+
+            const itemType = item.type === 'folder' ? 'Folder' : 'File';
+            const itemName = item.name || item.fileName;
+            toast.success(`${itemType} "${itemName}" deleted successfully and moved to trash`);
+
+        } catch (error) {
+            console.error("Error deleting item:", error);
+            const itemType = item.type === 'folder' ? 'folder' : 'file';
+            const itemName = item.name || item.fileName;
+
+            if (error.response?.data?.message) {
+                toast.error(`Failed to delete ${itemType}: ${error.response.data.message}`);
+            } else {
+                toast.error(`Failed to delete ${itemType} "${itemName}"`);
+            }
         }
-
-        // refresh folder
-        await getRootFiles();
-
     };
 
     const handleFileOpen = async (item) => {
@@ -255,13 +285,23 @@ const Files = () => {
         setIsOpenFile((s) => !s);
     };
 
+    // Update handleCreateFolder to ensure it works with current folder context:
     const handleCreateFolder = async (folderName) => {
         try {
-            const data = { folderName };
+            console.log("=== CREATING FOLDER ===");
+            console.log("Folder name:", folderName);
+            console.log("Current folder ID:", currentFolderId);
+            console.log("Current path:", currentPath);
+
+            const data = {
+                folderName,
+                parentId: currentFolderId // Add parent folder context
+            };
+
             const result = await apiCall.createFolder("files/create/folder", data);
             console.log("Folder created:", result);
 
-            // Refresh the folder list
+            // Refresh the current folder to show the new folder
             await handleRefresh();
 
             // Show success message
@@ -301,6 +341,11 @@ const Files = () => {
             console.error("Error refreshing current folder:", error);
             handleError(error);
         }
+    };
+
+    const handleSort = (type, value) => {
+        setSortBy(prev => ({ ...prev, [type]: value }));
+        console.log(`Sorting by ${type}: ${value}`);
     };
 
     useEffect(() => {
@@ -349,7 +394,13 @@ const Files = () => {
         console.log("- Navigation History:", navigationHistory);
     }, [currentPath, currentFolderId, navigationHistory]);
 
-
+    // Add this useEffect to track currentFolderId changes:
+    useEffect(() => {
+        console.log("=== FOLDER ID CHANGED ===");
+        console.log("Current Folder ID:", currentFolderId);
+        console.log("Current Path:", currentPath);
+        console.log("Is in folder:", currentFolderId !== null);
+    }, [currentFolderId]);
 
     const formatFileSize = (bytes) => {
         if (!bytes) return 'Unknown size';
@@ -363,7 +414,7 @@ const Files = () => {
         try {
             // Implement file download logic
             const response = await apiCall.downloadFile(`files/download/${file.id}`);
-            
+
             // Create download link
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
@@ -373,7 +424,6 @@ const Files = () => {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-            
             toast.success('File downloaded successfully!');
         } catch (error) {
             console.error('Error downloading file:', error);
@@ -393,8 +443,22 @@ const Files = () => {
                 <div className="p-6">
                     <ActionButtons
                         onActionComplete={() => {
-                            console.log("ActionButtons callback - refreshing folder:", currentFolderId);
-                            handleRefresh();
+                            console.log("=== UPLOAD COMPLETE CALLBACK ===");
+                            console.log("Current folder ID:", currentFolderId);
+                            console.log("Current path:", currentPath);
+
+                            // Force immediate refresh without any navigation changes
+                            if (currentFolderId) {
+                                console.log("Refreshing current folder immediately");
+                                refreshFolderContents(currentFolderId).then(() => {
+                                    console.log("Folder refresh completed");
+                                });
+                            } else {
+                                console.log("Refreshing root folder immediately");
+                                getRootFiles().then(() => {
+                                    console.log("Root refresh completed");
+                                });
+                            }
                         }}
                         getFolderId={() => {
                             console.log("getFolderId called, returning:", currentFolderId);
@@ -410,9 +474,10 @@ const Files = () => {
                         >
                             Paste "{clipboard.name}"
                         </button>
-                    )}
+                    )
 
 
+                    }
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center space-x-2">
@@ -482,128 +547,134 @@ const Files = () => {
                     </div>
 
                     {/* Files and Folders Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ">
-                        {items.length > 0 ? items.map((item, index) => {
-                            // Determine if this card should be disabled in paste mode
-                            const isPasteMode = !!clipboard;
-                            const isFolder = item.type === 'folder';
-                            const isDisabled = isPasteMode && !isFolder;
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {(() => {
+                            console.log("=== RENDERING ITEMS ===");
+                            console.log("Items to render:", items.length);
+                            console.log("Current folder ID:", currentFolderId);
+                            console.log("Items:", items);
 
-                            // Skip files that don't belong in this folder
-                            const belongsInCurrentFolder = isFolder ||
-                                (!isFolder && (
-                                    (currentFolderId === null && !item.parentId) ||
-                                    (currentFolderId && item.parentId === currentFolderId)
-                                ));
+                            if (items.length === 0) {
+                                return (
+                                    <div className="col-span-4 flex flex-col items-center justify-center py-12 text-gray-500">
+                                        <MdFolder size={64} className="mb-4 opacity-50" />
+                                        <p className="text-lg font-medium">No items found</p>
+                                        <p className="text-sm">
+                                            {currentFolderId
+                                                ? "This folder is empty. Upload a file or create a new folder to get started."
+                                                : "No files or folders found. Upload a file or create a new folder to get started."
+                                            }
+                                        </p>
+                                    </div>
+                                );
+                            }
 
-                            if (!belongsInCurrentFolder) return null;
+                            return items.map((item, index) => {
+                                const isFolder = item.type === 'folder';
+                                const isPasteMode = !!clipboard;
+                                const isDisabled = isPasteMode && !isFolder;
 
-                            return (
-                                <div
-                                    key={index}
-                                    onClick={() => {
-                                        if (isDisabled) return; // Prevent click if disabled
-                                        if (isFolder) handleNavigate(item);
-                                        else handleFileOpen(item);
-                                    }}
-                                    className={`p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer
-                    ${isDisabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-3">
-                                            {isFolder ? (
-                                                <MdFolder size={24} className="text-yellow-500" />
-                                            ) : (
-                                                <MdInsertDriveFile size={24} className="text-blue-500" />
-                                            )}
-                                            <span
-                                                className="text-gray-700 truncate max-w-[150px] block"
-                                                title={item.name}
-                                            >
-                                                {item.name || item.fileName}
-                                            </span>
-                                        </div>
-                                        <div className="relative">
-                                            <Button
-                                                variant="icon"
-                                                className="p-2 hover:bg-gray-200 rounded-full"
-                                                icon={<MdMoreVert size={20} />}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (isDisabled) return;
-                                                    setActiveDropdown(activeDropdown === index ? null : index);
-                                                }}
-                                                disabled={isDisabled}
-                                            />
-                                            {activeDropdown === index && (
-                                                <div
-                                                    ref={dropdownRef}
-                                                    className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 overflow-y-auto"
-                                                    style={{
-                                                        maxHeight: '200px',
-                                                        maxWidth: 'calc(100vw - 20px)', // Prevent overflow
-                                                    }}
-                                                    onClick={(e) => e.stopPropagation()}
+                                console.log("Rendering item:", item.name || item.fileName, "Type:", item.type);
+
+                                return (
+                                    <div
+                                        key={`${item.id}-${index}`} // Unique key
+                                        onClick={() => {
+                                            if (isDisabled) return;
+                                            if (isFolder) handleNavigate(item);
+                                            else handleFileOpen(item);
+                                        }}
+                                        className={`p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors
+                                            ${isDisabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                {isFolder ? (
+                                                    <MdFolder size={24} className="text-yellow-500" />
+                                                ) : (
+                                                    <MdInsertDriveFile size={24} className="text-blue-500" />
+                                                )}
+                                                <span
+                                                    className="text-gray-700 truncate max-w-[150px] block"
+                                                    title={item.name || item.fileName}
                                                 >
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (isFolder) {
-                                                                handleNavigate(item);
-                                                            } else {
-                                                                handleFileOpen(item);
-                                                            }
-                                                            setActiveDropdown(null);
-                                                        }}
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
-                                                        disabled={isDisabled}
+                                                    {item.name || item.fileName}
+                                                </span>
+                                            </div>
+                                            <div className="relative">
+                                                <Button
+                                                    variant="icon"
+                                                    className="p-2 hover:bg-gray-200 rounded-full"
+                                                    icon={<MdMoreVert size={20} />}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isDisabled) return;
+                                                        setActiveDropdown(activeDropdown === index ? null : index);
+                                                    }}
+                                                    disabled={isDisabled}
+                                                />
+                                                {activeDropdown === index && (
+                                                    <div
+                                                        ref={dropdownRef}
+                                                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10"
+                                                        onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        <MdOpenInNew className="mr-2" size={18} />
-                                                        Open
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleCopy(item);
-                                                            setActiveDropdown(null);
-                                                        }}
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                        disabled={isDisabled}
-                                                    >
-                                                        <MdContentCopy className="mr-2" size={18} />
-                                                        Copy
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleMove(item);
-                                                            setActiveDropdown(null);
-                                                        }}
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                        disabled={isDisabled}
-                                                    >
-                                                        <MdDriveFileMove className="mr-2" size={18} />
-                                                        Move
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDelete(item);
-                                                            setActiveDropdown(null);
-                                                        }}
-                                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
-                                                        disabled={isDisabled}
-                                                    >
-                                                        <MdDelete className="mr-2" size={18} />
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                            )}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (isFolder) {
+                                                                    handleNavigate(item);
+                                                                } else {
+                                                                    handleFileOpen(item);
+                                                                }
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg"
+                                                        >
+                                                            <MdOpenInNew className="mr-2" size={18} />
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCopy(item);
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            <MdContentCopy className="mr-2" size={18} />
+                                                            Copy
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleMove(item);
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        >
+                                                            <MdDriveFileMove className="mr-2" size={18} />
+                                                            Move
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDelete(item);
+                                                                setActiveDropdown(null);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 rounded-b-lg"
+                                                        >
+                                                            <MdDelete className="mr-2" size={18} />
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        }) : <p className="items-center">No Items, Create A File or Folder</p>}
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             </div>
@@ -670,29 +741,6 @@ const Files = () => {
 
             {/*Open file*/}
             {isOpenFile && (
-                <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40`}>
-                    <div className={`bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative transition-all duration-300
-                        ${isMaximized ? 'max-w-full max-h-full w-full h-full rounded-none' : 'max-w-3xl'}
-                    `}>
-                        <button
-                            className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-                            onClick={() => setIsOpenFile(false)}
-                        >
-                            ✕
-                        </button>
-                        <button
-                            className="absolute top-3 right-12 text-gray-500 hover:text-gray-700"
-                            onClick={() => setIsMaximized(m => !m)}
-                            title={isMaximized ? "Minimize" : "Maximize"}
-                        >
-                            {isMaximized ? <MdCloseFullscreen size={22} /> : <MdOpenInNew size={22} />}
-                        </button>
-                        <div className={`${isMaximized ? 'h-[90vh] overflow-auto' : ''}`}>
-                            <FileItem file={clickedItem} />
-                        </div>
-                    </div>
-                </div>
-            )}{isOpenFile && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
                     <div className={`bg-white rounded-xl shadow-2xl transition-all duration-300 overflow-hidden
             ${isMaximized

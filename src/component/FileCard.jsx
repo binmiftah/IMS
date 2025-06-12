@@ -1,17 +1,10 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { FileItem } from '@/data/mockFiles';
 import {
     FileText, FileImage, FileCode, FileAudio,
     FileVideo, FileArchive, File
 } from 'lucide-react';
 
-interface FileCardProps {
-    file: FileItem;
-    onClick: () => void;
-}
-
-const FileCard: React.FC<FileCardProps> = ({ file, onClick }) => {
+const FileCard = ({ file, onClick }) => {
     const getFileIcon = () => {
         switch (file.type) {
             case 'image':
@@ -34,8 +27,8 @@ const FileCard: React.FC<FileCardProps> = ({ file, onClick }) => {
     };
 
     return (
-        <Card
-            className="p-4 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col items-center space-y-2 h-48"
+        <div
+            className="p-4 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col items-center space-y-2 h-48 border border-gray-200 rounded-lg bg-white"
             onClick={onClick}
         >
             {file.type === 'image' && file.thumbnailUrl ? (
@@ -55,7 +48,7 @@ const FileCard: React.FC<FileCardProps> = ({ file, onClick }) => {
                 <p className="font-medium text-sm truncate" title={file.name}>{file.name}</p>
                 <p className="text-xs text-gray-500">{file.size}</p>
             </div>
-        </Card>
+        </div>
     );
 };
 

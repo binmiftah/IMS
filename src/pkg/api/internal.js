@@ -101,23 +101,30 @@ class ApiCall {
     // In the ApiCall class, update the uploadFile method:
     async uploadFile(urlPath, data) {
         // Check if the URL already has query parameters
+        const hasParams = urlPath.includes('?');
+        const separator = hasParams ? '&' : '?';
+
         console.log("API uploadFile called with:", {
             urlPath,
             formDataEntries: Array.from(data.entries()).map(([key, value]) =>
                 key === 'file' ? `${key}: [File: ${value.name}]` : `${key}: ${value}`
             )
         });
-        const hasParams = urlPath.includes('?');
-        const separator = hasParams ? '&' : '?';
-        const response = await this.instance2.post(`${urlPath}${separator}resourceType=FILE`, data, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        });
 
-        console.log("Upload response:", response.data);
-        return response.data;
+        try {
+            const response = await this.instance2.post(`${urlPath}${separator}resourceType=FILE`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            console.log("Upload successful:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Upload error:", error);
+            throw error;
+        }
     }
 
     async getFile(urlPath) {
@@ -171,13 +178,26 @@ class ApiCall {
         return response.data;
     }
 
-    async deleteFolder(urlPath) {
-        const response = await this.instance1.delete(urlPath, {
+    async deleteFolder(urlPath, data) {
+        const response = await this.instance2.delete(urlPath, {
             headers: {
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        })
-        return response.data.data
+            },
+            data: data // axios DELETE with body
+        });
+        return response.data;
+    }
+
+    async deleteFile(urlPath, data) {
+        const response = await this.instance2.delete(urlPath, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            },
+            data: data // axios DELETE with body
+        });
+        return response.data;
     }
 
 
@@ -233,6 +253,21 @@ class ApiCall {
         return response;
     }
 
+    async getAccessibleFiles() {
+        try {
+            console.log("Fetching all accessible files and folders...");
+            const response = await this.instance2.get(`files/accessible`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            console.log("Accessible files API response:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching accessible files:", error);
+            throw error;
+        }
+    }
 
     /**
      * PERMISSIONS API CALLS
@@ -354,6 +389,7 @@ class ApiCall {
      * Get folder permissions for a security group
      * Retrieves all folder permissions assigned to a specific group
      */
+
     async getGroupFolderPermissions(groupId) {
         try {
             if (!groupId) {
@@ -472,36 +508,24 @@ class ApiCall {
      */
     getStaticPermissions() {
         return [
-            // Master permission
-            "FULL_ACCESS", // Implies all permissions below
-
-            // Basic resource permissions
-            "READ", // View resource content
-            "WRITE", // Modify resource content
-            "EXECUTE", // Run executable files
-            "UPLOAD", // Add files to folders
-            "DOWNLOAD", // Retrieve files
-            "RENAME", // Change resource name
-            "MOVE", // Relocate resource
-            "COPY", // Duplicate resource
-
             // File-specific permissions
-            "OPEN_FILE", // Open a file
-            "DELETE_FILE", // Remove a file
-            "SHARE_FILE", // Share a file with others
-
+            "OPEN_FILE",
+            "DELETE_FILE",
+            "UPLOAD_FILE",
+            "RENAME_FILE",
+            "DOWNLOAD_FILE",
+            "MOVE_FILE",
+            "COPY_FILE",
+            "SHARE_FILE",
             // Folder-specific permissions
-            "CREATE_FOLDER", // Create a new folder
-            "OPEN_FOLDER", // View folder contents
-            "DELETE_FOLDER", // Remove a folder
-            "SHARE_FOLDER", // Share a folder with others
-            "ARCHIVE", // Archive folder/file
-            "RESTORE", // Restore from trash
-
-            // Administrative permissions
-            "MANAGE_PERMISSIONS", // Modify ACLs
-            "MANAGE_USERS", // Add/remove users
-            "MANAGE_ROLES" // Assign roles
+            "CREATE_FOLDER",
+            "OPEN_FOLDER",
+            "RENAME_FOLDER",
+            "MOVE_FOLDER",
+            "COPY_FOLDER",
+            "UPLOAD_FOLDER",
+            "DELETE_FOLDER",
+            "SHARE_FOLDER"
         ];
     }
 
@@ -624,6 +648,7 @@ class ApiCall {
             };
         }
     }
+
 }
 
 
