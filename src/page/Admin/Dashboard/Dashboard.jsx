@@ -33,6 +33,7 @@ const Dashboard = () => {
     const fetchAuditLog = async () => {
       try{
           const result = await apiCall.allAuditLogs("/auditlog")
+          console.log(result.data.logs)
           setAuditLogs(result.data.logs);
       }catch (error) {
           handleError(error);
@@ -165,7 +166,7 @@ const Dashboard = () => {
                                                 {item.action}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {item.File ? item.File.filePath : item.Folder ? item.Folder.fullPath : ''}
+                                                {item.file ? item.file.filePath : item.folder ? item.folder.fullPath : ''}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {new Date(item.createdAt).toLocaleDateString()}   {new Date(item.createdAt).toLocaleTimeString()}

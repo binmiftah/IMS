@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, use } from 'react';
 import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove, MdCloseFullscreen, MdRefresh } from 'react-icons/md';
 import UserNavbar from '../../../component/UserNavbar';
 import ProfileBar from '../../../component/ProfileBar';
@@ -26,6 +26,7 @@ const UserFiles = () => {
     const [isMaximized, setIsMaximized] = useState(false);
 
     const dropdownRef = useRef(null);
+
 
     const [sortBy, setSortBy] = useState({
         modified: "newest",
@@ -122,7 +123,7 @@ const UserFiles = () => {
         } catch (error) {
             console.error("Error refreshing accessible folder:", error);
             toast.error("Failed to load folder contents");
-        }hh
+        }
     };
 
     const handleRefresh = async () => {
@@ -332,6 +333,7 @@ const UserFiles = () => {
                 <ProfileBar onSearch={(value) => console.log(value)} />
 
                 <div className="p-6">
+                   
                     <ActionButtons
                         onActionComplete={() => {
                             console.log("ActionButtons callback - refreshing folder:", currentFolderId);

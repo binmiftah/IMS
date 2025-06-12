@@ -8,20 +8,10 @@ const UserNavbar = () => {
 
     const navItems = [
         {
-            name: 'Dashboard',
-            icon: <MdDashboard size={24} />,
-            path: '/user/dashboard'
-        },
-        {
             name: 'Files',
             icon: <MdFolder size={24} />,
             path: '/user/files'
         },
-        {
-            name: 'Settings',
-            icon: <MdSettings size={24} />,
-            path: '/user/settings'
-        }
     ];
 
     const [loggedInUser, setLoggedInUser] = React.useState(null);

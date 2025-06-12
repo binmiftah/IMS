@@ -39,7 +39,7 @@ const UserLogin = () => {
                })
 
                setTimeout(() => {
-                   navigate("/user/dashboard") // Redirect to home page
+                   navigate("/user/files") // Redirect to home page
                }, 2500)
            }
        } catch (error) {

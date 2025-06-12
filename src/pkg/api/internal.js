@@ -508,36 +508,24 @@ class ApiCall {
      */
     getStaticPermissions() {
         return [
-            // Master permission
-            "FULL_ACCESS", // Implies all permissions below
-
-            // Basic resource permissions
-            "READ", // View resource content
-            "WRITE", // Modify resource content
-            "EXECUTE", // Run executable files
-            "UPLOAD", // Add files to folders
-            "DOWNLOAD", // Retrieve files
-            "RENAME", // Change resource name
-            "MOVE", // Relocate resource
-            "COPY", // Duplicate resource
-
             // File-specific permissions
-            "OPEN_FILE", // Open a file
-            "DELETE_FILE", // Remove a file
-            "SHARE_FILE", // Share a file with others
-
+            "OPEN_FILE",
+            "DELETE_FILE",
+            "UPLOAD_FILE",
+            "RENAME_FILE",
+            "DOWNLOAD_FILE",
+            "MOVE_FILE",
+            "COPY_FILE",
+            "SHARE_FILE",
             // Folder-specific permissions
-            "CREATE_FOLDER", // Create a new folder
-            "OPEN_FOLDER", // View folder contents
-            "DELETE_FOLDER", // Remove a folder
-            "SHARE_FOLDER", // Share a folder with others
-            "ARCHIVE", // Archive folder/file
-            "RESTORE", // Restore from trash
-
-            // Administrative permissions
-            "MANAGE_PERMISSIONS", // Modify ACLs
-            "MANAGE_USERS", // Add/remove users
-            "MANAGE_ROLES" // Assign roles
+            "CREATE_FOLDER",
+            "OPEN_FOLDER",
+            "RENAME_FOLDER",
+            "MOVE_FOLDER",
+            "COPY_FOLDER",
+            "UPLOAD_FOLDER",
+            "DELETE_FOLDER",
+            "SHARE_FOLDER"
         ];
     }
 
