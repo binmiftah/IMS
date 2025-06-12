@@ -442,11 +442,11 @@ const MemberPermissions = () => {
         permissionEntries.forEach(entry => {
           if (entry.resourceType === 'FOLDER' && entry.folderId) {
             const folderId = entry.folderId;
-            
+
             if (!userFolderPermissions[folderId]) {
               userFolderPermissions[folderId] = [];
             }
-            
+
             if (entry.permissions && Array.isArray(entry.permissions)) {
               entry.permissions.forEach(perm => {
                 if (typeof perm === 'string') {
@@ -454,18 +454,18 @@ const MemberPermissions = () => {
                 }
               });
             }
-            
+
             // Store per-resource permissions
             userResourcePermissions[folderId] = userFolderPermissions[folderId];
             allUserResources.add(folderId);
-            
+
           } else if (entry.resourceType === 'FILE' && entry.fileId) {
             const fileId = entry.fileId;
-            
+
             if (!userFilePermissions[fileId]) {
               userFilePermissions[fileId] = [];
             }
-            
+
             if (entry.permissions && Array.isArray(entry.permissions)) {
               entry.permissions.forEach(perm => {
                 if (typeof perm === 'string') {
@@ -473,7 +473,7 @@ const MemberPermissions = () => {
                 }
               });
             }
-            
+
             // Store per-resource permissions
             userResourcePermissions[fileId] = userFilePermissions[fileId];
             allUserResources.add(fileId);
@@ -492,7 +492,7 @@ const MemberPermissions = () => {
 
       const totalFolders = Object.keys(userFolderPermissions).length;
       const totalFiles = Object.keys(userFilePermissions).length;
-      
+
       if (totalFolders > 0 || totalFiles > 0) {
         toast.success(`Loaded permissions for ${totalFolders} folders and ${totalFiles} files`);
       }
@@ -1902,9 +1902,11 @@ const MemberPermissions = () => {
     return allFlat;
   };
 
-  // Add this temporary function to test endpoints:
 
-
+  const handleResourceSelectionChange = (newSelectedIds) => {
+    // Only keep the IDs the user explicitly checked - no cascading to children
+    setSelectedFolders(newSelectedIds);
+  };
 
   // Inside your component return statement
   return (
@@ -1971,7 +1973,9 @@ const MemberPermissions = () => {
                       <FolderTree
                         items={folders}
                         selectedItems={selectedFolders}
-                        onSelectionChange={setSelectedFolders}
+                        onSelectionChange={handleResourceSelectionChange}
+                        // Add this prop to disable cascading selection
+                        disableCascadeSelection={true}
                       />
                     </div>
                     {selectedFolders.length === 0 && (
