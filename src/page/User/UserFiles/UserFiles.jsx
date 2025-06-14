@@ -24,6 +24,7 @@ const UserFiles = () => {
     const [clickedItem, setClickedItem] = useState(null);
     const [isOpenFile, setIsOpenFile] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
+    const [canUpload, setCanUpload] = useState(false);
 
     const dropdownRef = useRef(null);
 
@@ -285,6 +286,134 @@ const UserFiles = () => {
         }
     };
 
+    // Replace the checkUploadPermissions function around line 295
+
+    const checkUploadPermissions = async (folderId = null) => {
+        try {
+            console.log("🔍 Checking upload permissions for folder:", folderId);
+            
+            // Use the correct endpoint with user ID
+            const userId = user?.id;
+            if (!userId) {
+                console.log("❌ No user ID available");
+                console.log("User object:", user);
+                setCanUpload(false);
+                return;
+            }
+            
+            // Use apiCall.get() instead of apiCall.getUserPermissions()
+            const permissions = await apiCall.get(`permissions/user/${userId}`);
+            console.log("📋 Permissions response:", permissions);
+            
+            if (!permissions?.data) {
+                console.log("❌ No permissions data received");
+                setCanUpload(false);
+                return;
+            }
+            
+            const userPermissions = permissions.data;
+            console.log("📊 User permissions count:", userPermissions.length);
+            
+            // Check if user has UPLOAD_FILE permission for current folder
+            const uploadPermissions = userPermissions.filter(perm => 
+                perm.permission === 'UPLOAD_FILE'
+            );
+            
+            console.log("📤 All upload permissions:", uploadPermissions);
+            
+            const hasUploadPermission = uploadPermissions.some(perm => {
+                const isCorrectLocation = folderId 
+                    ? perm.resourceId === folderId 
+                    : (perm.resourceId === null || perm.resourceId === 'root');
+                    
+                console.log(`🎯 Checking upload permission:`, {
+                    resourceId: perm.resourceId,
+                    targetFolderId: folderId,
+                    isCorrectLocation
+                });
+                
+                return isCorrectLocation;
+            });
+            
+            console.log("✅ Final upload permission result:", hasUploadPermission);
+            setCanUpload(hasUploadPermission);
+            
+        } catch (error) {
+            console.error("❌ Error checking upload permissions:", error);
+            setCanUpload(false);
+        }
+    };
+
+    // Replace the testUserPermissions function around line 330
+    const testUserPermissions = async () => {
+        try {
+            console.log("🔍 Testing current user permissions...");
+            
+            // Use the correct endpoint with user ID
+            const userId = user?.id;
+            if (!userId) {
+                console.log("❌ No user ID available");
+                console.log("User object:", user);
+                toast.error("No user ID available");
+                return null;
+            }
+            
+            // Use apiCall.get() instead of apiCall.getUserPermissions()
+            const permissionsResponse = await apiCall.get(`permissions/user/${userId}`);
+            console.log("📋 Full permissions response:", permissionsResponse);
+            
+            if (permissionsResponse?.data) {
+                const permissions = permissionsResponse.data;
+                console.log("✅ User permissions array:", permissions);
+                console.log("📊 Total permissions count:", permissions.length);
+                
+                // Group permissions by type
+                const permissionsByType = permissions.reduce((acc, perm) => {
+                    const type = perm.permission || 'UNKNOWN';
+                    if (!acc[type]) acc[type] = [];
+                    acc[type].push(perm);
+                    return acc;
+                }, {});
+                
+                console.log("📂 Permissions grouped by type:", permissionsByType);
+                
+                // Check for upload permissions specifically
+                const uploadPermissions = permissions.filter(perm => 
+                    perm.permission === 'UPLOAD_FILE' || 
+                    perm.permission === 'CREATE_FOLDER' ||
+                    perm.permission?.includes('UPLOAD') ||
+                    perm.permission?.includes('CREATE')
+                );
+                
+                console.log("📤 Upload-related permissions:", uploadPermissions);
+                
+                // Check permissions for current folder
+                const currentFolderPermissions = permissions.filter(perm => 
+                    perm.resourceId === currentFolderId || 
+                    (currentFolderId === null && (perm.resourceId === null || perm.resourceId === 'root'))
+                );
+                
+                console.log(`📁 Permissions for current folder (${currentFolderId || 'root'}):`, currentFolderPermissions);
+                
+                // Show in toast for user visibility
+                toast.info(`Found ${permissions.length} permissions. Check console for details.`, {
+                    position: "top-right",
+                    autoClose: 5000,
+                });
+                
+                return permissions;
+            } else {
+                console.log("❌ No permissions data found");
+                toast.error("No permissions data found");
+                return [];
+            }
+        } catch (error) {
+            console.error("❌ Error fetching user permissions:", error);
+            toast.error(`Error checking permissions: ${error.message}`);
+            return null;
+        }
+    };
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -315,6 +444,11 @@ const UserFiles = () => {
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
+    // Update useEffect to check permissions when folder changes
+    useEffect(() => {
+        checkUploadPermissions(currentFolderId);
+    }, [currentFolderId]);
+
     // Add this useEffect to debug folder state changes
     useEffect(() => {
         console.log("Folder state changed:");
@@ -334,7 +468,7 @@ const UserFiles = () => {
 
                 <div className="p-6">
                    
-                    <ActionButtons
+                    {/* <ActionButtons
                         onActionComplete={() => {
                             console.log("ActionButtons callback - refreshing folder:", currentFolderId);
                             handleRefresh();
@@ -345,7 +479,8 @@ const UserFiles = () => {
                         }}
                         currentFolderId={currentFolderId}
                         currentPath={currentPath}
-                    />
+                        canUpload={canUpload} // Pass upload permission
+                    /> */}
                     {clipboard && (
                         <button
                             onClick={handlePaste}

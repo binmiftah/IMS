@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import apiCall from "../pkg/api/internal.js";
 import { handleError } from "../pkg/error/error.js";
 
-const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
+const ActionButtons = ({ onActionComplete, getFolderId, getFileId, canUpload = true }) => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -19,9 +19,8 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
         if (!selectedFile) return;
 
         try {
-            // Get the current folder ID
             let folderId = currentFolderId;
-            
+
             if (!folderId && getFolderId) {
                 folderId = getFolderId();
             }
@@ -34,7 +33,6 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            // Add metadata to explicitly specify the folder path
             if (folderId) {
                 formData.append("folderId", folderId);
                 formData.append("parentId", folderId);
@@ -44,13 +42,7 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
                 console.log("Uploading to root folder");
             }
 
-            // Upload the file with the correct endpoint
-            const uploadEndpoint = folderId 
-                ? `files/upload/file/${folderId}` 
-                : `files/upload/file`;
-            
-            console.log("Upload endpoint:", uploadEndpoint);
-
+            const uploadEndpoint = folderId ? `files/upload/file/${folderId}` : "files/upload/file";
             const res = await apiCall.uploadFile(uploadEndpoint, formData);
             console.log("Upload response:", res);
 
@@ -65,7 +57,15 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
 
         } catch (error) {
             console.error("Error uploading file:", error);
-            toast.error(`Upload failed: ${error.response?.data?.message || error.message}`);
+
+            // Handle specific permission errors
+            if (error.response?.status === 403) {
+                toast.error("You don't have permission to upload files to this location. Please contact your administrator.");
+            } else if (error.response?.status === 401) {
+                toast.error("You are not authorized to upload files. Please log in again.");
+            } else {
+                toast.error(`Upload failed: ${error.response?.data?.message || error.message}`);
+            }
         } finally {
             setIsUploadModalOpen(false);
             setSelectedFile(null);
@@ -113,20 +113,29 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => {
                 <div className="flex justify-end items-right">
                     <ToastContainer />
                     <span className="flex space-x-4">
-                        <Button
-                            onClick={() => setIsUploadModalOpen(true)}
-                            className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                            icon={<MdUpload className='mr-2' size={20} />}
-                        >
-                            Upload
-                        </Button>
-                        <Button
-                            onClick={() => setIsFolderModalOpen(true)}
-                            className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                            icon={<MdCreateNewFolder className='mr-2' size={20} />}
-                        >
-                            Create Folder
-                        </Button>
+                        {canUpload && (
+                            <Button
+                                onClick={() => setIsUploadModalOpen(true)}
+                                className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                icon={<MdUpload className='mr-2' size={20} />}
+                            >
+                                Upload
+                            </Button>
+                        )}
+                        {canUpload && (
+                            <Button
+                                onClick={() => setIsFolderModalOpen(true)}
+                                className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                                icon={<MdCreateNewFolder className='mr-2' size={20} />}
+                            >
+                                Create Folder
+                            </Button>
+                        )}
+                        {!canUpload && (
+                            <div className="text-gray-500 text-sm p-2">
+                                You don't have upload permissions for this location
+                            </div>
+                        )}
                     </span>
                 </div>
             </div>

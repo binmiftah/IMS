@@ -121,13 +121,13 @@ const MemberPermissions = () => {
     return resourcePermissions[resourceId] || [];
   };
 
-  // Helper function to update permissions for a specific resource
-  const updateResourcePermissions = (resourceId, newPermissions) => {
-    setResourcePermissions(prev => ({
-      ...prev,
-      [resourceId]: newPermissions
-    }));
-  };
+  // // Helper function to update permissions for a specific resource
+  // const updateResourcePermissions = (resourceId, newPermissions) => {
+  //   setResourcePermissions(prev => ({
+  //     ...prev,
+  //     [resourceId]: newPermissions
+  //   }));
+  // };
 
   // Helper function to find resource by ID
   const findResourceById = (resources, resourceId) => {
@@ -178,20 +178,9 @@ const MemberPermissions = () => {
       const usersToAdd = filteredSelectedUsers.filter(id => !currentUsers.includes(id));
       const usersToRemove = currentUsers.filter(id => !filteredSelectedUsers.includes(id));
 
-      console.log(`Group ID: ${groupToManage.id}`);
-      console.log(`Users to add: ${usersToAdd.length}`, usersToAdd);
-      console.log(`Users to remove: ${usersToRemove.length}`, usersToRemove);
-
       if (usersToAdd.length > 0) {
         try {
           const addUserUrl = `security-group/${groupToManage.id}/add-user`;
-
-          console.log(`Making API call to add users:`, {
-            groupId: groupToManage.id,
-            userIds: usersToAdd,
-            url: addUserUrl,
-            fullUrl: `${apiCall.instance1.defaults.baseURL}/${addUserUrl}`
-          });
 
           const addResponse = await apiCall.instance1.post(addUserUrl, {
             userIds: usersToAdd // Send as array of user IDs
@@ -202,12 +191,8 @@ const MemberPermissions = () => {
             }
           });
 
-          console.log(`Add users API response:`, addResponse.data);
-
           if (addResponse.data?.data?.user) {
             const { results, errors, success, failed } = addResponse.data.data.user;
-
-            console.log(`API results:`, { results, errors, success, failed });
 
             if (success > 0) {
               toast.success(`Successfully added ${success} user(s) to the group`);
@@ -236,14 +221,12 @@ const MemberPermissions = () => {
         for (const userId of usersToRemove) {
           try {
             const removeUserUrl = `security-group/${groupToManage.id}/remove-user/${userId}`;
-            console.log(`Removing user ${userId} from group via: ${removeUserUrl}`);
 
             await apiCall.instance1.delete(removeUserUrl, {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`
               }
             });
-            console.log(`Successfully removed user ${userId} from group ${groupToManage.id}`);
           } catch (error) {
             console.error(`Error removing user ${userId} from group:`, error);
             if (error.response) {
@@ -298,9 +281,6 @@ const MemberPermissions = () => {
 
     setSaving(true);
     try {
-      console.log("💾 Saving per-resource permissions for user:", selectedUser.id);
-      console.log("📊 Selected resources with individual permissions:", resourcePermissions);
-
       // Create a flattened array of all resources for easier lookup
       const flattenResources = (resources) => {
         const flattened = [];
@@ -336,8 +316,6 @@ const MemberPermissions = () => {
           resource.mimeType === 'application/vnd.google-apps.folder' ||
           (!resource.fileName && !resource.fileExtension);
 
-        console.log(`📁 Creating individual ${isFolder ? 'folder' : 'file'} permission for: ${resourceName} (${resourceId}) with permissions:`, resourcePerms);
-
         if (isFolder) {
           requests.push({
             resourceType: "FOLDER",
@@ -357,7 +335,6 @@ const MemberPermissions = () => {
         }
       });
 
-      console.log("📋 Total individual permission requests with different permissions:", requests.length);
 
       // Send each permission request INDIVIDUALLY
       let successCount = 0;
@@ -365,10 +342,8 @@ const MemberPermissions = () => {
 
       for (const permissionData of requests) {
         try {
-          console.log("🔄 Creating individual permission:", permissionData);
 
           const response = await apiCall.createMemberPermission(permissionData);
-          console.log("✅ Individual permission created successfully:", response);
 
           successCount++;
 
@@ -415,12 +390,10 @@ const MemberPermissions = () => {
 
   const fetchUserPermissions = async (userId) => {
     if (!userId) {
-      console.log("No user ID provided to fetchUserPermissions");
       return;
     }
 
     try {
-      console.log(`Fetching permissions for user: ${userId}`);
 
       const response = await apiCall.instance1.get(`permissions/user/${userId}`, {
         headers: {
@@ -428,7 +401,6 @@ const MemberPermissions = () => {
         }
       });
 
-      console.log("User permissions response:", response.data);
 
       // Initialize both folder and file permissions objects
       const userFolderPermissions = {};
@@ -481,8 +453,6 @@ const MemberPermissions = () => {
         });
       }
 
-      console.log("Loaded per-resource permissions:", userResourcePermissions);
-
       // Update state
       setFolderPermissions(userFolderPermissions);
       setFilePermissions(userFilePermissions);
@@ -506,7 +476,6 @@ const MemberPermissions = () => {
         setResourcePermissions({});
         setPermissions([]);
         setSelectedFolders([]);
-        console.log("User has no permissions configured yet");
       } else {
         setFolderPermissions({});
         setFilePermissions({});
@@ -528,7 +497,6 @@ const MemberPermissions = () => {
     apiCall
       .getAllUsers("users")
       .then((res) => {
-        console.log("Raw users response:", res);
 
         let usersData = [];
 
@@ -542,23 +510,18 @@ const MemberPermissions = () => {
           usersData = res;
         }
 
-        console.log("Extracted users data:", usersData);
-
         const validUsers = usersData.filter(user => {
           if (!user || !user.id) {
-            console.log("Filtering out user without ID:", user);
             return false;
           }
 
           if (isSuperAdminByRole(user)) {
-            console.log("Filtering out SUPER_ADMIN user:", user);
             return false;
           }
 
           return true;
         });
 
-        console.log("Valid users after filtering:", validUsers);
         setUsers(validUsers);
 
         if (validUsers.length === 0) {
@@ -691,7 +654,6 @@ const MemberPermissions = () => {
                 }
               });
 
-              console.log(`Raw users response for group ${group.id}:`, groupUsersResponse.data);
 
               // Handle different possible response structures
               if (groupUsersResponse.data?.data?.users && Array.isArray(groupUsersResponse.data.data.users)) {
@@ -715,9 +677,7 @@ const MemberPermissions = () => {
                   role: user.role || 'USER'
                 }));
 
-              console.log(`Processed users for group ${group.id}:`, groupUsers);
             } catch (userError) {
-              console.log(`Error fetching users for group ${group.id}:`, userError.message);
               groupUsers = Array.isArray(group.users) ? group.users : [];
             }
 
@@ -757,7 +717,6 @@ const MemberPermissions = () => {
 
               groupUsers = groupUsers.filter(user => user && user.id);
             } catch (userError) {
-              console.log(`Error fetching users for group ${group.id}:`, userError.message);
               groupUsers = Array.isArray(group.users) ? group.users : [];
             }
 
@@ -786,30 +745,22 @@ const MemberPermissions = () => {
   // Fetch resources (folders and files)
   const fetchResources = async () => {
     try {
-      console.log("🔍 Starting to fetch ALL resources with complete folder tree...");
+      let resourcesWithParents = [];
 
-      // Initialize the variable that's missing
-      let resourcesWithParents = []; // ✅ ADD THIS LINE
-
-      // Get initial folder and file data
       const [folderData, fileData] = await Promise.all([
         apiCall.getFolder("files/folders"),
         apiCall.getFile("files?parentId=null")
       ]);
 
-      console.log("Initial folder data:", folderData);
-      console.log("Initial file data:", fileData);
+      // DEBUG LOG 1: Check initial fileData
+      console.log("DEBUG: Initial fileData from API:", JSON.parse(JSON.stringify(fileData)));
 
-      // Process folders and files
       const allFolders = Array.isArray(folderData) ? folderData : [];
-      const rootFiles = Array.isArray(fileData) ? fileData.filter(file =>
+      const rootFilesFromFileData = Array.isArray(fileData) ? fileData.filter(file => // Renamed to avoid confusion
         !file.parentId || file.parentId === null || file.parentId === "null"
       ) : [];
+      resourcesWithParents = [...allFolders, ...rootFilesFromFileData];
 
-      // Build your resources array
-      resourcesWithParents = [...allFolders, ...rootFiles]; // ✅ NOW IT'S DEFINED
-
-      // Recursive function to fetch ALL children for a folder (like Files.jsx does)
       const fetchAllFolderChildren = async (folderId, parentId = null, processedFolders = new Set()) => {
         // Prevent infinite loops
         if (processedFolders.has(folderId)) {
@@ -881,7 +832,6 @@ const MemberPermissions = () => {
         }
       };
 
-      // 🌲 Build COMPLETE folder/file tree - fetch ALL descendants for EVERY folder
       const allFoldersFromAPI = [];
       const allFilesFromAPI = [];
 
@@ -918,34 +868,24 @@ const MemberPermissions = () => {
         }
       }
 
-      // Process root files (files with no parent)
       for (const file of fileData) {
         try {
-          // Skip problematic files
-          if (file.id === '1ZAcAA-V0q-VJ6CWB9X9EKH5meyCoTjrO') {
-            console.log(`⚠️ Skipping problematic file: ${file.id}`);
-            allFilesFromAPI.push({
-              ...file,
-              type: "file",
-              fileName: file.fileName || file.name,
-              parentId: null
-            });
-            continue;
-          }
-
-          const detailedFile = await apiCall.getFileById(`files/${file.id}`);
+          const detailedFile = await apiCall.getFileById(`files/${file.id}`)
+          const actualId = file.id;
+            
 
           allFilesFromAPI.push({
             ...detailedFile,
+            id: actualId,
             type: "file",
             fileName: detailedFile.fileName || detailedFile.name || file.fileName || file.name,
-            parentId: null, // Root files have no parent
+            parentId: null,
           });
-
         } catch (error) {
           console.error(`Error fetching file ${file.id}:`, error);
           allFilesFromAPI.push({
             ...file,
+            id: file.id,
             type: "file",
             fileName: file.fileName || file.name,
             parentId: null,
@@ -953,27 +893,52 @@ const MemberPermissions = () => {
         }
       }
 
-      // Combine all resources and deduplicate by ID
-      const allResourcesMap = new Map();
+      // DEBUG LOG 2: Check allFilesFromAPI after processing root files
+      console.log("DEBUG: allFilesFromAPI (should contain root files):", JSON.parse(JSON.stringify(allFilesFromAPI.filter(f => !f.parentId))));
 
-      // Add all folders (root + ALL nested subfolders)
+      const allResourcesMap = new Map();
       allFoldersFromAPI.forEach(folder => {
         if (folder && folder.id) {
           allResourcesMap.set(folder.id, folder);
         }
       });
-
-      // Add all files (root + ALL nested files)
       allFilesFromAPI.forEach(file => {
-        if (file && file.id && !allResourcesMap.has(file.id)) {
-          allResourcesMap.set(file.id, file);
+        // ADD THIS LOG to see each file being processed and its top-level id
+        console.log(
+          `DEBUG_MAP_PROCESS_FILE: Processing file for allResourcesMap. ID: ${file?.id}, Name: ${file?.fileName || file?.name}, Type: ${file?.type}, ParentID: ${file?.parentId}, HasTopLevelIDProperty: ${file && Object.prototype.hasOwnProperty.call(file, 'id') && file.id !== undefined && file.id !== null}`
+        );
+
+        if (file && file.id) { // Check if the file object itself and its id property are valid
+          if (!allResourcesMap.has(file.id)) {
+            allResourcesMap.set(file.id, file);
+            // Simplified log for when a root file is added
+            if (!file.parentId && file.type === 'file') {
+              console.log(`DEBUG_MAP_ADDED_ROOT: Root file ID '${file.id}' (Name: ${file.fileName || file.name}) added to allResourcesMap.`);
+            }
+          } else {
+            // Existing DEBUG_SKIP logs (if a root file collides with an existing folder ID)
+            if (!file.parentId && file.type === 'file') {
+              const existingItem = allResourcesMap.get(file.id);
+              console.log(
+                `DEBUG_MAP_SKIPPED_ROOT_COLLISION: Root file ID '${file.id}' (Name: ${file.fileName || file.name}) skipped. ID already exists in map. Existing item type: '${existingItem?.type}', Name: '${existingItem?.name || existingItem?.fileName}'.`
+              );
+            }
+          }
+        } else {
+          // ADD THIS LOG if a file is skipped due to missing or invalid ID
+          console.log(
+            `DEBUG_MAP_INVALID_FILE_SKIPPED: File skipped due to missing/invalid top-level ID. Name: ${file?.fileName || file?.name}, Type: ${file?.type}, ParentID: ${file?.parentId}. Inspected File Object:`, JSON.parse(JSON.stringify(file))
+          );
         }
       });
 
       const allResources = Array.from(allResourcesMap.values());
 
-      // Show the COMPLETE hierarchy for debugging
-      console.log("🌲 COMPLETE folder structure with ALL descendants:");
+      // DEBUG LOG 3: Check allResources for root files before hierarchy building
+      console.log("DEBUG: allResources (root files check):", JSON.parse(JSON.stringify(allResources.filter(r => r.type === 'file' && !r.parentId))));
+      console.log("DEBUG: Total items in allResources:", allResources.length);
+
+
       const logCompleteHierarchy = (resources) => {
         const buildTree = (parentId = null, indent = '') => {
           const children = resources.filter(r =>
@@ -994,7 +959,6 @@ const MemberPermissions = () => {
             .forEach(resource => {
               const icon = resource.type === 'folder' ? '📁' : '📄';
               const name = resource.name || resource.fileName || 'Unnamed';
-              console.log(`${indent}${icon} ${name} (${resource.id})`);
 
               if (resource.type === 'folder') {
                 buildTree(resource.id, indent + '  ');
@@ -1008,8 +972,7 @@ const MemberPermissions = () => {
       logCompleteHierarchy(allResources);
 
       // Build hierarchical structure for the UI
-      if (resourcesWithParents.length > 0) {
-        console.log("🌲 Building hierarchical tree structure for UI...");
+      if (allResources.length > 0) {
 
         // Create a map for quick lookup
         const resourceMap = new Map();
@@ -1042,7 +1005,9 @@ const MemberPermissions = () => {
           }
         });
 
-        // Sort the hierarchy (folders first, then alphabetically)
+        // DEBUG LOG 4: Check hierarchicalStructure for root items
+        console.log("DEBUG: hierarchicalStructure (root items):", JSON.parse(JSON.stringify(hierarchicalStructure.map(item => ({ id: item.id, name: item.name || item.fileName, type: item.type, parentId: item.parentId })))));
+
         const sortHierarchy = (nodes) => {
           return nodes
             .sort((a, b) => {
@@ -1062,28 +1027,23 @@ const MemberPermissions = () => {
 
         const sortedHierarchy = sortHierarchy(hierarchicalStructure);
 
-        console.log("✅ COMPLETE hierarchical structure ready for UI!");
         setFolders(sortedHierarchy);
         return;
       }
 
-      // Fallback: if no parent-child relationships found, use flat structure
-      console.log("⚠️ No parent-child relationships found, using flat structure");
+      console.log("⚠️ No parent-child relationships found or allResources is empty, using flat structure");
       setFolders(allResources);
 
     } catch (error) {
       console.error("❌ Error in fetchResources:", error);
       toast.error("Failed to load resources.");
       setFolders([]);
-      throw error;
+      // Removed throw error; to prevent unhandled promise rejection if initializeResources doesn't catch it
     }
   };
 
   const getAllSelectedResourcesWithChildren = (selectedResourceIds, allResources) => {
     const allSelectedIds = new Set();
-
-    console.log("🔍 FIXED: Starting enhanced recursive collection...");
-    console.log("📊 Originally selected:", selectedResourceIds);
 
     // ✅ Create a comprehensive resource map with BOTH lookup methods
     const resourceMap = new Map();
@@ -1118,9 +1078,6 @@ const MemberPermissions = () => {
 
     buildResourceMap(allResources);
 
-    console.log(`📊 Built resource map with ${resourceMap.size} resources`);
-    console.log(`📊 Built parent-child map with ${parentChildMap.size} parent relationships`);
-
     // ✅ FIXED: Enhanced recursive function with proper visited tracking
     const collectAllDescendants = (resourceId, level = 0, globalVisited = new Set()) => {
       const indent = '  '.repeat(level);
@@ -1143,8 +1100,6 @@ const MemberPermissions = () => {
 
       const resourceName = resource.name || resource.fileName || 'Unnamed';
       const resourceType = resource.type === 'folder' ? '📁' : '📄';
-
-      console.log(`${indent}${resourceType} Collecting: ${resourceName} (${resourceId})`);
 
       // ✅ Get all children using multiple methods
       const childrenFromMap = parentChildMap.get(resourceId) || [];
@@ -1173,11 +1128,6 @@ const MemberPermissions = () => {
       ])];
 
       if (allChildren.length > 0) {
-        console.log(`${indent}  → Found ${allChildren.length} children:`, allChildren.map(id => {
-          const child = resourceMap.get(id);
-          return `${child?.name || child?.fileName || id} (${id})`;
-        }));
-
         // ✅ FIXED: Pass the SAME globalVisited Set to maintain state across all calls
         allChildren.forEach(childId => {
           collectAllDescendants(childId, level + 1, globalVisited); // ✅ CORRECT
@@ -1192,16 +1142,10 @@ const MemberPermissions = () => {
 
     // Process each originally selected resource
     selectedResourceIds.forEach((resourceId, index) => {
-      console.log(`\n📋 Processing selected resource ${index + 1}/${selectedResourceIds.length}: ${resourceId}`);
       collectAllDescendants(resourceId, 0, globalVisited);
     });
 
     const totalCollected = Array.from(allSelectedIds);
-
-    console.log(`\n🎯 FIXED Collection Summary:`);
-    console.log(`- Originally selected: ${selectedResourceIds.length} resources`);
-    console.log(`- Total collected (including ALL descendants): ${totalCollected.length} resources`);
-    console.log(`- Expansion ratio: ${(totalCollected.length / selectedResourceIds.length).toFixed(2)}x`);
 
     // ✅ Show detailed breakdown by type
     const folders = totalCollected.filter(id => {
@@ -1214,155 +1158,9 @@ const MemberPermissions = () => {
       return resource?.type === 'file' || (resource?.type !== 'folder' && resource?.mimeType !== 'application/vnd.google-apps.folder');
     });
 
-    console.log(`📊 Detailed breakdown:`);
-    console.log(`- Folders collected: ${folders.length}`);
-    console.log(`- Files collected: ${files.length}`);
-    console.log(`- Total: ${totalCollected.length}`);
-
     return totalCollected;
   };
 
-  // Save individual user permissions
-  // const handleSaveUserPermissions = async () => {
-  //   if (!selectedUser || !selectedUser.id) {
-  //     toast.error("Please select a user first");
-  //     return;
-  //   }
-
-  //   if (selectedFolders.length === 0) {
-  //     toast.error("Please select at least one resource");
-  //     return;
-  //   }
-
-  //   // Check that each selected resource has at least one permission
-  //   const resourcesWithoutPermissions = selectedFolders.filter(resourceId => {
-  //     const perms = getResourcePermissions(resourceId);
-  //     return !perms || perms.length === 0;
-  //   });
-
-  //   if (resourcesWithoutPermissions.length > 0) {
-  //     toast.error(`Please set permissions for all selected resources. ${resourcesWithoutPermissions.length} resource(s) have no permissions set.`);
-  //     return;
-  //   }
-
-  //   setSaving(true);
-  //   try {
-  //     console.log("💾 Saving per-resource permissions for user:", selectedUser.id);
-  //     console.log("📊 Selected resources with individual permissions:", resourcePermissions);
-
-  //     // Create a flattened array of all resources for easier lookup
-  //     const flattenResources = (resources) => {
-  //       const flattened = [];
-
-  //       const flatten = (items) => {
-  //         items.forEach(item => {
-  //           flattened.push(item);
-  //           if (item.children && Array.isArray(item.children)) {
-  //             flatten(item.children);
-  //           }
-  //         });
-  //       };
-
-  //       flatten(resources);
-  //       return flattened;
-  //     };
-
-  //     const allFlatResources = flattenResources(folders);
-
-  //     // ✅ Create SEPARATE permission request for EACH resource with its INDIVIDUAL permissions
-  //     const requests = [];
-
-  //     selectedFolders.forEach(resourceId => {
-  //       const resource = allFlatResources.find(f => f.id === resourceId);
-  //       if (!resource) return;
-
-  //       const resourceName = resource.name || resource.fileName || resourceId;
-  //       const resourcePerms = getResourcePermissions(resourceId);
-
-  //       if (resourcePerms.length === 0) return; // Skip resources without permissions
-
-  //       const isFolder = resource.type === 'folder' ||
-  //         resource.mimeType === 'application/vnd.google-apps.folder' ||
-  //         (!resource.fileName && !resource.fileExtension);
-
-  //       console.log(`📁 Creating individual ${isFolder ? 'folder' : 'file'} permission for: ${resourceName} (${resourceId}) with permissions:`, resourcePerms);
-
-  //       if (isFolder) {
-  //         requests.push({
-  //           resourceType: "FOLDER",
-  //           permissions: resourcePerms,
-  //           folderId: resourceId,
-  //           accountId: selectedUser.id,
-  //           inherited: false
-  //         });
-  //       } else {
-  //         requests.push({
-  //           resourceType: "FILE",
-  //           permissions: resourcePerms,
-  //           fileId: resourceId,
-  //           accountId: selectedUser.id,
-  //           inherited: false
-  //         });
-  //       }
-  //     });
-
-  //     console.log("📋 Total individual permission requests with different permissions:", requests.length);
-
-  //     // Send each permission request INDIVIDUALLY
-  //     let successCount = 0;
-  //     let errorCount = 0;
-
-  //     for (const permissionData of requests) {
-  //       try {
-  //         console.log("🔄 Creating individual permission:", permissionData);
-
-  //         const response = await apiCall.createMemberPermission(permissionData);
-  //         console.log("✅ Individual permission created successfully:", response);
-
-  //         successCount++;
-
-  //         // Update local state for this specific resource
-  //         if (permissionData.resourceType === "FOLDER") {
-  //           setFolderPermissions(prev => ({
-  //             ...prev,
-  //             [permissionData.folderId]: permissionData.permissions
-  //           }));
-  //         } else if (permissionData.resourceType === "FILE") {
-  //           setFilePermissions(prev => ({
-  //             ...prev,
-  //             [permissionData.fileId]: permissionData.permissions
-  //           }));
-  //         }
-
-  //       } catch (error) {
-  //         console.error("❌ Failed to create individual permission:", error);
-  //         errorCount++;
-  //       }
-  //     }
-
-  //     // Show detailed results
-  //     if (successCount > 0) {
-  //       toast.success(
-  //         `Successfully created ${successCount} individual permission(s) with custom permissions for each resource!`
-  //       );
-
-  //       // Refresh user permissions to show updated state
-  //       await fetchUserPermissions(selectedUser.id);
-  //     }
-
-  //     if (errorCount > 0) {
-  //       toast.error(`Failed to create ${errorCount} permission(s). Check console for details.`);
-  //     }
-
-  //   } catch (error) {
-  //     console.error("❌ Failed to save user permissions:", error);
-  //     toast.error("Failed to save user permissions. Please try again.");
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
-  // Update the handleCreateGroup function to only create the basic group
   const handleCreateGroup = async () => {
     if (!newGroup.name.trim()) {
       toast.error("Please provide a valid group name.");
@@ -1421,8 +1219,6 @@ const MemberPermissions = () => {
   // Replace your handleManageUsers function with this corrected version:
   const handleManageUsers = async (group) => {
     try {
-      console.log(`Opening manage users modal for group: ${group.name} (${group.id})`);
-
       // Try to fetch fresh user data using the correct security-group endpoint
       let freshGroupUsers = [];
 
@@ -1432,8 +1228,6 @@ const MemberPermissions = () => {
             Authorization: `Bearer ${localStorage.getItem("token")}`
           }
         });
-
-        console.log("Fresh group users response:", groupUsersResponse.data);
 
         // Handle different possible response structures
         if (groupUsersResponse.data?.data?.users && Array.isArray(groupUsersResponse.data.data.users)) {
@@ -1447,7 +1241,6 @@ const MemberPermissions = () => {
         }
       } catch (userFetchError) {
         if (userFetchError.response?.status === 404) {
-          console.log(`Group ${group.id} has no users (404 - starting with empty user list)`);
           freshGroupUsers = []; // Start with empty array
         } else {
           console.error("Error fetching group users:", userFetchError);
@@ -1470,9 +1263,6 @@ const MemberPermissions = () => {
       // Get user IDs for selection state
       const freshUserIds = processedUsers.map(user => user.id);
 
-      console.log("Fresh user IDs for group:", freshUserIds);
-      console.log("Processed users:", processedUsers);
-
       // Update the group object with fresh user data
       const updatedGroup = {
         ...group,
@@ -1485,8 +1275,6 @@ const MemberPermissions = () => {
       setShowManageUsersModal(true);
 
     } catch (error) {
-      console.error("Error in handleManageUsers:", error);
-
       // Fallback to existing group data
       setGroupToManage(group);
 
@@ -1500,7 +1288,6 @@ const MemberPermissions = () => {
       setSelectedUsers(initialUsers);
       setShowManageUsersModal(true);
 
-      console.log("Using fallback group data for manage users modal");
     }
   };
 
@@ -1628,9 +1415,6 @@ const MemberPermissions = () => {
       // ✅ NEW: Get all selected resources including their children for groups too
       const allSelectedResourceIds = getAllSelectedResourcesWithChildren(editingGroup.resources, folders);
 
-      console.log("📊 Group - Original selected resources:", editingGroup.resources);
-      console.log("📊 Group - All resources with children:", allSelectedResourceIds);
-
       // ✅ Create a flattened array of all resources for easier lookup
       const flattenResources = (resources) => {
         const flattened = [];
@@ -1669,10 +1453,6 @@ const MemberPermissions = () => {
         }
       });
 
-      console.log("📊 Group - Final separation results:");
-      console.log("- Folder IDs:", folderIds);
-      console.log("- File IDs:", fileIds);
-
       let folderSuccess = false;
       let fileSuccess = false;
 
@@ -1686,8 +1466,6 @@ const MemberPermissions = () => {
             groupId: editingGroup.id,
             inherited: false
           };
-
-          console.log("📁 Creating group folder permissions:", folderPermissionData);
 
           const response = await apiCall.instance1.post("permissions/group/folder", folderPermissionData, {
             headers: {
@@ -1718,8 +1496,6 @@ const MemberPermissions = () => {
             groupId: editingGroup.id,
             inherited: false
           };
-
-          console.log("📄 Creating group file permissions:", filePermissionData);
 
           const response = await apiCall.instance1.post("permissions/group/file", filePermissionData, {
             headers: {
@@ -1839,8 +1615,6 @@ const MemberPermissions = () => {
   // Add this debugging function:
 
   const debugFolderStructureDetailed = () => {
-    console.log("🔍 DETAILED FOLDER STRUCTURE ANALYSIS:");
-
     const analyzeStructure = (resources, level = 0, parentId = null) => {
       const indent = '  '.repeat(level);
 
@@ -1853,11 +1627,8 @@ const MemberPermissions = () => {
         const parentInfo = resource.parentId ? ` (parentId: ${resource.parentId})` :
           parentId ? ` (computed parent: ${parentId})` : ' (root)';
 
-        console.log(`${indent}${icon} ${name} (${resource.id})${parentInfo} [${childCount} direct children]`);
-
         // Show detailed children info
         if (resource.children && Array.isArray(resource.children) && resource.children.length > 0) {
-          console.log(`${indent}  ↳ Direct children IDs:`, resource.children.map(c => c.id));
           analyzeStructure(resource.children, level + 1, resource.id);
         }
       });
@@ -1883,12 +1654,6 @@ const MemberPermissions = () => {
     const allFlat = flattenAll(folders);
     const folderCount = allFlat.filter(r => r.type === 'folder').length;
     const fileCount = allFlat.filter(r => r.type === 'file').length;
-
-    console.log(`\n📊 Complete Structure Analysis:`);
-    console.log(`- Total folders: ${folderCount}`);
-    console.log(`- Total files: ${fileCount}`);
-    console.log(`- Total resources: ${allFlat.length}`);
-    console.log(`- Root level items: ${folders.length}`);
 
     // Check for potential issues
     const orphanedItems = allFlat.filter(item =>
