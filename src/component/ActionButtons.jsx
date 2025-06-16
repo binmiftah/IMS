@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import apiCall from "../pkg/api/internal.js";
 import { handleError } from "../pkg/error/error.js";
 
-const ActionButtons = ({ onActionComplete, getFolderId, getFileId, canUpload = true }) => {
+const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => { // Removed canUpload from props
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -113,29 +113,21 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, canUpload = t
                 <div className="flex justify-end items-right">
                     <ToastContainer />
                     <span className="flex space-x-4">
-                        {canUpload && (
-                            <Button
-                                onClick={() => setIsUploadModalOpen(true)}
-                                className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                icon={<MdUpload className='mr-2' size={20} />}
-                            >
-                                Upload
-                            </Button>
-                        )}
-                        {canUpload && (
-                            <Button
-                                onClick={() => setIsFolderModalOpen(true)}
-                                className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                                icon={<MdCreateNewFolder className='mr-2' size={20} />}
-                            >
-                                Create Folder
-                            </Button>
-                        )}
-                        {!canUpload && (
-                            <div className="text-gray-500 text-sm p-2">
-                                You don't have upload permissions for this feature
-                            </div>
-                        )}
+                        <Button
+                            onClick={() => setIsUploadModalOpen(true)}
+                            className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                            icon={<MdUpload className='mr-2' size={20} />}
+                        >
+                            Upload
+                        </Button>
+                        <Button
+                            onClick={() => setIsFolderModalOpen(true)}
+                            className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                            icon={<MdCreateNewFolder className='mr-2' size={20} />}
+                        >
+                            Create Folder
+                        </Button>
+                        {/* Removed the !canUpload message block */}
                     </span>
                 </div>
             </div>

@@ -24,7 +24,6 @@ const UserFiles = () => {
     const [clickedItem, setClickedItem] = useState(null);
     const [isOpenFile, setIsOpenFile] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
-    const [canUpload, setCanUpload] = useState(false);
 
     const dropdownRef = useRef(null);
 
@@ -50,6 +49,7 @@ const UserFiles = () => {
             console.log("Accessible data response:", accessibleData);
 
             const allItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
+            // setAllFetchedResources(allItems); // Removed
             console.log("All accessible items:", allItems);
 
             if (allItems.length === 0) {
@@ -128,6 +128,7 @@ const UserFiles = () => {
             console.log("Refreshing accessible folder contents for ID:", folderId);
             const accessibleData = await apiCall.getAccessibleFiles();
             const allAccessibleItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
+            // setAllFetchedResources(allAccessibleItems); // Removed
 
             // Filter for items that belong to this specific folder
             const folderContents = allAccessibleItems.filter(item =>
@@ -310,63 +311,6 @@ const UserFiles = () => {
         }
     };
 
-    // Replace the checkUploadPermissions function around line 295
-
-    const checkUploadPermissions = async (folderId = null) => {
-        try {
-            console.log("🔍 Checking UPLOAD_FILE or CREATE_FOLDER permissions for folderId:", folderId === null ? 'root' : folderId);
-
-            const userId = user?.id;
-            if (!userId) {
-                console.log("❌ No user ID available for permission check. User object:", user);
-                setCanUpload(false);
-                return;
-            }
-
-            const permissionsResponse = await apiCall.get(`permissions/user/${userId}`);
-            console.log("📋 Permissions API response for user:", permissionsResponse);
-
-            if (!permissionsResponse?.data || !Array.isArray(permissionsResponse.data)) {
-                console.log("❌ No permissions data received from API or data is not an array.");
-                setCanUpload(false);
-                return;
-            }
-
-            const userPermissions = permissionsResponse.data;
-            console.log("📊 User's raw permissions list:", userPermissions);
-            console.log(`Targeting folderId: ${folderId === null ? 'root' : folderId}`);
-
-            const hasRequiredPermission = userPermissions.some(perm => {
-                // Check if the permission is one we're interested in
-                const isRelevantPermissionType = perm.permission === 'UPLOAD_FILE' || perm.permission === 'CREATE_FOLDER';
-                if (!isRelevantPermissionType) {
-                    return false;
-                }
-
-                // Check if the permission applies to the current folder context
-                let appliesToCurrentFolderOrRoot = false;
-                if (folderId === null) { // Checking for root permissions
-                    appliesToCurrentFolderOrRoot = (perm.resourceId === null || perm.resourceId === 'root');
-                } else { // Checking for permissions on a specific folder
-                    appliesToCurrentFolderOrRoot = perm.resourceId === folderId;
-                }
-
-                if (appliesToCurrentFolderOrRoot) {
-                    console.log(`✅ Relevant permission found: ${perm.permission} for resourceId: ${perm.resourceId} (matches target)`);
-                }
-                return appliesToCurrentFolderOrRoot;
-            });
-
-            console.log(`🔑 User ${hasRequiredPermission ? 'HAS' : 'DOES NOT HAVE'} UPLOAD_FILE or CREATE_FOLDER permission for ${folderId === null ? 'root' : `folder ${folderId}`}.`);
-            setCanUpload(hasRequiredPermission);
-
-        } catch (error) {
-            console.error("❌ Error in checkUploadPermissions:", error);
-            toast.error("Error checking your upload/create permissions.");
-            setCanUpload(false);
-        }
-    };
-
     // Replace the testUserPermissions function around line 330
     const testUserPermissions = async () => {
         try {
@@ -467,18 +411,7 @@ const UserFiles = () => {
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
-    // Update useEffect to check permissions when folder changes
-    useEffect(() => {
-        if (user && user.id) { // Ensure user and user.id are available
-            checkUploadPermissions(currentFolderId);
-        } else {
-            // If user is not available (e.g., still loading or logged out),
-            // assume no upload permission.
-            setCanUpload(false);
-            if (!user) console.log("User object not yet available for permission check.");
-            else if (!user.id) console.log("User ID not yet available for permission check.");
-        }
-    }, [currentFolderId, user]);
+    // Removed useEffect that set canUpload
 
     // Add this useEffect to debug folder state changes
     useEffect(() => {
@@ -499,19 +432,19 @@ const UserFiles = () => {
 
                 <div className="p-6">
 
-                    {/* <ActionButtons
+                    <ActionButtons
                         onActionComplete={() => {
                             console.log("ActionButtons callback - refreshing folder:", currentFolderId);
                             handleRefresh();
                         }}
                         getFolderId={() => {
-                            console.log("getFolderId called, returning:", currentFolderId);
+                            // console.log("getFolderId called, returning:", currentFolderId); // Keep if useful for ActionButtons
                             return currentFolderId;
                         }}
-                        currentFolderId={currentFolderId}
-                        currentPath={currentPath}
-                        canUpload={canUpload} // Pass upload permission
-                    /> */}
+                        // currentFolderId={currentFolderId} // Pass if ActionButtons needs it directly
+                        // currentPath={currentPath} // Pass if ActionButtons needs it directly
+                        // canUpload={canUpload} // Removed prop
+                    />
                     {clipboard && (
                         <button
                             onClick={handlePaste}
