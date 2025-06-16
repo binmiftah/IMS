@@ -751,10 +751,6 @@ const MemberPermissions = () => {
         apiCall.getFolder("files/folders"),
         apiCall.getFile("files?parentId=null")
       ]);
-
-      // DEBUG LOG 1: Check initial fileData
-      console.log("DEBUG: Initial fileData from API:", JSON.parse(JSON.stringify(fileData)));
-
       const allFolders = Array.isArray(folderData) ? folderData : [];
       const rootFilesFromFileData = Array.isArray(fileData) ? fileData.filter(file => // Renamed to avoid confusion
         !file.parentId || file.parentId === null || file.parentId === "null"
@@ -893,9 +889,6 @@ const MemberPermissions = () => {
         }
       }
 
-      // DEBUG LOG 2: Check allFilesFromAPI after processing root files
-      console.log("DEBUG: allFilesFromAPI (should contain root files):", JSON.parse(JSON.stringify(allFilesFromAPI.filter(f => !f.parentId))));
-
       const allResourcesMap = new Map();
       allFoldersFromAPI.forEach(folder => {
         if (folder && folder.id) {
@@ -919,9 +912,6 @@ const MemberPermissions = () => {
             // Existing DEBUG_SKIP logs (if a root file collides with an existing folder ID)
             if (!file.parentId && file.type === 'file') {
               const existingItem = allResourcesMap.get(file.id);
-              console.log(
-                `DEBUG_MAP_SKIPPED_ROOT_COLLISION: Root file ID '${file.id}' (Name: ${file.fileName || file.name}) skipped. ID already exists in map. Existing item type: '${existingItem?.type}', Name: '${existingItem?.name || existingItem?.fileName}'.`
-              );
             }
           }
         } else {
@@ -933,11 +923,6 @@ const MemberPermissions = () => {
       });
 
       const allResources = Array.from(allResourcesMap.values());
-
-      // DEBUG LOG 3: Check allResources for root files before hierarchy building
-      console.log("DEBUG: allResources (root files check):", JSON.parse(JSON.stringify(allResources.filter(r => r.type === 'file' && !r.parentId))));
-      console.log("DEBUG: Total items in allResources:", allResources.length);
-
 
       const logCompleteHierarchy = (resources) => {
         const buildTree = (parentId = null, indent = '') => {
@@ -1004,9 +989,6 @@ const MemberPermissions = () => {
             }
           }
         });
-
-        // DEBUG LOG 4: Check hierarchicalStructure for root items
-        console.log("DEBUG: hierarchicalStructure (root items):", JSON.parse(JSON.stringify(hierarchicalStructure.map(item => ({ id: item.id, name: item.name || item.fileName, type: item.type, parentId: item.parentId })))));
 
         const sortHierarchy = (nodes) => {
           return nodes

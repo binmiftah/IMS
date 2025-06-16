@@ -133,7 +133,7 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, canUpload = t
                         )}
                         {!canUpload && (
                             <div className="text-gray-500 text-sm p-2">
-                                You don't have upload permissions for this location
+                                You don't have upload permissions for this feature
                             </div>
                         )}
                     </span>
