@@ -48,21 +48,46 @@ const UserFiles = () => {
             const accessibleData = await apiCall.getAccessibleFiles();
             console.log("Accessible data response:", accessibleData);
 
-            // Extract files from the response structure
             const allItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
+            // setAllFetchedResources(allItems); // Removed
             console.log("All accessible items:", allItems);
-            
-            // Filter for root level items only (no parentId)
-            const rootItems = allItems.filter(item =>
-                !item.parentId ||
-                item.parentId === null ||
-                item.parentId === "null" ||
-                item.parentId === ""
-            );
 
-            console.log("Root accessible items:", rootItems);
+            if (allItems.length === 0) {
+                setItems([]);
+                setCurrentFolderId(null);
+                setCurrentPath('/');
+                console.log("No accessible items found for the user.");
+                return;
+            }
 
-            setItems(rootItems);
+            // Create a set of all accessible item IDs.
+            // This helps identify if an item's parent is itself accessible.
+            const accessibleItemIds = new Set(allItems.map(item => item.id));
+
+            const rootItemsToDisplay = allItems.filter(item => {
+                const parentId = item.parentId;
+
+                // Condition 1: Item is a true root item 
+                // (no parentId, or parentId is explicitly null, "null", or empty string)
+                if (!parentId || parentId === null || parentId === "null" || parentId === "") {
+                    return true;
+                }
+
+                // Condition 2: Item has a parentId, but that parent item is NOT in the allItems list.
+                // This means it's an item shared directly, and its parent folder isn't accessible by the user.
+                // Such items should be displayed at the root.
+                if (parentId && !accessibleItemIds.has(parentId)) {
+                    console.log(`Item "${item.name || item.fileName}" (ID: ${item.id}) is an orphan (parent ${parentId} not accessible), displaying at root.`);
+                    return true;
+                }
+
+                // Otherwise, it's a child of an accessible folder and will be shown on navigation.
+                return false;
+            });
+
+            console.log("Root accessible items (including orphans):", rootItemsToDisplay);
+
+            setItems(rootItemsToDisplay);
             setCurrentFolderId(null);
             setCurrentPath('/');
 
@@ -103,6 +128,7 @@ const UserFiles = () => {
             console.log("Refreshing accessible folder contents for ID:", folderId);
             const accessibleData = await apiCall.getAccessibleFiles();
             const allAccessibleItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
+            // setAllFetchedResources(allAccessibleItems); // Removed
 
             // Filter for items that belong to this specific folder
             const folderContents = allAccessibleItems.filter(item =>
@@ -285,6 +311,76 @@ const UserFiles = () => {
         }
     };
 
+    // Replace the testUserPermissions function around line 330
+    const testUserPermissions = async () => {
+        try {
+            console.log("🔍 Testing current user permissions...");
+
+            // Use the correct endpoint with user ID
+            const userId = user?.id;
+            if (!userId) {
+                console.log("❌ No user ID available");
+                console.log("User object:", user);
+                toast.error("No user ID available");
+                return null;
+            }
+
+            // Use apiCall.get() instead of apiCall.getUserPermissions()
+            const permissionsResponse = await apiCall.get(`permissions/user/${userId}`);
+            console.log("📋 Full permissions response:", permissionsResponse);
+
+            if (permissionsResponse?.data) {
+                const permissions = permissionsResponse.data;
+                console.log("✅ User permissions array:", permissions);
+                console.log("📊 Total permissions count:", permissions.length);
+
+                // Group permissions by type
+                const permissionsByType = permissions.reduce((acc, perm) => {
+                    const type = perm.permission || 'UNKNOWN';
+                    if (!acc[type]) acc[type] = [];
+                    acc[type].push(perm);
+                    return acc;
+                }, {});
+
+                console.log("📂 Permissions grouped by type:", permissionsByType);
+
+                // Check for upload permissions specifically
+                const uploadPermissions = permissions.filter(perm =>
+                    perm.permission === 'UPLOAD_FILE' ||
+                    perm.permission === 'CREATE_FOLDER' ||
+                    perm.permission?.includes('UPLOAD') ||
+                    perm.permission?.includes('CREATE')
+                );
+
+                console.log("📤 Upload-related permissions:", uploadPermissions);
+
+                // Check permissions for current folder
+                const currentFolderPermissions = permissions.filter(perm =>
+                    perm.resourceId === currentFolderId ||
+                    (currentFolderId === null && (perm.resourceId === null || perm.resourceId === 'root'))
+                );
+
+                console.log(`📁 Permissions for current folder (${currentFolderId || 'root'}):`, currentFolderPermissions);
+
+                // Show in toast for user visibility
+                toast.info(`Found ${permissions.length} permissions. Check console for details.`, {
+                    position: "top-right",
+                    autoClose: 5000,
+                });
+
+                return permissions;
+            } else {
+                console.log("❌ No permissions data found");
+                toast.error("No permissions data found");
+                return [];
+            }
+        } catch (error) {
+            console.error("❌ Error fetching user permissions:", error);
+            toast.error(`Error checking permissions: ${error.message}`);
+            return null;
+        }
+    };
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -315,6 +411,8 @@ const UserFiles = () => {
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
+    // Removed useEffect that set canUpload
+
     // Add this useEffect to debug folder state changes
     useEffect(() => {
         console.log("Folder state changed:");
@@ -333,18 +431,19 @@ const UserFiles = () => {
                 <ProfileBar onSearch={(value) => console.log(value)} />
 
                 <div className="p-6">
-                   
+
                     <ActionButtons
                         onActionComplete={() => {
                             console.log("ActionButtons callback - refreshing folder:", currentFolderId);
                             handleRefresh();
                         }}
                         getFolderId={() => {
-                            console.log("getFolderId called, returning:", currentFolderId);
+                            // console.log("getFolderId called, returning:", currentFolderId); // Keep if useful for ActionButtons
                             return currentFolderId;
                         }}
-                        currentFolderId={currentFolderId}
-                        currentPath={currentPath}
+                        // currentFolderId={currentFolderId} // Pass if ActionButtons needs it directly
+                        // currentPath={currentPath} // Pass if ActionButtons needs it directly
+                        // canUpload={canUpload} // Removed prop
                     />
                     {clipboard && (
                         <button
@@ -468,10 +567,18 @@ const UserFiles = () => {
                                                         )}
                                                     </div>
                                                 )}
-                                                {/* ✅ Show folder item count if available */}
+                                                {/* ✅ Show folder item count specific to the current user */}
                                                 {isFolder && (
                                                     <span className="text-xs text-gray-500">
-                                                        Folder • {item.AclEntry?.length || 0} permissions
+                                                        Folder • {
+                                                            (() => {
+                                                                if (user && user.id && Array.isArray(item.AclEntry)) {
+                                                                    const userAcl = item.AclEntry.find(entry => entry.accountId === user.id);
+                                                                    return userAcl?.permissions?.length || 0;
+                                                                }
+                                                                return 0;
+                                                            })()
+                                                        } permissions for you
                                                     </span>
                                                 )}
                                             </div>
@@ -564,8 +671,8 @@ const UserFiles = () => {
                                     </div>
                                     <p className="text-gray-500 text-lg">No accessible files or folders found</p>
                                     <p className="text-gray-400 text-sm">
-                                        {currentPath === '/' 
-                                            ? 'You may not have access to any files yet.' 
+                                        {currentPath === '/'
+                                            ? 'You may not have access to any files yet.'
                                             : 'This folder appears to be empty or you don\'t have access to its contents.'
                                         }
                                     </p>
