@@ -4,6 +4,17 @@ import { toast } from "react-toastify";
 import apiCall from "../../../pkg/api/internal.js";
 import FolderTree from "../../../component/FolderTree.jsx";
 
+// Define constants for permission groups
+const FILE_PERMISSIONS = [
+  "OPEN_FILE", "DELETE_FILE", "UPLOAD_FILE", "RENAME_FILE",
+  "DOWNLOAD_FILE", "MOVE_FILE", "COPY_FILE", "SHARE_FILE"
+];
+
+const FOLDER_PERMISSIONS = [
+  "CREATE_FOLDER", "OPEN_FOLDER", "RENAME_FOLDER", "MOVE_FOLDER",
+  "COPY_FOLDER", "UPLOAD_FOLDER", "DELETE_FOLDER", "SHARE_FOLDER"
+];
+
 const MemberPermissions = () => {
   const safeArrayCheck = (arr) => Array.isArray(arr) ? arr : [];
 
@@ -26,57 +37,22 @@ const MemberPermissions = () => {
   };
 
   const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
-    if (permission === "FULL_ACCESS") {
-      if (isChecked) {
-        setPermissions([...allPermissions]);
+    let newPermissionsList;
+    if (isChecked) {
+      if (!currentPermissions.includes(permission)) {
+        newPermissionsList = [...currentPermissions, permission];
       } else {
-        setPermissions([]);
+        newPermissionsList = [...currentPermissions]; // No change if already included
       }
     } else {
-      let newPermissions;
-      if (isChecked) {
-        newPermissions = currentPermissions.filter(p => p !== permission);
-        newPermissions = [...newPermissions, permission];
-
-        const allOtherPermissions = allPermissions.filter(p => p !== "FULL_ACCESS");
-        const hasAllOtherPermissions = allOtherPermissions.every(p =>
-          newPermissions.includes(p)
-        );
-
-        if (hasAllOtherPermissions && !newPermissions.includes("FULL_ACCESS")) {
-          newPermissions = [...newPermissions, "FULL_ACCESS"];
-        }
-      } else {
-        newPermissions = currentPermissions.filter(p => p !== permission && p !== "FULL_ACCESS");
-      }
-
-      const uniquePermissions = [...new Set(newPermissions)];
-      setPermissions(uniquePermissions);
+      newPermissionsList = currentPermissions.filter(p => p !== permission);
     }
+    setPermissions([...new Set(newPermissionsList)]); // Ensure uniqueness
   };
 
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
-  const [allPermissions, setAllPermissions] = useState([
-    // File-specific permissions
-    "OPEN_FILE",
-    "DELETE_FILE",
-    "UPLOAD_FILE",
-    "RENAME_FILE",
-    "DOWNLOAD_FILE",
-    "MOVE_FILE",
-    "COPY_FILE",
-    "SHARE_FILE",
-    // Folder-specific permissions
-    "CREATE_FOLDER",
-    "OPEN_FOLDER",
-    "RENAME_FOLDER",
-    "MOVE_FOLDER",
-    "COPY_FOLDER",
-    "UPLOAD_FOLDER",
-    "DELETE_FOLDER",
-    "SHARE_FOLDER"
-  ]);
+  const [allPermissions, setAllPermissions] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [selectedFolders, setSelectedFolders] = useState([]);
@@ -111,25 +87,15 @@ const MemberPermissions = () => {
   });
 
   // Add new state for per-resource permissions
-  const [resourcePermissions, setResourcePermissions] = useState({}); // { resourceId: [permissions] }
+  const [resourcePermissions, setResourcePermissions] = useState({});
   const [folderPermissions, setFolderPermissions] = useState({});
   const [filePermissions, setFilePermissions] = useState({});
-  const [expandedFolders, setExpandedFolders] = useState([]); // Optional: for custom expansion logic
+  const [expandedFolders, setExpandedFolders] = useState([]);
 
-  // Helper function to get permissions for a specific resource
   const getResourcePermissions = (resourceId) => {
     return resourcePermissions[resourceId] || [];
   };
 
-  // // Helper function to update permissions for a specific resource
-  // const updateResourcePermissions = (resourceId, newPermissions) => {
-  //   setResourcePermissions(prev => ({
-  //     ...prev,
-  //     [resourceId]: newPermissions
-  //   }));
-  // };
-
-  // Helper function to find resource by ID
   const findResourceById = (resources, resourceId) => {
     for (const resource of resources) {
       if (resource.id === resourceId) {
@@ -537,15 +503,10 @@ const MemberPermissions = () => {
   }, []);
 
   useEffect(() => {
-    const staticPermissions = apiCall.getStaticPermissions();
-
-    // Ensure FULL_ACCESS is included in allPermissions
-    const permissionsWithFullAccess = staticPermissions.includes("FULL_ACCESS")
-      ? staticPermissions
-      : ["FULL_ACCESS", ...staticPermissions];
-
-    setAllPermissions(permissionsWithFullAccess);
-
+    const staticPermissionsFromAPI = apiCall.getStaticPermissions();
+    // Filter out FULL_ACCESS if it's present in the API response
+    const filteredPermissions = staticPermissionsFromAPI.filter(p => p !== "FULL_ACCESS");
+    setAllPermissions(filteredPermissions);
   }, []);
 
   useEffect(() => {
@@ -868,7 +829,7 @@ const MemberPermissions = () => {
         try {
           const detailedFile = await apiCall.getFileById(`files/${file.id}`)
           const actualId = file.id;
-            
+
 
           allFilesFromAPI.push({
             ...detailedFile,
@@ -1655,6 +1616,15 @@ const MemberPermissions = () => {
     setSelectedFolders(newSelectedIds);
   };
 
+  const handleToggleExpand = (folderId) => {
+    setExpandedFolders((prev) =>
+      prev.includes(folderId)
+        ? prev.filter((id) => id !== folderId)
+        : [...prev, folderId]
+    );
+  };
+
+
   // Inside your component return statement
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -1721,8 +1691,9 @@ const MemberPermissions = () => {
                         items={folders}
                         selectedItems={selectedFolders}
                         onSelectionChange={handleResourceSelectionChange}
-                        // Add this prop to disable cascading selection
                         disableCascadeSelection={true}
+                        expandedFolders={expandedFolders}
+                        onToggleExpand={handleToggleExpand}
                       />
                     </div>
                     {selectedFolders.length === 0 && (
@@ -1736,35 +1707,66 @@ const MemberPermissions = () => {
                   <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow">
                     <h3 className="text-lg font-semibold mb-2 text-blue-700">Step 2: Set Permissions for Selected Resources</h3>
                     {selectedFolders.map(resourceId => {
-                      const resource = folders
-                        .flatMap(f => [f, ...(f.children || [])])
-                        .find(r => r.id === resourceId);
+                      const resource = findResourceById(folders, resourceId); // Use the recursive findResourceById
                       const resourceName = resource?.name || resource?.fileName || resourceId;
+                      const currentResourcePermissions = folderPermissions[resourceId] || [];
+
                       return (
                         <div key={resourceId} className="mb-4 p-3 bg-white border rounded">
                           <div className="font-semibold mb-2 text-blue-800">
                             {resourceName}
                           </div>
+
+                          {/* File Permissions Section */}
+                          <h5 className="text-xs font-semibold text-green-600 uppercase tracking-wider mt-2 mb-1">File Permissions</h5>
                           <div className="grid grid-cols-2 gap-2">
-                            {allPermissions.map(perm => (
+                            {FILE_PERMISSIONS.map(perm => (
                               <label key={perm} className="flex items-center text-sm">
                                 <input
                                   type="checkbox"
-                                  checked={Array.isArray(folderPermissions[resourceId]) && folderPermissions[resourceId].includes(perm)}
+                                  checked={currentResourcePermissions.includes(perm)}
                                   onChange={e => {
-                                    const perms = Array.isArray(folderPermissions[resourceId]) ? [...folderPermissions[resourceId]] : [];
-                                    if (e.target.checked) {
-                                      if (!perms.includes(perm)) perms.push(perm);
+                                    const isChecked = e.target.checked;
+                                    let newPerms = [...currentResourcePermissions];
+                                    if (isChecked) {
+                                      if (!newPerms.includes(perm)) newPerms.push(perm);
                                     } else {
-                                      const idx = perms.indexOf(perm);
-                                      if (idx > -1) perms.splice(idx, 1);
+                                      newPerms = newPerms.filter(p => p !== perm);
                                     }
                                     setFolderPermissions(prev => ({
                                       ...prev,
-                                      [resourceId]: perms
+                                      [resourceId]: newPerms
                                     }));
                                   }}
-                                  className={`form-checkbox h-4 w-4 ${perm.endsWith("_FOLDER") ? "text-purple-600" : "text-green-600"} mr-2`}
+                                  className="form-checkbox h-4 w-4 text-green-600 mr-2"
+                                />
+                                {perm.replace(/_/g, " ")}
+                              </label>
+                            ))}
+                          </div>
+
+                          {/* Folder Permissions Section */}
+                          <h5 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mt-3 mb-1">Folder Permissions</h5>
+                          <div className="grid grid-cols-2 gap-2">
+                            {FOLDER_PERMISSIONS.map(perm => (
+                              <label key={perm} className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={currentResourcePermissions.includes(perm)}
+                                  onChange={e => {
+                                    const isChecked = e.target.checked;
+                                    let newPerms = [...currentResourcePermissions];
+                                    if (isChecked) {
+                                      if (!newPerms.includes(perm)) newPerms.push(perm);
+                                    } else {
+                                      newPerms = newPerms.filter(p => p !== perm);
+                                    }
+                                    setFolderPermissions(prev => ({
+                                      ...prev,
+                                      [resourceId]: newPerms
+                                    }));
+                                  }}
+                                  className="form-checkbox h-4 w-4 text-purple-600 mr-2"
                                 />
                                 {perm.replace(/_/g, " ")}
                               </label>
@@ -2253,24 +2255,27 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h5 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">File-specific</h5>
                         <div className="grid grid-cols-2 gap-1">
-                          {["OPEN_FILE", "DELETE_FILE", "UPLOAD_FILE", "RENAME_FILE", "DOWNLOAD_FILE", "MOVE_FILE", "COPY_FILE", "SHARE_FILE"].map(perm => (
+                          {FILE_PERMISSIONS.map(perm => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
                                 onChange={(e) => {
+                                  const currentGroupPermissions = safeArrayCheck(editingGroup?.permissions);
+                                  let newGroupPermissions;
                                   if (e.target.checked) {
-                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
-                                    setEditingGroup(prev => prev ? {
-                                      ...prev,
-                                      permissions: newPermissions
-                                    } : null);
+                                    if (!currentGroupPermissions.includes(perm)) {
+                                      newGroupPermissions = [...currentGroupPermissions, perm];
+                                    } else {
+                                      newGroupPermissions = [...currentGroupPermissions];
+                                    }
                                   } else {
-                                    setEditingGroup(prev => prev ? {
-                                      ...prev,
-                                      permissions: (prev.permissions || []).filter(p => p !== perm)
-                                    } : null);
+                                    newGroupPermissions = currentGroupPermissions.filter(p => p !== perm);
                                   }
+                                  setEditingGroup(prev => prev ? {
+                                    ...prev,
+                                    permissions: [...new Set(newGroupPermissions)]
+                                  } : null);
                                 }}
                                 className="form-checkbox h-4 w-4 text-green-600 mr-2"
                               />
@@ -2284,24 +2289,27 @@ const MemberPermissions = () => {
                       <div className="mb-3">
                         <h5 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mb-2">Folder-specific</h5>
                         <div className="grid grid-cols-2 gap-1">
-                          {["CREATE_FOLDER", "OPEN_FOLDER", "RENAME_FOLDER", "MOVE_FOLDER", "COPY_FOLDER", "UPLOAD_FOLDER", "DELETE_FOLDER", "SHARE_FOLDER"].map(perm => (
+                          {FOLDER_PERMISSIONS.map(perm => (
                             <label key={perm} className="flex items-center">
                               <input
                                 type="checkbox"
                                 checked={safeArrayCheck(editingGroup?.permissions).includes(perm)}
                                 onChange={(e) => {
+                                  const currentGroupPermissions = safeArrayCheck(editingGroup?.permissions);
+                                  let newGroupPermissions;
                                   if (e.target.checked) {
-                                    const newPermissions = [...(editingGroup?.permissions || []), perm];
-                                    setEditingGroup(prev => prev ? {
-                                      ...prev,
-                                      permissions: newPermissions
-                                    } : null);
+                                    if (!currentGroupPermissions.includes(perm)) {
+                                      newGroupPermissions = [...currentGroupPermissions, perm];
+                                    } else {
+                                      newGroupPermissions = [...currentGroupPermissions];
+                                    }
                                   } else {
-                                    setEditingGroup(prev => prev ? {
-                                      ...prev,
-                                      permissions: (prev.permissions || []).filter(p => p !== perm)
-                                    } : null);
+                                    newGroupPermissions = currentGroupPermissions.filter(p => p !== perm);
                                   }
+                                  setEditingGroup(prev => prev ? {
+                                    ...prev,
+                                    permissions: [...new Set(newGroupPermissions)]
+                                  } : null);
                                 }}
                                 className="form-checkbox h-4 w-4 text-purple-600 mr-2"
                               />
