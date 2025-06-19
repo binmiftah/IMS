@@ -5,6 +5,7 @@ import ProfileBar from '../../../component/ProfileBar';
 import ActionButtons from '../../../component/ActionButtons';
 import Button from '../../../component/Button';
 import { ToastContainer, toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
@@ -25,6 +26,7 @@ const UserFiles = () => {
     const [isOpenFile, setIsOpenFile] = useState(false);
     const [isMaximized, setIsMaximized] = useState(false);
 
+
     const dropdownRef = useRef(null);
 
 
@@ -34,13 +36,93 @@ const UserFiles = () => {
         type: "all",
     });
 
-    // const getFolderId = () => {
-    //     if (!currentFolderId) {
-    //         console.log("Current Folder ID: Root");
-    //         return null;
+    // const hasFilePermission = (file, permissionType) => {
+    //     console.log("=== Permission Check Debug ===");
+    //     console.log("Checking permission:", permissionType, "for file:", file.name || file.fileName);
+    //     console.log("User ID:", user?.id);
+    //     console.log("File AclEntry:", file.AclEntry);
+
+    //     if (!user || !user.id) {
+    //         console.log("❌ Permission check failed: missing user or user.id");
+    //         return false;
     //     }
-    //     return currentFolderId;
+
+    //     if (file.accountId === user.id) {
+    //         console.log("✅ User owns the resource - all permissions granted");
+    //         return true;
+    //     }
+
+    //     // Try multiple possible permission property names
+    //     let aclEntries = file.AclEntry || file.acl || file.permissions || file.userPermissions || [];
+
+    //     // If it's not an array, maybe it's a single object
+    //     if (!Array.isArray(aclEntries) && typeof aclEntries === 'object' && aclEntries !== null) {
+    //         aclEntries = [aclEntries];
+    //     }
+
+    //     if (!Array.isArray(aclEntries)) {
+    //         console.log("No valid ACL entries found in file object");
+    //         return false;
+    //     }
+
+    //     console.log("Processing ACL entries:", aclEntries);
+
+    //     for (const entry of aclEntries) {
+    //         console.log("Checking ACL entry:", entry);
+
+    //         // Check direct user permission (accountId matches user.id)
+    //         if (entry.accountId === user.id) {
+    //             console.log("✅ Direct user permission found");
+    //             const userPermissions = entry.permissions || [];
+    //             console.log("Direct user permissions:", userPermissions);
+
+    //             // Map permission types - your backend uses READ/WRITE, but you're checking OPEN_FILE
+    //             const hasPermission = userPermissions.includes(permissionType) ||
+    //                 (permissionType === 'OPEN_FILE') ||
+    //                 (permissionType === 'DOWNLOAD_FILE');
+
+    //             console.log(`Has ${permissionType}:`, hasPermission);
+    //             if (hasPermission) return true;
+    //         }
+
+    //         // Check group permission (if user belongs to the group)
+    //         if (entry.groupId) {
+    //             console.log("Group permission found for groupId:", entry.groupId);
+
+    //             // For now, we'll assume if the file is accessible via getAccessibleFiles, 
+    //             // the user has access through group membership
+    //             const groupPermissions = entry.permissions || [];
+    //             console.log("Group permissions:", groupPermissions);
+
+    //             // Map permission types for group permissions too
+    //             const hasGroupPermission = groupPermissions.includes(permissionType) ||
+    //                 (permissionType === 'OPEN_FILE') ||
+    //                 (permissionType === 'DOWNLOAD_FILE');
+
+    //             console.log(`Has ${permissionType} via group:`, hasGroupPermission);
+    //             if (hasGroupPermission) return true;
+    //         }
+
+    //         // Check if it's a public permission (no accountId and no groupId)
+    //         if (!entry.accountId && !entry.groupId) {
+    //             console.log("✅ Public permission found");
+    //             const publicPermissions = entry.permissions || [];
+    //             console.log("Public permissions:", publicPermissions);
+
+    //             const hasPublicPermission = publicPermissions.includes(permissionType) ||
+    //                 (permissionType === 'OPEN_FILE' && publicPermissions.includes('READ')) ||
+    //                 (permissionType === 'DOWNLOAD_FILE' && publicPermissions.includes('READ'));
+
+    //             console.log(`Has ${permissionType} via public:`, hasPublicPermission);
+    //             if (hasPublicPermission) return true;
+    //         }
+    //     }
+
+    //     console.log("❌ No matching permissions found for user");
+    //     console.log("=== End Permission Check ===");
+    //     return false;
     // };
+
 
     const getRootFiles = async () => {
         try {
@@ -49,7 +131,6 @@ const UserFiles = () => {
             console.log("Accessible data response:", accessibleData);
 
             const allItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
-            // setAllFetchedResources(allItems); // Removed
             console.log("All accessible items:", allItems);
 
             if (allItems.length === 0) {
@@ -60,22 +141,15 @@ const UserFiles = () => {
                 return;
             }
 
-            // Create a set of all accessible item IDs.
-            // This helps identify if an item's parent is itself accessible.
             const accessibleItemIds = new Set(allItems.map(item => item.id));
 
             const rootItemsToDisplay = allItems.filter(item => {
                 const parentId = item.parentId;
 
-                // Condition 1: Item is a true root item 
-                // (no parentId, or parentId is explicitly null, "null", or empty string)
                 if (!parentId || parentId === null || parentId === "null" || parentId === "") {
                     return true;
                 }
 
-                // Condition 2: Item has a parentId, but that parent item is NOT in the allItems list.
-                // This means it's an item shared directly, and its parent folder isn't accessible by the user.
-                // Such items should be displayed at the root.
                 if (parentId && !accessibleItemIds.has(parentId)) {
                     console.log(`Item "${item.name || item.fileName}" (ID: ${item.id}) is an orphan (parent ${parentId} not accessible), displaying at root.`);
                     return true;
@@ -123,32 +197,46 @@ const UserFiles = () => {
         }
     };
 
+    const flattenFolderTree = (folderNode) => {
+        // Recursively flatten the folder tree into a flat array of files and folders
+        let result = [];
+        if (!folderNode) return result;
+
+        // Add subfolders and their descendants
+        if (Array.isArray(folderNode.children)) {
+            for (const childFolder of folderNode.children) {
+                result.push({ ...childFolder, type: 'folder' });
+                result = result.concat(flattenFolderTree(childFolder));
+            }
+        }
+
+        // Add files in this folder
+        if (Array.isArray(folderNode.files)) {
+            result = result.concat(folderNode.files.map(f => ({ ...f, type: 'file' })));
+        }
+
+        return result;
+    };
+
     const refreshFolderContents = async (folderId) => {
         try {
-            console.log("Refreshing accessible folder contents for ID:", folderId);
-            const accessibleData = await apiCall.getAccessibleFiles();
-            const allAccessibleItems = Array.isArray(accessibleData?.data) ? accessibleData.data : [];
-            // setAllFetchedResources(allAccessibleItems); // Removed
+            console.log("Refreshing folder contents for ID:", folderId);
 
-            // Filter for items that belong to this specific folder
-            const folderContents = allAccessibleItems.filter(item =>
-                item.parentId === folderId || item.folderId === folderId
-            );
+            // Fetch the folder data (with all descendants)
+            const folderData = await apiCall.getFolderById(`files/folders/${folderId}`);
 
-            console.log("Accessible items in folder:", folderContents);
+            // Flatten the entire tree (all descendants, recursively)
+            const allDescendants = flattenFolderTree(folderData);
 
-            setItems(folderContents);
+            setItems(allDescendants);
             setCurrentFolderId(folderId);
 
-            const currentFolder = allAccessibleItems.find(item =>
-                item.id === folderId && item.type === 'folder'
-            );
-            const folderPath = currentFolder?.fullPath || `/folder-${folderId}`;
+            const folderPath = folderData.fullPath || `/folder-${folderId}`;
             setCurrentPath(folderPath);
 
         } catch (error) {
-            console.error("Error refreshing accessible folder:", error);
-            toast.error("Failed to load folder contents");
+            console.error("Error refreshing folder:", error);
+            toast.error("You do not have OPEN_FOLDER access to this folder");
         }
     };
 
@@ -241,9 +329,78 @@ const UserFiles = () => {
         }
     };
 
+    const checkFilePermission = async (fileId) => {
+        try {
+            console.log("=== Checking File Permission ===");
+            console.log("Attempting to fetch file with ID:", fileId);
+
+            // Try to get the file by ID - this will fail if user doesn't have permission
+            const response = await apiCall.getFileById(`files/${fileId}`);
+
+            console.log("✅ File permission check successful:", response);
+            return { hasPermission: true, fileData: response };
+        } catch (error) {
+            console.log("❌ File permission check failed:", error);
+            console.log("Error status:", error.response?.status);
+            console.log("Error message:", error.response?.data?.message || error.message);
+
+            return { hasPermission: false, error: error };
+        }
+    };
+
     const handleFileOpen = async (item) => {
-        setClickedItem(item);
-        setIsOpenFile(true);
+        console.log("=== File Open Attempt ===");
+        console.log("File item:", item);
+
+        // Show loading state
+        toast.info("Checking file access...", {
+            position: "top-right",
+            autoClose: 2000,
+        });
+
+        try {
+            // Check permission by trying to fetch the file
+            const permissionCheck = await checkFilePermission(item.id);
+
+            if (permissionCheck.hasPermission) {
+                console.log("✅ Permission granted - opening file");
+                toast.success("File access granted", {
+                    position: "top-right",
+                    autoClose: 1500,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+
+                // Use the fetched file data if available, otherwise use the original item
+                setClickedItem(permissionCheck.fileData || item);
+                setIsOpenFile(true);
+            } else {
+                console.log("❌ Permission denied");
+                const errorMessage = permissionCheck.error?.response?.data?.message ||
+                    "You don't have permission to access this file";
+
+                toast.error(errorMessage, {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            }
+        } catch (error) {
+            console.error("Unexpected error during permission check:", error);
+            toast.error("An error occurred while checking file access", {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+        }
     };
 
     const handleSort = (type, value) => {
@@ -252,34 +409,34 @@ const UserFiles = () => {
     };
 
     // Add this function to handle clicking on current folder path
-    const handleCurrentPathClick = async () => {
-        try {
-            // Force refresh current folder contents
-            if (currentFolderId) {
-                console.log("Refreshing current folder:", currentFolderId);
-                await refreshFolderContents(currentFolderId);
+    // const handleCurrentPathClick = async () => {
+    //     try {
+    //         // Force refresh current folder contents
+    //         if (currentFolderId) {
+    //             console.log("Refreshing current folder:", currentFolderId);
+    //             await refreshFolderContents(currentFolderId);
 
-                // Show user feedback
-                toast.info("Folder refreshed", {
-                    position: "top-right",
-                    autoClose: 2000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                });
-            } else {
-                await getRootFiles();
-                toast.info("Root folder refreshed", {
-                    position: "top-right",
-                    autoClose: 2000,
-                });
-            }
-        } catch (error) {
-            console.error("Error refreshing current folder:", error);
-            handleError(error);
-        }
-    };
+    //             // Show user feedback
+    //             toast.info("Folder refreshed", {
+    //                 position: "top-right",
+    //                 autoClose: 2000,
+    //                 hideProgressBar: false,
+    //                 closeOnClick: true,
+    //                 pauseOnHover: true,
+    //                 draggable: true,
+    //             });
+    //         } else {
+    //             await getRootFiles();
+    //             toast.info("Root folder refreshed", {
+    //                 position: "top-right",
+    //                 autoClose: 2000,
+    //             });
+    //         }
+    //     } catch (error) {
+    //         console.error("Error refreshing current folder:", error);
+    //         handleError(error);
+    //     }
+    // };
 
     const formatFileSize = (bytes) => {
         if (!bytes) return 'Unknown size';
@@ -311,73 +468,181 @@ const UserFiles = () => {
         }
     };
 
-    // Replace the testUserPermissions function around line 330
-    const testUserPermissions = async () => {
+    // Add this function that follows the same pattern as checkFilePermission
+    const checkUploadPermission = async (folderId) => {
         try {
-            console.log("🔍 Testing current user permissions...");
+            console.log("=== Checking Upload Permission ===");
+            console.log("Checking upload permission for folder ID:", folderId);
 
-            // Use the correct endpoint with user ID
-            const userId = user?.id;
-            if (!userId) {
-                console.log("❌ No user ID available");
-                console.log("User object:", user);
-                toast.error("No user ID available");
-                return null;
+            if (!folderId) {
+                console.log("❌ No folder ID provided");
+                return {
+                    hasPermission: false,
+                    error: {
+                        response: {
+                            data: {
+                                message: "Cannot upload to root folder"
+                            }
+                        }
+                    }
+                };
             }
 
-            // Use apiCall.get() instead of apiCall.getUserPermissions()
-            const permissionsResponse = await apiCall.get(`permissions/user/${userId}`);
-            console.log("📋 Full permissions response:", permissionsResponse);
+            // Get all accessible files/folders
+            const response = await apiCall.getAccessibleFiles();
+            console.log("✅ Accessible files response:", response);
 
-            if (permissionsResponse?.data) {
-                const permissions = permissionsResponse.data;
-                console.log("✅ User permissions array:", permissions);
-                console.log("📊 Total permissions count:", permissions.length);
+            // ✅ FIXED: Find the specific folder we're checking upload permission for
+            const targetFolder = response.data.find(item => item.id === folderId);
 
-                // Group permissions by type
-                const permissionsByType = permissions.reduce((acc, perm) => {
-                    const type = perm.permission || 'UNKNOWN';
-                    if (!acc[type]) acc[type] = [];
-                    acc[type].push(perm);
-                    return acc;
-                }, {});
+            if (!targetFolder) {
+                console.log("❌ Folder not found in accessible files");
+                return {
+                    hasPermission: false,
+                    error: {
+                        response: {
+                            data: {
+                                message: "You don't have access to this folder"
+                            }
+                        }
+                    }
+                };
+            }
 
-                console.log("📂 Permissions grouped by type:", permissionsByType);
+            console.log("✅ Found target folder:", targetFolder);
 
-                // Check for upload permissions specifically
-                const uploadPermissions = permissions.filter(perm =>
-                    perm.permission === 'UPLOAD_FILE' ||
-                    perm.permission === 'CREATE_FOLDER' ||
-                    perm.permission?.includes('UPLOAD') ||
-                    perm.permission?.includes('CREATE')
-                );
+            // ✅ CHECK IF USER OWNS THE FOLDER (owners can upload)
+            if (targetFolder.accountId === user?.id) {
+                console.log("✅ User owns the folder - upload allowed");
+                return { hasPermission: true, folderData: targetFolder };
+            }
 
-                console.log("📤 Upload-related permissions:", uploadPermissions);
+            // ✅ NOW CHECK FOR ACTUAL UPLOAD PERMISSIONS IN THE SPECIFIC FOLDER
+            if (user && user.id && targetFolder.AclEntry) {
+                const userAcl = targetFolder.AclEntry.find(entry => entry.accountId === user.id);
 
-                // Check permissions for current folder
-                const currentFolderPermissions = permissions.filter(perm =>
-                    perm.resourceId === currentFolderId ||
-                    (currentFolderId === null && (perm.resourceId === null || perm.resourceId === 'root'))
-                );
+                if (userAcl && userAcl.permissions) {
+                    const hasUploadPermission = userAcl.permissions.includes('UPLOAD_FILE') ||
+                        userAcl.permissions.includes('WRITE') ||
+                        userAcl.permissions.includes('FULL_ACCESS');
 
-                console.log(`📁 Permissions for current folder (${currentFolderId || 'root'}):`, currentFolderPermissions);
+                    console.log("User ACL permissions for this folder:", userAcl.permissions);
+                    console.log("Has upload permission:", hasUploadPermission);
 
-                // Show in toast for user visibility
-                toast.info(`Found ${permissions.length} permissions. Check console for details.`, {
+                    if (hasUploadPermission) {
+                        return { hasPermission: true, folderData: targetFolder, permissions: userAcl.permissions };
+                    }
+                } else {
+                    console.log("❌ No user ACL found for this folder");
+                }
+            }
+
+            // ✅ CHECK FOR GROUP PERMISSIONS IN THIS SPECIFIC FOLDER
+            if (user && user.id && targetFolder.AclEntry) {
+                for (const entry of targetFolder.AclEntry) {
+                    if (entry.groupId && entry.permissions) {
+                        // Check if user belongs to this group (you might need additional logic here)
+                        const hasGroupUploadPermission = entry.permissions.includes('UPLOAD_FILE') ||
+                            entry.permissions.includes('WRITE') ||
+                            entry.permissions.includes('FULL_ACCESS');
+
+                        if (hasGroupUploadPermission) {
+                            console.log("✅ User has upload permission through group:", entry.groupId);
+                            return { hasPermission: true, folderData: targetFolder, permissions: entry.permissions };
+                        }
+                    }
+                }
+            }
+
+            console.log("❌ No upload permissions found for this specific folder");
+            console.log("Folder AclEntry:", targetFolder.AclEntry);
+            console.log("User ID:", user?.id);
+
+            return {
+                hasPermission: false,
+                error: {
+                    response: {
+                        data: {
+                            message: "You don't have UPLOAD_FILE permission for this folder"
+                        }
+                    }
+                }
+            };
+
+        } catch (error) {
+            console.log("❌ Permission check failed:", error);
+            console.log("Error status:", error.response?.status);
+            console.log("Error message:", error.response?.data?.message || error.message);
+
+            return { hasPermission: false, error: error };
+        }
+    };
+
+    const handleUploadPermissionCheck = async () => {
+        console.log("=== Upload Permission Check ===");
+        console.log("Current folder ID:", currentFolderId);
+        console.log("Current path:", currentPath);
+
+        // Show loading state
+        toast.info("Checking upload permissions...", {
+            position: "top-right",
+            autoClose: 2000,
+        });
+
+        try {
+            if (!currentFolderId) {
+                console.log("❌ Cannot upload to root folder");
+                toast.error("Upload to root folder is not allowed", {
                     position: "top-right",
-                    autoClose: 5000,
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
                 });
+                return false;
+            }
 
-                return permissions;
+            // Check permission by trying to fetch the folder (same pattern as file permission)
+            const permissionCheck = await checkUploadPermission(currentFolderId);
+
+            if (permissionCheck.hasPermission) {
+                console.log("✅ Upload permission granted");
+                toast.success("Upload permission verified", {
+                    position: "top-right",
+                    autoClose: 1500,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+                return true;
             } else {
-                console.log("❌ No permissions data found");
-                toast.error("No permissions data found");
-                return [];
+                console.log("❌ Upload permission denied");
+                const errorMessage = permissionCheck.error?.response?.data?.message ||
+                    "You don't have permission to upload files to this folder";
+
+                toast.error(errorMessage, {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+                return false;
             }
         } catch (error) {
-            console.error("❌ Error fetching user permissions:", error);
-            toast.error(`Error checking permissions: ${error.message}`);
-            return null;
+            console.error("Unexpected error during upload permission check:", error);
+            toast.error("An error occurred while checking upload permissions", {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
+            return false;
         }
     };
 
@@ -410,10 +675,6 @@ const UserFiles = () => {
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
-
-    // Removed useEffect that set canUpload
-
-    // Add this useEffect to debug folder state changes
     useEffect(() => {
         console.log("Folder state changed:");
         console.log("- Current Path:", currentPath);
@@ -424,26 +685,20 @@ const UserFiles = () => {
     return (
         <div className="flex min-h-screen">
             <UserNavbar />
-
-            {/* Main Content */}
             <div className="w-4/5 bg-white">
                 <ToastContainer />
                 <ProfileBar onSearch={(value) => console.log(value)} />
 
                 <div className="p-6">
-
                     <ActionButtons
                         onActionComplete={() => {
                             console.log("ActionButtons callback - refreshing folder:", currentFolderId);
                             handleRefresh();
                         }}
                         getFolderId={() => {
-                            // console.log("getFolderId called, returning:", currentFolderId); // Keep if useful for ActionButtons
                             return currentFolderId;
                         }}
-                        // currentFolderId={currentFolderId} // Pass if ActionButtons needs it directly
-                        // currentPath={currentPath} // Pass if ActionButtons needs it directly
-                        // canUpload={canUpload} // Removed prop
+                        checkUploadPermission={handleUploadPermissionCheck} // ✅ Pass the permission check function
                     />
                     {clipboard && (
                         <button
@@ -473,7 +728,7 @@ const UserFiles = () => {
                                 />
                                 <span
                                     className="text-gray-600 hover:text-blue-600 cursor-pointer"
-                                    onClick={handleCurrentPathClick}
+                                    // onClick={handleCurrentPathClick}
                                     title="Click to refresh folder"
                                 >
                                     Current Path: {currentPath}
@@ -525,24 +780,34 @@ const UserFiles = () => {
                     {/* Files and Folders Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {items.length > 0 ? items.map((item, index) => {
-                            // Determine if this card should be disabled in paste mode
                             const isPasteMode = !!clipboard;
                             const isFolder = item.type === 'folder';
                             const isDisabled = isPasteMode && !isFolder;
-
-                            // ✅ Simplified - show all items that are in the current items array
-                            // The filtering should already be done in getRootFiles() and refreshFolderContents()
 
                             return (
                                 <div
                                     key={item.id || index}
                                     onClick={() => {
-                                        if (isDisabled) return; // Prevent click if disabled
-                                        if (isFolder) handleNavigate(item);
-                                        else handleFileOpen(item);
+                                        console.log("=== File Click Debug ===");
+                                        console.log("Item clicked:", item);
+                                        console.log("Is disabled:", isDisabled);
+                                        console.log("Is folder:", isFolder);
+
+                                        if (isDisabled) return;
+                                        if (isFolder) {
+                                            console.log("Navigating to folder:", item.name);
+                                            handleNavigate(item);
+                                        } else {
+                                            console.log("Attempting to open file:", item.name || item.fileName);
+                                            console.log("File ID:", item.id);
+
+                                            // Check permission by trying to fetch the file
+                                            handleFileOpen(item);
+                                        }
+                                        console.log("=== End File Click Debug ===");
                                     }}
                                     className={`p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors
-                                        ${isDisabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
+            ${isDisabled ? 'opacity-50 pointer-events-none cursor-not-allowed' : ''}`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
@@ -611,6 +876,7 @@ const UserFiles = () => {
                                                             if (isFolder) {
                                                                 handleNavigate(item);
                                                             } else {
+                                                                // Use the same permission checking approach
                                                                 handleFileOpen(item);
                                                             }
                                                             setActiveDropdown(null);

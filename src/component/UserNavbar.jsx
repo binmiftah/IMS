@@ -8,7 +8,7 @@ const UserNavbar = () => {
 
     const navItems = [
         {
-            name: 'Files',
+            name: 'Folders/Files',
             icon: <MdFolder size={24} />,
             path: '/user/files'
         },

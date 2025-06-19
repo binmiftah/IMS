@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import apiCall from "../pkg/api/internal.js";
 import { handleError } from "../pkg/error/error.js";
 
-const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => { // Removed canUpload from props
+const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPermission }) => { // ✅ Fixed typo in prop name
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -15,8 +15,36 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => { // Rem
 
     const currentFolderId = getFolderId ? getFolderId() : null;
 
+    // ✅ Add upload permission check before opening modal
+    const handleUploadClick = async () => {
+        console.log("Upload button clicked");
+
+        // Check upload permission before proceeding (same pattern as file opening)
+        if (checkUploadPermission) {
+            const hasPermission = await checkUploadPermission();
+            if (!hasPermission) {
+                console.log("Upload cancelled - no permission");
+                return;
+            }
+        }
+
+        // If permission check passed, open upload modal
+        setIsUploadModalOpen(true);
+    };
+
     const handleUploadSubmit = async () => {
         if (!selectedFile) return;
+
+        // ✅ Double-check permission before actual upload (same pattern as file opening)
+        if (checkUploadPermission) {
+            const hasPermission = await checkUploadPermission();
+            if (!hasPermission) {
+                console.log("Upload cancelled during file processing - no permission");
+                setIsUploadModalOpen(false);
+                setSelectedFile(null);
+                return;
+            }
+        }
 
         try {
             let folderId = currentFolderId;
@@ -113,8 +141,9 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => { // Rem
                 <div className="flex justify-end items-right">
                     <ToastContainer />
                     <span className="flex space-x-4">
+                        {/* ✅ Changed onClick to use permission check */}
                         <Button
-                            onClick={() => setIsUploadModalOpen(true)}
+                            onClick={handleUploadClick}
                             className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
                             icon={<MdUpload className='mr-2' size={20} />}
                         >
@@ -127,7 +156,6 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => { // Rem
                         >
                             Create Folder
                         </Button>
-                        {/* Removed the !canUpload message block */}
                     </span>
                 </div>
             </div>
@@ -224,7 +252,7 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId }) => { // Rem
                 </div>
             )}
 
-            {/* Folder Modal */}
+            {/* Folder Modal - unchanged */}
             {isFolderModalOpen && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"

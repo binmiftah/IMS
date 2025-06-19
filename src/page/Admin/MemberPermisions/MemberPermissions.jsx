@@ -18,36 +18,10 @@ const FOLDER_PERMISSIONS = [
 const MemberPermissions = () => {
   const safeArrayCheck = (arr) => Array.isArray(arr) ? arr : [];
 
-  const safeStringArray = (arr) => {
-    if (!Array.isArray(arr)) return [];
-    return arr.filter(item => typeof item === 'string');
-  };
-
-  const hasPermission = (permissions, permission) => {
-    if (!Array.isArray(permissions)) return false;
-    if (permissions.includes(permission)) return true;
-    return permissions.some(perm =>
-      typeof perm === 'string' && perm.toUpperCase() === permission.toUpperCase()
-    );
-  };
 
   const isSuperAdminByRole = (user) => {
     if (!user || !user.role) return false;
     return user.role === 'SUPER_ADMIN';
-  };
-
-  const handlePermissionChange = (permission, isChecked, currentPermissions, setPermissions) => {
-    let newPermissionsList;
-    if (isChecked) {
-      if (!currentPermissions.includes(permission)) {
-        newPermissionsList = [...currentPermissions, permission];
-      } else {
-        newPermissionsList = [...currentPermissions]; // No change if already included
-      }
-    } else {
-      newPermissionsList = currentPermissions.filter(p => p !== permission);
-    }
-    setPermissions([...new Set(newPermissionsList)]); // Ensure uniqueness
   };
 
   const [loading, setLoading] = useState(true);
@@ -223,136 +197,135 @@ const MemberPermissions = () => {
     }
   };
 
-  const handleSaveUserPermissions = async () => {
-    if (!selectedUser || !selectedUser.id) {
-      toast.error("Please select a user first");
-      return;
-    }
+  //   if (!selectedUser || !selectedUser.id) {
+  //     toast.error("Please select a user first");
+  //     return;
+  //   }
 
-    if (selectedFolders.length === 0) {
-      toast.error("Please select at least one resource");
-      return;
-    }
+  //   if (selectedFolders.length === 0) {
+  //     toast.error("Please select at least one resource");
+  //     return;
+  //   }
 
-    // Check that each selected resource has at least one permission
-    const resourcesWithoutPermissions = selectedFolders.filter(resourceId => {
-      const perms = getResourcePermissions(resourceId);
-      return !perms || perms.length === 0;
-    });
+  //   // Check that each selected resource has at least one permission
+  //   const resourcesWithoutPermissions = selectedFolders.filter(resourceId => {
+  //     const perms = getResourcePermissions(resourceId);
+  //     return !perms || perms.length === 0;
+  //   });
 
-    if (resourcesWithoutPermissions.length > 0) {
-      toast.error(`Please set permissions for all selected resources. ${resourcesWithoutPermissions.length} resource(s) have no permissions set.`);
-      return;
-    }
+  //   if (resourcesWithoutPermissions.length > 0) {
+  //     toast.error(`Please set permissions for all selected resources. ${resourcesWithoutPermissions.length} resource(s) have no permissions set.`);
+  //     return;
+  //   }
 
-    setSaving(true);
-    try {
-      // Create a flattened array of all resources for easier lookup
-      const flattenResources = (resources) => {
-        const flattened = [];
+  //   setSaving(true);
+  //   try {
+  //     // Create a flattened array of all resources for easier lookup
+  //     const flattenResources = (resources) => {
+  //       const flattened = [];
 
-        const flatten = (items) => {
-          items.forEach(item => {
-            flattened.push(item);
-            if (item.children && Array.isArray(item.children)) {
-              flatten(item.children);
-            }
-          });
-        };
+  //       const flatten = (items) => {
+  //         items.forEach(item => {
+  //           flattened.push(item);
+  //           if (item.children && Array.isArray(item.children)) {
+  //             flatten(item.children);
+  //           }
+  //         });
+  //       };
 
-        flatten(resources);
-        return flattened;
-      };
+  //       flatten(resources);
+  //       return flattened;
+  //     };
 
-      const allFlatResources = flattenResources(folders);
+  //     const allFlatResources = flattenResources(folders);
 
-      // ✅ Create SEPARATE permission request for EACH resource with its INDIVIDUAL permissions
-      const requests = [];
+  //     // ✅ Create SEPARATE permission request for EACH resource with its INDIVIDUAL permissions
+  //     const requests = [];
 
-      selectedFolders.forEach(resourceId => {
-        const resource = allFlatResources.find(f => f.id === resourceId);
-        if (!resource) return;
+  //     selectedFolders.forEach(resourceId => {
+  //       const resource = allFlatResources.find(f => f.id === resourceId);
+  //       if (!resource) return;
 
-        const resourceName = resource.name || resource.fileName || resourceId;
-        const resourcePerms = getResourcePermissions(resourceId);
+  //       const resourceName = resource.name || resource.fileName || resourceId;
+  //       const resourcePerms = getResourcePermissions(resourceId);
 
-        if (resourcePerms.length === 0) return; // Skip resources without permissions
+  //       if (resourcePerms.length === 0) return; // Skip resources without permissions
 
-        const isFolder = resource.type === 'folder' ||
-          resource.mimeType === 'application/vnd.google-apps.folder' ||
-          (!resource.fileName && !resource.fileExtension);
+  //       const isFolder = resource.type === 'folder' ||
+  //         resource.mimeType === 'application/vnd.google-apps.folder' ||
+  //         (!resource.fileName && !resource.fileExtension);
 
-        if (isFolder) {
-          requests.push({
-            resourceType: "FOLDER",
-            permissions: resourcePerms,
-            folderId: resourceId,
-            accountId: selectedUser.id,
-            inherited: false
-          });
-        } else {
-          requests.push({
-            resourceType: "FILE",
-            permissions: resourcePerms,
-            fileId: resourceId,
-            accountId: selectedUser.id,
-            inherited: false
-          });
-        }
-      });
+  //       if (isFolder) {
+  //         requests.push({
+  //           resourceType: "FOLDER",
+  //           permissions: resourcePerms,
+  //           folderId: resourceId,
+  //           accountId: selectedUser.id,
+  //           inherited: false
+  //         });
+  //       } else {
+  //         requests.push({
+  //           resourceType: "FILE",
+  //           permissions: resourcePerms,
+  //           fileId: resourceId,
+  //           accountId: selectedUser.id,
+  //           inherited: false
+  //         });
+  //       }
+  //     });
 
 
-      // Send each permission request INDIVIDUALLY
-      let successCount = 0;
-      let errorCount = 0;
+  //     // Send each permission request INDIVIDUALLY
+  //     let successCount = 0;
+  //     let errorCount = 0;
 
-      for (const permissionData of requests) {
-        try {
+  //     for (const permissionData of requests) {
+  //       try {
 
-          const response = await apiCall.createMemberPermission(permissionData);
+  //         const response = await apiCall.createMemberPermission(permissionData);
 
-          successCount++;
+  //         successCount++;
 
-          // Update local state for this specific resource
-          if (permissionData.resourceType === "FOLDER") {
-            setFolderPermissions(prev => ({
-              ...prev,
-              [permissionData.folderId]: permissionData.permissions
-            }));
-          } else if (permissionData.resourceType === "FILE") {
-            setFilePermissions(prev => ({
-              ...prev,
-              [permissionData.fileId]: permissionData.permissions
-            }));
-          }
+  //         // Update local state for this specific resource
+  //         if (permissionData.resourceType === "FOLDER") {
+  //           setFolderPermissions(prev => ({
+  //             ...prev,
+  //             [permissionData.folderId]: permissionData.permissions
+  //           }));
+  //         } else if (permissionData.resourceType === "FILE") {
+  //           setFilePermissions(prev => ({
+  //             ...prev,
+  //             [permissionData.fileId]: permissionData.permissions
+  //           }));
+  //         }
 
-        } catch (error) {
-          console.error("❌ Failed to create individual permission:", error);
-          errorCount++;
-        }
-      }
+  //       } catch (error) {
+  //         console.error("❌ Failed to create individual permission:", error);
+  //         errorCount++;
+  //       }
+  //     }
 
-      // Show detailed results
-      if (successCount > 0) {
-        toast.success(
-          `Successfully created ${successCount} individual permission(s) with custom permissions for each resource!`
-        );
+  //     // Show detailed results
+  //     if (successCount > 0) {
+  //       toast.success(
+  //         `Successfully created ${successCount} individual permission(s) with custom permissions for each resource!`
+  //       );
 
-        // Refresh user permissions to show updated state
-        await fetchUserPermissions(selectedUser.id);
-      }
+  //       // Refresh user permissions to show updated state
+  //       await fetchUserPermissions(selectedUser.id);
+  //     }
 
-      if (errorCount > 0) {
-        toast.error(`Failed to create ${errorCount} permission(s). Check console for details.`);
-      }
+  //     if (errorCount > 0) {
+  //       toast.error(`Failed to create ${errorCount} permission(s). Check console for details.`);
+  //     }
 
-    } catch (error) {
-      console.error("❌ Failed to save user permissions:", error);
-      toast.error("Failed to save user permissions. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  //   } catch (error) {
+  //     console.error("❌ Failed to save user permissions:", error);
+  //     toast.error("Failed to save user permissions. Please try again.");
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   const fetchUserPermissions = async (userId) => {
     if (!userId) {
@@ -765,20 +738,21 @@ const MemberPermissions = () => {
               allChildFolders.push(childFolder);
 
               // 🔄 RECURSIVE CALL: Fetch ALL descendants of this child folder
-              const grandChildren = await fetchAllFolderChildren(child.id, folderId, new Set(processedFolders));
+              const grandChildren = await fetchAllFolderChildren(child.id, folderId, processedFolders);
 
               // Add all descendants to our collections
               allChildFolders.push(...grandChildren.folders);
               allChildFiles.push(...grandChildren.files);
 
-            } else if (child.type === 'file') {
-              allChildFiles.push({
-                ...child,
-                type: "file",
-                fileName: child.fileName || child.name,
-                parentId: folderId // Set correct parent
-              });
             }
+            // else if (child.type === 'file') {
+            //   allChildFiles.push({
+            //     ...child,
+            //     type: "file",
+            //     fileName: child.fileName || child.name,
+            //     parentId: folderId // Set correct parent
+            //   });
+            // }
           }
 
           return { folders: allChildFolders, files: allChildFiles };
@@ -1555,61 +1529,6 @@ const MemberPermissions = () => {
     }
   }, [showNewGroupForm, newGroup]);
 
-  // Add this debugging function:
-
-  const debugFolderStructureDetailed = () => {
-    const analyzeStructure = (resources, level = 0, parentId = null) => {
-      const indent = '  '.repeat(level);
-
-      resources.forEach(resource => {
-        if (!resource || !resource.id) return;
-
-        const icon = resource.type === 'folder' ? '📁' : '📄';
-        const name = resource.name || resource.fileName || 'Unnamed';
-        const childCount = resource.children ? resource.children.length : 0;
-        const parentInfo = resource.parentId ? ` (parentId: ${resource.parentId})` :
-          parentId ? ` (computed parent: ${parentId})` : ' (root)';
-
-        // Show detailed children info
-        if (resource.children && Array.isArray(resource.children) && resource.children.length > 0) {
-          analyzeStructure(resource.children, level + 1, resource.id);
-        }
-      });
-    };
-
-    analyzeStructure(folders);
-
-    // Count totals
-    const flattenAll = (resources) => {
-      const flat = [];
-      const process = (items, parent = null) => {
-        items.forEach(item => {
-          flat.push({ ...item, computedParent: parent });
-          if (item.children && Array.isArray(item.children)) {
-            process(item.children, item.id);
-          }
-        });
-      };
-      process(resources);
-      return flat;
-    };
-
-    const allFlat = flattenAll(folders);
-    const folderCount = allFlat.filter(r => r.type === 'folder').length;
-    const fileCount = allFlat.filter(r => r.type === 'file').length;
-
-    // Check for potential issues
-    const orphanedItems = allFlat.filter(item =>
-      item.parentId && !allFlat.find(p => p.id === item.parentId)
-    );
-
-    if (orphanedItems.length > 0) {
-      console.warn(`⚠️ Found ${orphanedItems.length} orphaned items (parent not found):`, orphanedItems);
-    }
-
-    return allFlat;
-  };
-
 
   const handleResourceSelectionChange = (newSelectedIds) => {
     // Only keep the IDs the user explicitly checked - no cascading to children
@@ -1707,14 +1626,23 @@ const MemberPermissions = () => {
                   <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow">
                     <h3 className="text-lg font-semibold mb-2 text-blue-700">Step 2: Set Permissions for Selected Resources</h3>
                     {selectedFolders.map(resourceId => {
-                      const resource = findResourceById(folders, resourceId); // Use the recursive findResourceById
+                      const resource = findResourceById(folders, resourceId);
                       const resourceName = resource?.name || resource?.fileName || resourceId;
-                      const currentResourcePermissions = folderPermissions[resourceId] || [];
+
+                      // ✅ FIXED: Determine resource type properly
+                      const isFolder = resource?.type === 'folder' ||
+                        resource?.mimeType === 'application/vnd.google-apps.folder' ||
+                        (!resource?.fileName && !resource?.fileExtension);
+
+                      // ✅ FIXED: Get permissions from the correct state based on resource type
+                      const currentResourcePermissions = isFolder
+                        ? (folderPermissions[resourceId] || [])
+                        : (filePermissions[resourceId] || []);
 
                       return (
                         <div key={resourceId} className="mb-4 p-3 bg-white border rounded">
                           <div className="font-semibold mb-2 text-blue-800">
-                            {resourceName}
+                            {resourceName} {isFolder ? '📁' : '📄'}
                           </div>
 
                           {/* File Permissions Section */}
@@ -1733,10 +1661,19 @@ const MemberPermissions = () => {
                                     } else {
                                       newPerms = newPerms.filter(p => p !== perm);
                                     }
-                                    setFolderPermissions(prev => ({
-                                      ...prev,
-                                      [resourceId]: newPerms
-                                    }));
+
+                                    // ✅ FIXED: Update the correct state based on resource type
+                                    if (isFolder) {
+                                      setFolderPermissions(prev => ({
+                                        ...prev,
+                                        [resourceId]: newPerms
+                                      }));
+                                    } else {
+                                      setFilePermissions(prev => ({
+                                        ...prev,
+                                        [resourceId]: newPerms
+                                      }));
+                                    }
                                   }}
                                   className="form-checkbox h-4 w-4 text-green-600 mr-2"
                                 />
@@ -1761,10 +1698,19 @@ const MemberPermissions = () => {
                                     } else {
                                       newPerms = newPerms.filter(p => p !== perm);
                                     }
-                                    setFolderPermissions(prev => ({
-                                      ...prev,
-                                      [resourceId]: newPerms
-                                    }));
+
+                                    // ✅ FIXED: Update the correct state based on resource type
+                                    if (isFolder) {
+                                      setFolderPermissions(prev => ({
+                                        ...prev,
+                                        [resourceId]: newPerms
+                                      }));
+                                    } else {
+                                      setFilePermissions(prev => ({
+                                        ...prev,
+                                        [resourceId]: newPerms
+                                      }));
+                                    }
                                   }}
                                   className="form-checkbox h-4 w-4 text-purple-600 mr-2"
                                 />
@@ -1775,6 +1721,8 @@ const MemberPermissions = () => {
                         </div>
                       );
                     })}
+
+                    {/* Save button - also needs to be updated */}
                     <button
                       className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                       onClick={async () => {
@@ -1782,24 +1730,74 @@ const MemberPermissions = () => {
                         try {
                           let successCount = 0;
                           let errorCount = 0;
-                          for (const folderId of selectedFolders) {
-                            const perms = folderPermissions[folderId] || [];
-                            if (perms.length === 0) continue;
-                            try {
-                              await apiCall.createMemberPermission({
-                                resourceType: "FOLDER",
-                                permissions: perms,
-                                folderId,
-                                accountId: selectedUser.id,
-                                inherited: false
+
+                          const flattenResources = (resources) => {
+                            const flattened = [];
+                            const flatten = (items) => {
+                              items.forEach(item => {
+                                flattened.push(item);
+                                if (item.children && Array.isArray(item.children)) {
+                                  flatten(item.children);
+                                }
                               });
+                            };
+                            flatten(resources);
+                            return flattened;
+                          };
+
+                          const allFlatResources = flattenResources(folders);
+
+                          for (const resourceId of selectedFolders) {
+                            const resource = allFlatResources.find(r => r.id === resourceId);
+                            if (!resource) {
+                              console.warn(`Resource ${resourceId} not found`);
+                              errorCount++;
+                              continue;
+                            }
+
+                            const isFolder = resource.type === 'folder' ||
+                              resource.mimeType === 'application/vnd.google-apps.folder' ||
+                              (!resource.fileName && !resource.fileExtension);
+
+                            // ✅ FIXED: Get permissions from the correct state
+                            const perms = isFolder
+                              ? (folderPermissions[resourceId] || [])
+                              : (filePermissions[resourceId] || []);
+
+                            if (perms.length === 0) continue;
+
+                            try {
+                              if (isFolder) {
+                                await apiCall.createMemberPermission({
+                                  resourceType: "FOLDER",
+                                  permissions: perms,
+                                  folderId: resourceId,
+                                  accountId: selectedUser.id,
+                                  inherited: false
+                                });
+                              } else {
+                                await apiCall.createMemberPermission({
+                                  resourceType: "FILE",
+                                  permissions: perms,
+                                  fileId: resourceId,
+                                  accountId: selectedUser.id,
+                                  inherited: false
+                                });
+                              }
                               successCount++;
                             } catch (err) {
+                              console.error(`Error saving permissions for ${isFolder ? 'folder' : 'file'} ${resourceId}:`, err);
                               errorCount++;
                             }
                           }
-                          if (successCount > 0) toast.success(`Saved permissions for ${successCount} folder(s)!`);
-                          if (errorCount > 0) toast.error(`Failed to save permissions for ${errorCount} folder(s).`);
+
+                          if (successCount > 0) {
+                            toast.success(`Saved permissions for ${successCount} resource(s)!`);
+                          }
+                          if (errorCount > 0) {
+                            toast.error(`Failed to save permissions for ${errorCount} resource(s).`);
+                          }
+
                           await fetchUserPermissions(selectedUser.id);
                         } finally {
                           setSaving(false);
