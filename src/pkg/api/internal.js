@@ -119,6 +119,113 @@ class ApiCall {
         }
     }
 
+    async uploadFolder(urlPath, data) {
+        try {
+            console.log("📁 Starting folder upload API call");
+            console.log("URL path:", urlPath);
+            console.log("FormData entries:");
+
+            // Log FormData contents for debugging
+            for (let [key, value] of data.entries()) {
+                if (value instanceof File) {
+                    console.log(`  ${key}: File - ${value.name} (${value.size} bytes)`);
+                } else {
+                    console.log(`  ${key}: ${value}`);
+                }
+            }
+
+            const response = await this.instance2.post(`${urlPath}?resourceType=FOLDER`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            console.log("✅ Folder upload API successful:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("❌ Folder upload API error:", error);
+
+            // More detailed error logging
+            if (error.response) {
+                console.error("Response status:", error.response.status);
+                console.error("Response data:", error.response.data);
+            } else if (error.request) {
+                console.error("Request made but no response:", error.request);
+            } else {
+                console.error("Error in setting up request:", error.message);
+            }
+
+            throw error;
+        }
+    }
+
+    async uploadFileWithProgress(urlPath, data, onProgress) {
+        try {
+            console.log("📁 Starting file upload with progress tracking");
+            const response = await this.instance2.post(`${urlPath}?resourceType=FILE`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    console.log(`Upload progress: ${percentCompleted}%`);
+                    if (onProgress) {
+                        onProgress(percentCompleted);
+                    }
+                }
+            });
+
+            console.log("✅ File upload with progress successful:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("❌ File upload with progress error:", error);
+            throw error;
+        }
+    }
+
+    // ✅ ADD FOLDER UPLOAD WITH PROGRESS
+    async uploadFolderWithProgress(urlPath, data, onProgress) {
+    try {
+        console.log("📁 Starting folder upload with progress tracking");
+        console.log("URL path:", urlPath);
+        console.log("FormData entries:");
+
+        // Log FormData contents for debugging
+        for (let [key, value] of data.entries()) {
+            if (value instanceof File) {
+                console.log(`  ${key}: File - ${value.name} (${value.size} bytes)`);
+            } else {
+                console.log(`  ${key}: ${value}`);
+            }
+        }
+
+        // ✅ FIX: Add the resourceType parameter to match your API
+        const response = await this.instance2.post(`${urlPath}?resourceType=FOLDER`, data, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            },
+            timeout: 300000,
+            onUploadProgress: (progressEvent) => {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                console.log(`Folder upload progress: ${percentCompleted}%`);
+                if (onProgress) {
+                    onProgress(percentCompleted);
+                }
+            }
+        });
+
+        console.log("✅ Folder upload with progress successful:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Folder upload with progress error:", error);
+        throw error;
+    }
+    
+}
+
     async getFile(urlPath) {
         const hasParams = urlPath.includes('?');
         const separator = hasParams ? '&' : '?';
