@@ -99,9 +99,44 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
             const formData = new FormData();
             formData.append("folderName", selectedFolder.name);
 
+            // ✅ FIX: Create correct folder structure based on webkitRelativePath
+            const folderStructure = {};
+
             for (let i = 0; i < selectedFolder.files.length; i++) {
-                formData.append("files", selectedFolder.files[i]);
+                const file = selectedFolder.files[i];
+                formData.append("files", file);
+
+                // Get the full relative path from webkitRelativePath
+                const relativePath = file.webkitRelativePath || file.name;
+                console.log("Processing file:", file.name, "with webkitRelativePath:", relativePath);
+
+                // Extract the directory path (everything except the filename)
+                const pathParts = relativePath.split('/');
+
+                // Create the folder path - everything except the last part (filename)
+                // For "Digital Marketing Posts/Truth/Week-1/2.png"
+                // We want path to be "/Digital Marketing Posts/Truth/Week-1"
+                let folderPath = '';
+                if (pathParts.length > 1) {
+                    // Remove the filename (last part) and join the rest
+                    const folderParts = pathParts.slice(0, -1);
+                    folderPath = '/' + folderParts.join('/');
+                } else {
+                    // File is in root of selected folder
+                    folderPath = '/' + selectedFolder.name;
+                }
+
+                // Create structure entry using the full webkitRelativePath as key
+                folderStructure[relativePath] = {
+                    path: folderPath,
+                    name: file.name
+                };
             }
+
+            // ✅ Add the folder structure as JSON string
+            formData.append('folderStructure', JSON.stringify(folderStructure));
+
+            console.log("✅ Generated folder structure:", folderStructure);
 
             if (folderId) {
                 formData.append("folderId", folderId);
@@ -110,12 +145,28 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                 formData.append("parentId", "null");
             }
 
-            // ✅ FIX: Use the correct endpoint format
+            // Log FormData contents for debugging
+            console.log("FormData contents:");
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`  ${key}: File - ${value.name} (${value.size} bytes)`);
+                } else {
+                    console.log(`  ${key}: ${value}`);
+                }
+            }
+
+            // Use the progress-enabled API method
             const uploadEndpoint = "files/upload/folder";
 
-            // ✅ Use the progress-enabled API method
             const res = await apiCall.uploadFolderWithProgress(uploadEndpoint, formData, (progress) => {
                 setFolderUploadProgress(progress);
+
+                // Update current uploading file based on progress
+                if (progress < 50) {
+                    setCurrentUploadingFile(selectedFolder.files[0]?.name || selectedFolder.name);
+                } else {
+                    setCurrentUploadingFile(selectedFolder.files[1]?.name || selectedFolder.name);
+                }
             });
 
             console.log("✅ Folder upload response:", res);
@@ -127,11 +178,16 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
 
         } catch (error) {
             console.error("❌ Error uploading folder:", error);
+            console.error("Error response data:", error.response?.data);
 
             if (error.response?.status === 403) {
                 toast.error("You don't have permission to upload folders to this location.");
             } else if (error.response?.status === 401) {
                 toast.error("You are not authorized to upload folders. Please log in again.");
+            } else if (error.response?.status === 400) {
+                const errorMessage = error.response?.data?.error || "Invalid folder structure";
+                console.error("400 Error details:", error.response?.data);
+                toast.error(`Folder upload failed: ${errorMessage}`);
             } else {
                 toast.error(`Folder upload failed: ${error.response?.data?.message || error.message}`);
             }
