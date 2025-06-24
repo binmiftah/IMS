@@ -94,6 +94,7 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
             console.log("Parent folder ID:", folderId);
 
             const formData = new FormData();
+
             formData.append("folderName", selectedFolder.name);
 
             if (folderId) {
@@ -102,6 +103,7 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
             } else {
                 formData.append("parentId", "null");
             }
+            console.log(formData)
 
             // Create the exact structure format expected by the API
             const structure = {};
@@ -145,11 +147,14 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                     console.log(`  ${key}: ${value}`);
                 }
             }
+            console.log("Structure object being sent:", structure);
 
             // Log the exact structure being sent
             console.log("Folder structure being sent (stringified):", JSON.stringify(structure));
 
-            const uploadEndpoint = "files/upload/folder";
+            const uploadEndpoint = folderId
+                ? `files/upload/folder/${folderId}`
+                : "files/upload/folder";
 
             const res = await apiCall.uploadFolderWithProgress(uploadEndpoint, formData, (progress) => {
                 setFolderUploadProgress(progress);

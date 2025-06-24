@@ -207,7 +207,7 @@ class ApiCall {
                 'Content-Type': 'multipart/form-data',
                 Authorization: `Bearer ${localStorage.getItem("token")}`
             },
-            timeout: 300000,
+            timeout: 30000000,
             onUploadProgress: (progressEvent) => {
                 const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
                 console.log(`Folder upload progress: ${percentCompleted}%`);
