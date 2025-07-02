@@ -281,8 +281,26 @@ const Files = () => {
     };
 
     const handleFileOpen = async (item) => {
-        setClickedItem(item);
-        setIsOpenFile((s) => !s);
+        try {
+            // Check if the file has a web view link or download link
+            if (item.webViewLink) {
+                // Open Google Drive or other service view link
+                window.open(item.webViewLink, '_blank');
+            } else if (item.webContentLink) {
+                // Open direct download/view link
+                window.open(item.webContentLink, '_blank');
+            } else if (item.downloadUrl) {
+                // Open download URL
+                window.open(item.downloadUrl, '_blank');
+            } else {
+                // Fallback: try to construct a download link using the API
+                const downloadUrl = `${apiCall.baseURL}/files/download/${item.id}`;
+                window.open(downloadUrl, '_blank');
+            }
+        } catch (error) {
+            console.error('Error opening file:', error);
+            toast.error('Failed to open file');
+        }
     };
 
     // Update handleCreateFolder to ensure it works with current folder context:

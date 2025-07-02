@@ -108,7 +108,7 @@ const Trash = () => {
 
                                     {item.itemType === 'FILE' && (<div></div>)}
                                     <span className="font-medium">
-										{item.file?.name || item.folder?.name || 'Unnamed'}
+										{item.file?.fileName || item.folder?.name || 'Unnamed'}
 									</span>
                                     <span className="text-sm text-gray-500">
 										Deleted on: {new Date(item.deletedAt).toLocaleDateString()}

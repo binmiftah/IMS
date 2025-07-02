@@ -9,7 +9,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
-import FileItem from '../../../component/FileItem';
 
 const UserFiles = () => {
     const { user } = useAuth();
@@ -277,18 +276,26 @@ const UserFiles = () => {
 
             if (permissionCheck.hasPermission) {
                 console.log("✅ Permission granted - opening file");
-                toast.success("File access granted", {
+
+                const fileData = permissionCheck.fileData?.data || permissionCheck.fileData || item;
+
+                // Try to open the file using available links
+                if (fileData.webViewLink) {
+                    window.open(fileData.webViewLink, '_blank');
+                } else if (fileData.webContentLink) {
+                    window.open(fileData.webContentLink, '_blank');
+                } else if (fileData.downloadUrl) {
+                    window.open(fileData.downloadUrl, '_blank');
+                } else {
+                    // Fallback: construct download link using the API
+                    const downloadUrl = `${apiCall.baseURL}/files/download/${fileData.id}`;
+                    window.open(downloadUrl, '_blank');
+                }
+
+                toast.success("File opened successfully", {
                     position: "top-right",
                     autoClose: 1500,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
                 });
-
-                // Use the fetched file data if available, otherwise use the original item
-                setClickedItem(permissionCheck.fileData || item);
-                setIsOpenFile(true);
             } else {
                 console.log("❌ Permission denied");
                 const errorMessage = permissionCheck.error?.response?.data?.message ||
@@ -297,21 +304,13 @@ const UserFiles = () => {
                 toast.error(errorMessage, {
                     position: "top-right",
                     autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
                 });
             }
         } catch (error) {
-            console.error("Unexpected error during permission check:", error);
-            toast.error("An error occurred while checking file access", {
+            console.error("Error opening file:", error);
+            toast.error("Failed to open file", {
                 position: "top-right",
                 autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
             });
         }
     };
@@ -1096,17 +1095,6 @@ const UserFiles = () => {
                                             {currentPath === '/' ? 'Root' : currentPath}
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* File Preview Area */}
-                            <div className="flex-1 p-4 overflow-auto bg-white">
-                                <div className="h-full flex items-center justify-center">
-                                    <FileItem
-                                        file={clickedItem}
-                                        isModal={true}
-                                        className="w-full h-full"
-                                    />
                                 </div>
                             </div>
                         </div>
