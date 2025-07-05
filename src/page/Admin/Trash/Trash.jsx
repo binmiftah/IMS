@@ -5,14 +5,14 @@ import Button from '../../../component/Button';
 import { MdRestore, MdDeleteForever, MdFolder } from 'react-icons/md';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from '../../../pkg/error/error';
-import {toast, ToastContainer} from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 
 const Trash = () => {
     const [trashedGroups, setTrashedGroups] = useState([]);
     const [trashModalOpen, setTrashModalOpen] = useState(false);
     const [selectedGroup, setSelectedGroup] = useState(null);
 
-    useEffect( () => {
+    useEffect(() => {
         fetchTrashedItems();
     }, []);
 
@@ -33,11 +33,19 @@ const Trash = () => {
 
     const handleRestore = async (item) => {
         try {
-            console.log(item)
-            const res = await apiCall.restoreItem(`trash/restore/${item.id}`, item);
+            console.log("Restoring item:", item);
+
+            // Create the restore data structure matching the API body format
+            const restoreData = {
+                type: item.itemType, // "FILE" or "FOLDER" - will be mapped to "type" in API call
+                itemId: item.file?.id || item.folder?.id // Will be mapped to "itemId" in API call
+            };
+
+            const res = await apiCall.restoreItem(item.id, restoreData);
             await fetchTrashedItems();
-            console.log(res)
-            toast.success(res.message,{
+            console.log("Restore result:", res);
+
+            toast.success(res.message || "Item restored successfully", {
                 position: "top-right",
                 autoClose: 2000,
                 hideProgressBar: false,
@@ -45,10 +53,16 @@ const Trash = () => {
                 pauseOnHover: true,
                 draggable: true,
                 progress: undefined,
-            })
+            });
+
             setTrashModalOpen(false);
 
         } catch (error) {
+            console.error("Restore error:", error);
+            toast.error("Failed to restore item", {
+                position: "top-right",
+                autoClose: 3000,
+            });
             handleError(error);
         }
     };
@@ -66,7 +80,7 @@ const Trash = () => {
         <div className="flex min-h-screen">
             <Navbar />
             <div className="w-4/5 bg-white flex flex-col">
-                <ToastContainer/>
+                <ToastContainer />
                 <ProfileBar />
                 <div className="flex-1 p-8">
                     <h2 className="text-2xl font-bold mb-6">Trash</h2>
@@ -80,8 +94,8 @@ const Trash = () => {
                                 >
                                     <MdFolder size={32} className="text-yellow-500 mb-2" />
                                     <span className="font-medium text-center">
-										{group?.user}
-									</span>
+                                        {group?.user}
+                                    </span>
                                     <span className="text-sm text-gray-500">{group.items.length} item(s)</span>
                                 </div>
                             ))
@@ -108,11 +122,11 @@ const Trash = () => {
 
                                     {item.itemType === 'FILE' && (<div></div>)}
                                     <span className="font-medium">
-										{item.file?.fileName || item.folder?.name || 'Unnamed'}
-									</span>
+                                        {item.file?.fileName || item.folder?.name || 'Unnamed'}
+                                    </span>
                                     <span className="text-sm text-gray-500">
-										Deleted on: {new Date(item.deletedAt).toLocaleDateString()}
-									</span>
+                                        Deleted on: {new Date(item.deletedAt).toLocaleDateString()}
+                                    </span>
                                     <div className="mt-2 flex space-x-2">
                                         <Button
                                             icon={<MdRestore size={20} />}
