@@ -224,23 +224,6 @@ const UserFiles = () => {
         setMoveModal({ open: true, file: item });
     };
 
-    const handleDelete = async (item) => {
-        try {
-            if (item.type === 'folder') {
-                await apiCall.deleteFolder(`files/folders/${item.id}`);
-            } else {
-                await apiCall.deleteFile(`files/${item.id}`);
-            }
-
-            // Refresh folder
-            await handleRefresh();
-            toast.success(`${item.type === 'folder' ? 'Folder' : 'File'} deleted successfully`);
-        } catch (error) {
-            console.error("Error deleting item:", error);
-            toast.error(`Failed to delete ${item.type === 'folder' ? 'folder' : 'file'}`);
-        }
-    };
-
     const checkFilePermission = async (fileId) => {
         try {
             console.log("=== Checking File Permission ===");
@@ -261,15 +244,6 @@ const UserFiles = () => {
     };
 
     const handleFileOpen = async (item) => {
-        console.log("=== File Open Attempt ===");
-        console.log("File item:", item);
-
-        // Show loading state
-        toast.info("Checking file access...", {
-            position: "top-right",
-            autoClose: 2000,
-        });
-
         try {
             // Check permission by trying to fetch the file
             const permissionCheck = await checkFilePermission(item.id);
@@ -280,15 +254,18 @@ const UserFiles = () => {
                 const fileData = permissionCheck.fileData?.data || permissionCheck.fileData || item;
 
                 // Try to open the file using available links
-                if (fileData.webViewLink) {
-                    window.open(fileData.webViewLink, '_blank');
-                } else if (fileData.webContentLink) {
-                    window.open(fileData.webContentLink, '_blank');
-                } else if (fileData.downloadUrl) {
-                    window.open(fileData.downloadUrl, '_blank');
+                if (item.webViewLink) {
+                    // Open Google Drive or other service view link
+                    window.open(item.webViewLink, '_blank');
+                } else if (item.webContentLink) {
+                    // Open direct download/view link
+                    window.open(item.webContentLink, '_blank');
+                } else if (item.downloadUrl) {
+                    // Open download URL
+                    window.open(item.downloadUrl, '_blank');
                 } else {
-                    // Fallback: construct download link using the API
-                    const downloadUrl = `${apiCall.baseURL}/files/download/${fileData.id}`;
+                    // Fallback: try to construct a download link using the API
+                    const downloadUrl = `${apiCall.baseURL}/files/download/${item.id}`;
                     window.open(downloadUrl, '_blank');
                 }
 
@@ -315,40 +292,36 @@ const UserFiles = () => {
         }
     };
 
-    const handleSort = (type, value) => {
-        setSortBy(prev => ({ ...prev, [type]: value }));
-        // Implement sorting logic here if needed
+    const handleDelete = async (item) => {
+        try {
+            if (item.type === 'folder') {
+                await apiCall.deleteFolder(`files/folders/${item.id}?resourceType=Folder`);
+            } else {
+                await apiCall.deleteFile(`files/file/${item.id}?resourceType=File`);
+            }
+
+            await handleRefresh();
+
+            const itemType = item.type === 'folder' ? 'Folder' : 'File';
+            const itemName = item.name || item.fileName;
+            toast.success(`${itemType} "${itemName}" deleted successfully and moved to trash`);
+
+        } catch (error) {
+            console.error("Error deleting item:", error);
+            const itemType = item.type === 'folder' ? 'folder' : 'file';
+            const itemName = item.name || item.fileName;
+
+            if (error.response?.data?.message) {
+                toast.error(`Failed to delete ${itemType}: ${error.response.data.message}`);
+            } else {
+                toast.error(`Failed to delete ${itemType} "${itemName}"`);
+            }
+        }
     };
 
-    // Add this function to handle clicking on current folder path
-    // const handleCurrentPathClick = async () => {
-    //     try {
-    //         // Force refresh current folder contents
-    //         if (currentFolderId) {
-    //             console.log("Refreshing current folder:", currentFolderId);
-    //             await refreshFolderContents(currentFolderId);
-
-    //             // Show user feedback
-    //             toast.info("Folder refreshed", {
-    //                 position: "top-right",
-    //                 autoClose: 2000,
-    //                 hideProgressBar: false,
-    //                 closeOnClick: true,
-    //                 pauseOnHover: true,
-    //                 draggable: true,
-    //             });
-    //         } else {
-    //             await getRootFiles();
-    //             toast.info("Root folder refreshed", {
-    //                 position: "top-right",
-    //                 autoClose: 2000,
-    //             });
-    //         }
-    //     } catch (error) {
-    //         console.error("Error refreshing current folder:", error);
-    //         handleError(error);
-    //     }
-    // };
+    const handleSort = (type, value) => {
+        setSortBy(prev => ({ ...prev, [type]: value }));
+    };
 
     const formatFileSize = (bytes) => {
         if (!bytes) return 'Unknown size';
@@ -640,7 +613,6 @@ const UserFiles = () => {
                                 />
                                 <span
                                     className="text-gray-600 hover:text-blue-600 cursor-pointer"
-                                    // onClick={handleCurrentPathClick}
                                     title="Click to refresh folder"
                                 >
                                     Current Path: {currentPath}
@@ -710,10 +682,6 @@ const UserFiles = () => {
                                             console.log("Navigating to folder:", item.name);
                                             handleNavigate(item);
                                         } else {
-                                            console.log("Attempting to open file:", item.name || item.fileName);
-                                            console.log("File ID:", item.id);
-
-                                            // Check permission by trying to fetch the file
                                             handleFileOpen(item);
                                         }
                                         console.log("=== End File Click Debug ===");
