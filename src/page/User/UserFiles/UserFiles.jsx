@@ -224,47 +224,146 @@ const UserFiles = () => {
         setMoveModal({ open: true, file: item });
     };
 
-    const checkFilePermission = async (fileId) => {
+    // Replace the checkFilePermission function with this enhanced version that uses existing data:
+
+    const checkFilePermission = (item, requiredPermission = 'OPEN_FILE') => {
         try {
-            console.log("=== Checking File Permission ===");
-            console.log("Attempting to fetch file with ID:", fileId);
+            console.log("=== Checking File Permission (from existing data) ===");
+            console.log("Item:", item);
+            console.log("Required Permission:", requiredPermission);
+            console.log("Current User:", user);
 
-            // Try to get the file by ID - this will fail if user doesn't have permission
-            const response = await apiCall.getFileById(`files/${fileId}`);
+            // For folders, check AclEntry
+            if (item.type === 'folder' && item.AclEntry) {
+                console.log("Checking folder permissions in AclEntry:", item.AclEntry);
 
-            console.log("✅ File permission check successful:", response);
-            return { hasPermission: true, fileData: response };
+                // Find the user's ACL entry
+                const userAcl = item.AclEntry.find(entry => entry.accountId === user?.id);
+
+                if (userAcl && userAcl.permissions) {
+                    console.log("User's folder permissions:", userAcl.permissions);
+
+                    const hasRequiredPermission = userAcl.permissions.includes(requiredPermission);
+                    console.log(`Has ${requiredPermission} permission:`, hasRequiredPermission);
+
+                    return {
+                        hasPermission: hasRequiredPermission,
+                        permissions: userAcl.permissions,
+                        reason: 'acl_folder',
+                        itemData: item
+                    };
+                }
+            }
+
+            // For files, check acls array
+            if (item.type !== 'folder' && item.acls) {
+                console.log("Checking file permissions in acls:", item.acls);
+
+                // Find the user's ACL entry
+                const userAcl = item.acls.find(entry => entry.accountId === user?.id);
+
+                if (userAcl && userAcl.permissions) {
+                    console.log("User's file permissions:", userAcl.permissions);
+
+                    const hasRequiredPermission = userAcl.permissions.includes(requiredPermission);
+                    console.log(`Has ${requiredPermission} permission:`, hasRequiredPermission);
+
+                    return {
+                        hasPermission: hasRequiredPermission,
+                        permissions: userAcl.permissions,
+                        reason: 'acl_file',
+                        itemData: item
+                    };
+                }
+            }
+
+            // Check if user owns the item (owners have all permissions)
+            if (item.accountId === user?.id) {
+                console.log("✅ User owns the item - all permissions granted");
+                return {
+                    hasPermission: true,
+                    permissions: ['FULL_ACCESS'],
+                    reason: 'owner',
+                    itemData: item
+                };
+            }
+
+            console.log("❌ No permissions found for user");
+            return {
+                hasPermission: false,
+                permissions: [],
+                reason: 'no_permission',
+                error: {
+                    response: {
+                        data: {
+                            message: `You don't have ${requiredPermission} permission for this item`
+                        }
+                    }
+                }
+            };
+
         } catch (error) {
-            console.log("❌ File permission check failed:", error);
-            console.log("Error status:", error.response?.status);
-            console.log("Error message:", error.response?.data?.message || error.message);
-
-            return { hasPermission: false, error: error };
+            console.error("Error checking file permission:", error);
+            return {
+                hasPermission: false,
+                permissions: [],
+                reason: 'error',
+                error: error
+            };
         }
+    };
+
+    // Add helper function to check if user has a specific permission for an item
+    const hasItemPermission = (item, permission) => {
+        if (!user || !user.id) return false;
+
+        // Check if user owns the item
+        if (item.accountId === user.id) return true;
+
+        // For folders, check AclEntry
+        if (item.type === 'folder' && item.AclEntry) {
+            const userAcl = item.AclEntry.find(entry => entry.accountId === user.id);
+            if (userAcl && userAcl.permissions) {
+                return userAcl.permissions.includes(permission);
+            }
+        }
+
+        // For files, check acls array
+        if (item.type !== 'folder' && item.acls) {
+            const userAcl = item.acls.find(entry => entry.accountId === user.id);
+            if (userAcl && userAcl.permissions) {
+                return userAcl.permissions.includes(permission);
+            }
+        }
+
+        return false;
     };
 
     const handleFileOpen = async (item) => {
         try {
-            // Check permission by trying to fetch the file
-            const permissionCheck = await checkFilePermission(item.id);
+            console.log("=== Opening File ===");
+            console.log("Item:", item);
+
+            // Check OPEN_FILE permission using existing data
+            const permissionCheck = checkFilePermission(item, 'OPEN_FILE');
 
             if (permissionCheck.hasPermission) {
-                console.log("✅ Permission granted - opening file");
-
-                const fileData = permissionCheck.fileData?.data || permissionCheck.fileData || item;
+                console.log("✅ OPEN_FILE permission granted");
+                console.log("User permissions:", permissionCheck.permissions);
+                console.log("Permission reason:", permissionCheck.reason);
 
                 // Try to open the file using available links
                 if (item.webViewLink) {
-                    // Open Google Drive or other service view link
+                    console.log("Opening with webViewLink:", item.webViewLink);
                     window.open(item.webViewLink, '_blank');
                 } else if (item.webContentLink) {
-                    // Open direct download/view link
+                    console.log("Opening with webContentLink:", item.webContentLink);
                     window.open(item.webContentLink, '_blank');
                 } else if (item.downloadUrl) {
-                    // Open download URL
+                    console.log("Opening with downloadUrl:", item.downloadUrl);
                     window.open(item.downloadUrl, '_blank');
                 } else {
-                    // Fallback: try to construct a download link using the API
+                    console.log("Using fallback download URL");
                     const downloadUrl = `${apiCall.baseURL}/files/download/${item.id}`;
                     window.open(downloadUrl, '_blank');
                 }
@@ -274,9 +373,9 @@ const UserFiles = () => {
                     autoClose: 1500,
                 });
             } else {
-                console.log("❌ Permission denied");
+                console.log("❌ OPEN_FILE permission denied");
                 const errorMessage = permissionCheck.error?.response?.data?.message ||
-                    "You don't have permission to access this file";
+                    "You don't have permission to open this file";
 
                 toast.error(errorMessage, {
                     position: "top-right",
@@ -294,6 +393,45 @@ const UserFiles = () => {
 
     const handleDelete = async (item) => {
         try {
+            console.log("=== Deleting Item ===");
+            console.log("Item:", item);
+
+            // Check DELETE permission using existing data
+            const deletePermission = item.type === 'folder' ? 'DELETE_FOLDER' : 'DELETE_FILE';
+            const permissionCheck = checkFilePermission(item, deletePermission);
+
+            if (!permissionCheck.hasPermission) {
+                console.log(`❌ ${deletePermission} permission denied`);
+                const errorMessage = permissionCheck.error?.response?.data?.message ||
+                    `You don't have permission to delete this ${item.type === 'folder' ? 'folder' : 'file'}`;
+
+                toast.error(errorMessage, {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
+                return;
+            }
+
+            console.log(`✅ ${deletePermission} permission granted`);
+            console.log("User permissions:", permissionCheck.permissions);
+
+            // Show confirmation dialog
+            const confirmDelete = window.confirm(
+                `Are you sure you want to delete "${item.name || item.fileName}"? This action cannot be undone.`
+            );
+
+            if (!confirmDelete) {
+                console.log("User cancelled deletion");
+                return;
+            }
+
+            // Show deleting state
+            const itemType = item.type === 'folder' ? 'folder' : 'file';
+            toast.info(`Deleting ${itemType}...`, {
+                position: "top-right",
+                autoClose: 2000,
+            });
+
             if (item.type === 'folder') {
                 await apiCall.deleteFolder(`files/folders/${item.id}?resourceType=Folder`);
             } else {
@@ -302,19 +440,38 @@ const UserFiles = () => {
 
             await handleRefresh();
 
-            const itemType = item.type === 'folder' ? 'Folder' : 'File';
+            const itemTypeCap = item.type === 'folder' ? 'Folder' : 'File';
             const itemName = item.name || item.fileName;
-            toast.success(`${itemType} "${itemName}" deleted successfully and moved to trash`);
+            toast.success(`${itemTypeCap} "${itemName}" deleted successfully and moved to trash`, {
+                position: "top-right",
+                autoClose: 3000,
+            });
 
         } catch (error) {
             console.error("Error deleting item:", error);
             const itemType = item.type === 'folder' ? 'folder' : 'file';
             const itemName = item.name || item.fileName;
 
-            if (error.response?.data?.message) {
-                toast.error(`Failed to delete ${itemType}: ${error.response.data.message}`);
+            if (error.response?.status === 403) {
+                toast.error(`You don't have permission to delete this ${itemType}`, {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
+            } else if (error.response?.status === 404) {
+                toast.error(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} not found or already deleted`, {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
+            } else if (error.response?.data?.message) {
+                toast.error(`Failed to delete ${itemType}: ${error.response.data.message}`, {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
             } else {
-                toast.error(`Failed to delete ${itemType} "${itemName}"`);
+                toast.error(`Failed to delete ${itemType} "${itemName}"`, {
+                    position: "top-right",
+                    autoClose: 3000,
+                });
             }
         }
     };
