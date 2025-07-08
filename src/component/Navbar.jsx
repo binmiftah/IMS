@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { MdDashboard, MdPeople, MdGroupWork, MdDelete, MdSettings, MdLogout, MdSecurity } from 'react-icons/md';
 import { toast } from "react-toastify";
+import LogoUpload from './LogoUpload';
 
 const Navbar = () => {
     const navigate = useNavigate();
@@ -40,8 +41,8 @@ const Navbar = () => {
     return (
         <div className="w-1/5 bg-black text-white flex flex-col justify-between">
             <div>
-                <div className="p-4 text-center">
-                    <h1 className="text-2xl font-bold">Logo</h1>
+                <div className="p-4 text-center border-b border-gray-800">
+                    <LogoUpload isAdmin={true} />
                 </div>
 
                 <ul className="mt-8 space-y-4">
@@ -115,10 +116,27 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                <button className="flex justify-center w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" onClick={handleLogout}>
-                    <MdLogout className="mr-3" size={24} />
-                    Log Out
-                </button>
+                <div className="p-4 border-t border-gray-800">
+                    <div className="flex items-center justify-center mb-3">
+                        <img
+                            src="https://gemzsoftware.com/wp-content/uploads/2023/03/gemz-logo-transparent.png"
+                            alt="Company Logo"
+                            className="w-8 h-8 rounded-full object-cover"
+                            onError={(e) => {
+                                // Fallback if logo fails to load
+                                e.target.style.display = 'none';
+                            }}
+                        />
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs text-gray-400">
+                            © {new Date().getFullYear()} Gemz Software Innovative
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            All rights reserved
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );

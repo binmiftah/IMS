@@ -9,7 +9,6 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [isUploadFolderModalOpen, setIsUploadFolderModalOpen] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
     const [selectedFolder, setSelectedFolder] = useState(null);
     const [folderName, setFolderName] = useState('');
     const [showUploadDropdown, setShowUploadDropdown] = useState(false);
@@ -20,6 +19,11 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
     const [folderUploadProgress, setFolderUploadProgress] = useState(0);
     const [isFolderUploading, setIsFolderUploading] = useState(false);
     const [currentUploadingFile, setCurrentUploadingFile] = useState('');
+    
+    // ✅ ADD MULTIPLE FILES STATE VARIABLES
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [currentFileIndex, setCurrentFileIndex] = useState(0);
+    const [overallProgress, setOverallProgress] = useState(0);
 
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
@@ -221,10 +225,12 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
 
     // Keep all other existing functions exactly the same...
     const handleUploadSubmit = async () => {
-        if (!selectedFile) return;
+        if (selectedFiles.length === 0) return;
 
         setIsUploading(true);
         setUploadProgress(0);
+        setOverallProgress(0);
+        setCurrentFileIndex(0);
 
         try {
             let folderId = currentFolderId;
@@ -233,36 +239,75 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                 folderId = getFolderId();
             }
 
-            console.log("=== FILE UPLOAD STARTING ===");
-            console.log("Selected file:", selectedFile.name);
-            console.log("File size:", (selectedFile.size / 1024 / 1024).toFixed(2), "MB");
+            console.log("=== FILE(S) UPLOAD STARTING ===");
+            console.log("Files to upload:", selectedFiles.length);
+            console.log("Files:", selectedFiles.map(f => f.name));
 
-            const formData = new FormData();
-            formData.append("file", selectedFile);
+            if (selectedFiles.length > 1) {
+                const totalFiles = selectedFiles.length;
+                let completedFiles = 0;
 
-            if (folderId) {
-                formData.append("folderId", folderId);
-                formData.append("parentId", folderId);
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    setCurrentFileIndex(i);
+
+                    console.log(`Uploading file ${i + 1}/${totalFiles}: ${file.name}`);
+
+                    const formData = new FormData();
+                    formData.append("files", file);
+
+                    if (folderId) {
+                        formData.append("folderId", folderId);
+                        formData.append("parentId", folderId);
+                    } else {
+                        formData.append("parentId", "null");
+                    }
+
+                    const uploadEndpoint = folderId ? `files/upload/file/${folderId}` : "files/upload/file";
+
+                    await apiCall.uploadFileWithProgress(uploadEndpoint, formData, (progress) => {
+                        setUploadProgress(progress);
+                        
+                        const fileProgress = (completedFiles / totalFiles) * 100;
+                        const currentFileProgress = (progress / totalFiles);
+                        const overall = fileProgress + currentFileProgress;
+                        setOverallProgress(Math.round(overall));
+                    });
+
+                    completedFiles++;
+                    console.log(`✅ File ${i + 1}/${totalFiles} uploaded: ${file.name}`);
+                }
+
+                toast.success(`${totalFiles} files uploaded successfully!`);
             } else {
-                formData.append("parentId", "null");
+                const file = selectedFiles[0];
+
+                const formData = new FormData();
+                formData.append("files", file);
+
+                if (folderId) {
+                    formData.append("folderId", folderId);
+                    formData.append("parentId", folderId);
+                } else {
+                    formData.append("parentId", "null");
+                }
+
+                const uploadEndpoint = folderId ? `files/upload/file/${folderId}` : "files/upload/file";
+
+                await apiCall.uploadFileWithProgress(uploadEndpoint, formData, (progress) => {
+                    setUploadProgress(progress);
+                    setOverallProgress(progress);
+                });
+
+                toast.success(`File "${file.name}" uploaded successfully!`);
             }
-
-            const uploadEndpoint = folderId ? `files/upload/file/${folderId}` : "files/upload/file";
-
-            // ✅ Use the new progress-enabled API method
-            const res = await apiCall.uploadFileWithProgress(uploadEndpoint, formData, (progress) => {
-                setUploadProgress(progress);
-            });
-
-            console.log("✅ File upload response:", res);
-            toast.success(`File "${selectedFile.name}" uploaded successfully!`);
 
             if (onActionComplete) {
                 onActionComplete();
             }
 
         } catch (error) {
-            console.error("❌ Error uploading file:", error);
+            console.error("❌ Error uploading file(s):", error);
 
             if (error.response?.status === 403) {
                 toast.error("You don't have permission to upload files to this location.");
@@ -278,8 +323,10 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
         } finally {
             setIsUploading(false);
             setUploadProgress(0);
+            setOverallProgress(0);
+            setCurrentFileIndex(0);
             setIsUploadModalOpen(false);
-            setSelectedFile(null);
+            setSelectedFiles([]);
         }
     };
 
@@ -376,34 +423,51 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                             onClick={() => {
                                 if (!isUploading) {
                                     setIsUploadModalOpen(false);
-                                    setSelectedFile(null);
+                                    setSelectedFiles([]);
                                 }
                             }}
                             disabled={isUploading}
                         >
                             ✕
                         </button>
-                        <h3 className="text-xl font-semibold mb-5 text-gray-800">Upload File</h3>
+                        <h3 className="text-xl font-semibold mb-5 text-gray-800">
+                            Upload File{selectedFiles.length > 1 ? 's' : ''}
+                        </h3>
 
                         {/* ✅ Progress bar when uploading */}
                         {isUploading && (
                             <div className="mb-4">
                                 <div className="flex justify-between mb-2">
                                     <span className="text-sm font-medium text-blue-700">
-                                        Uploading {selectedFile?.name}...
+                                        {selectedFiles.length > 1 
+                                            ? `Uploading ${selectedFiles[currentFileIndex]?.name} (${currentFileIndex + 1}/${selectedFiles.length})`
+                                            : `Uploading ${selectedFiles[0]?.name}...`
+                                        }
                                     </span>
-                                    <span className="text-sm font-medium text-blue-700">{uploadProgress}%</span>
+                                    <span className="text-sm font-medium text-blue-700">
+                                        {selectedFiles.length > 1 ? `${overallProgress}%` : `${uploadProgress}%`}
+                                    </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-3">
                                     <div
                                         className="bg-blue-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
-                                        style={{ width: `${uploadProgress}%` }}
+                                        style={{ width: `${selectedFiles.length > 1 ? overallProgress : uploadProgress}%` }}
                                     >
-                                        {uploadProgress > 10 && (
-                                            <span className="text-xs text-white font-medium">{uploadProgress}%</span>
+                                        {(selectedFiles.length > 1 ? overallProgress : uploadProgress) > 10 && (
+                                            <span className="text-xs text-white font-medium">
+                                                {selectedFiles.length > 1 ? overallProgress : uploadProgress}%
+                                            </span>
                                         )}
                                     </div>
                                 </div>
+                                {selectedFiles.length > 1 && (
+                                    <div className="w-full bg-gray-100 rounded-full h-1 mt-1">
+                                        <div
+                                            className="bg-blue-400 h-1 rounded-full transition-all duration-300"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -413,11 +477,15 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                                     type="file"
                                     id="file-upload"
                                     className="hidden"
-                                    onChange={(e) => setSelectedFile(e.target.files[0])}
+                                    multiple
+                                    onChange={(e) => {
+                                        const files = Array.from(e.target.files);
+                                        setSelectedFiles(files);
+                                    }}
                                     disabled={isUploading}
                                 />
 
-                                {!selectedFile ? (
+                                {selectedFiles.length === 0 ? (
                                     <>
                                         <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -426,36 +494,74 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                                             htmlFor="file-upload"
                                             className={`cursor-pointer text-blue-600 hover:text-blue-800 font-medium ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
-                                            Select a file
+                                            Select file(s)
                                         </label>
                                         <p className="text-sm text-gray-500 mt-1">or drag and drop here</p>
+                                        <p className="text-xs text-gray-400 mt-1">Hold Ctrl/Cmd to select multiple files</p>
                                     </>
                                 ) : (
                                     <div className="w-full">
-                                        <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200 mb-3">
-                                            <MdInsertDriveFile size={24} className="text-blue-500 mr-3" />
-                                            <div className="flex-1 truncate">
-                                                <p className="font-medium text-gray-800 truncate">{selectedFile.name}</p>
+                                        {selectedFiles.length > 0 ? (
+                                            <div className="space-y-2 mb-3">
+                                                <h4 className="font-medium text-gray-800">
+                                                    Selected Files ({selectedFiles.length})
+                                                </h4>
+                                                <div className="max-h-32 overflow-y-auto space-y-1">
+                                                    {selectedFiles.map((file, index) => (
+                                                        <div key={index} className="flex items-center p-2 bg-blue-50 rounded border border-blue-200">
+                                                            <MdInsertDriveFile size={20} className="text-blue-500 mr-2" />
+                                                            <div className="flex-1 truncate">
+                                                                <p className="text-sm font-medium text-gray-800 truncate">{file.name}</p>
+                                                                <p className="text-xs text-gray-500">
+                                                                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                                                                </p>
+                                                            </div>
+                                                            {!isUploading && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newFiles = selectedFiles.filter((_, i) => i !== index);
+                                                                        setSelectedFiles(newFiles);
+                                                                    }}
+                                                                    className="text-gray-500 hover:text-red-500 ml-2"
+                                                                >
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                                 <p className="text-xs text-gray-500">
-                                                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                                    Total size: {(selectedFiles.reduce((total, file) => total + file.size, 0) / 1024 / 1024).toFixed(2)} MB
                                                 </p>
                                             </div>
-                                            {!isUploading && (
-                                                <button
-                                                    onClick={() => setSelectedFile(null)}
-                                                    className="text-gray-500 hover:text-red-500 ml-2"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                                                    </svg>
-                                                </button>
-                                            )}
-                                        </div>
+                                        ) : selectedFiles.length === 1 ? (
+                                            <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200 mb-3">
+                                                <MdInsertDriveFile size={24} className="text-blue-500 mr-3" />
+                                                <div className="flex-1 truncate">
+                                                    <p className="font-medium text-gray-800 truncate">{selectedFiles[0].name}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {(selectedFiles[0].size / 1024 / 1024).toFixed(2)} MB
+                                                    </p>
+                                                </div>
+                                                {!isUploading && (
+                                                    <button
+                                                        onClick={() => setSelectedFiles([])}
+                                                        className="text-gray-500 hover:text-red-500 ml-2"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : null}
                                         <p className="text-sm text-gray-600 mb-2">
-                                            File will be uploaded to: <span className="font-medium">{currentFolderId ? "Current folder" : "Root folder"}</span>
+                                            File{selectedFiles.length > 1 ? 's' : ''} will be uploaded to: <span className="font-medium">{currentFolderId ? "Current folder" : "Root folder"}</span>
                                         </p>
                                         <p className="text-xs text-gray-500 italic">
-                                            Note: If a file with this name already exists, it will be automatically renamed.
+                                            Note: If files with these names already exist, they will be automatically renamed.
                                         </p>
                                     </div>
                                 )}
@@ -467,21 +573,24 @@ const ActionButtons = ({ onActionComplete, getFolderId, getFileId, checkUploadPe
                                 className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-800 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => {
                                     setIsUploadModalOpen(false);
-                                    setSelectedFile(null);
+                                    setSelectedFiles([]);
                                 }}
                                 disabled={isUploading}
                             >
                                 Cancel
                             </button>
                             <button
-                                className={`px-4 py-2 rounded text-white font-medium transition-colors ${selectedFile && !isUploading
+                                className={`px-4 py-2 rounded text-white font-medium transition-colors ${(selectedFiles.length > 0 && !isUploading)
                                     ? 'bg-blue-600 hover:bg-blue-700'
                                     : 'bg-blue-300 cursor-not-allowed'
                                     }`}
-                                disabled={!selectedFile || isUploading}
+                                disabled={selectedFiles.length === 0 || isUploading}
                                 onClick={handleUploadSubmit}
                             >
-                                {isUploading ? `Uploading ${uploadProgress}%` : 'Upload'}
+                                {isUploading 
+                                    ? (selectedFiles.length > 1 ? `Uploading ${overallProgress}%` : `Uploading ${uploadProgress}%`)
+                                    : `Upload ${selectedFiles.length > 1 ? `${selectedFiles.length} Files` : 'File'}`
+                                }
                             </button>
                         </div>
                     </div>

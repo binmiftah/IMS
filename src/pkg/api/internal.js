@@ -187,44 +187,44 @@ class ApiCall {
 
     // ✅ ADD FOLDER UPLOAD WITH PROGRESS
     async uploadFolderWithProgress(urlPath, data, onProgress) {
-    try {
-        console.log("📁 Starting folder upload with progress tracking");
-        console.log("URL path:", urlPath);
-        console.log("FormData entries:");
+        try {
+            console.log("📁 Starting folder upload with progress tracking");
+            console.log("URL path:", urlPath);
+            console.log("FormData entries:");
 
-        // Log FormData contents for debugging
-        for (let [key, value] of data.entries()) {
-            if (value instanceof File) {
-                console.log(`  ${key}: File - ${value.name} (${value.size} bytes)`);
-            } else {
-                console.log(`  ${key}: ${value}`);
-            }
-        }
-
-        // ✅ FIX: Add the resourceType parameter to match your API
-        const response = await this.instance2.post(`${urlPath}?resourceType=FOLDER`, data, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            },
-            timeout: 30000000,
-            onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                console.log(`Folder upload progress: ${percentCompleted}%`);
-                if (onProgress) {
-                    onProgress(percentCompleted);
+            // Log FormData contents for debugging
+            for (let [key, value] of data.entries()) {
+                if (value instanceof File) {
+                    console.log(`  ${key}: File - ${value.name} (${value.size} bytes)`);
+                } else {
+                    console.log(`  ${key}: ${value}`);
                 }
             }
-        });
 
-        console.log("✅ Folder upload with progress successful:", response.data);
-        return response.data;
-    } catch (error) {
-        console.error("❌ Folder upload with progress error:", error);
-        throw error;
+            // ✅ FIX: Add the resourceType parameter to match your API
+            const response = await this.instance2.post(`${urlPath}?resourceType=FOLDER`, data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                },
+                timeout: 30000000,
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    console.log(`Folder upload progress: ${percentCompleted}%`);
+                    if (onProgress) {
+                        onProgress(percentCompleted);
+                    }
+                }
+            });
+
+            console.log("✅ Folder upload with progress successful:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("❌ Folder upload with progress error:", error);
+            throw error;
+        }
+
     }
-    
-}
 
     async getFile(urlPath) {
         const hasParams = urlPath.includes('?');
@@ -638,16 +638,34 @@ class ApiCall {
         return response.data.data.trashedItems
     }
 
-    async restoreItem(url, item) {
-        const response = await this.instance1.put(url, {
-            type: item.itemType,
-            folderId: item.folderId
-        }, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
+    async restoreItem(trashId, data) {
+        try {
+            console.log("Restoring item with trash ID:", trashId);
+            console.log("Restore data:", data);
+
+            // Use axios.request() method to properly send body with GET request
+            const response = await axios({
+                method: 'PUT',
+                url: `${this.instance2.defaults.baseURL}/files/file/restore/${trashId}`,
+                data: {
+                    type: data.type, // "FILE" or "FOLDER"
+                    itemId: data.itemId
+                },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+
+            console.log("Restore response:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error restoring item:", error);
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
             }
-        })
-        return response
+            throw error;
+        }
     }
 
     /**

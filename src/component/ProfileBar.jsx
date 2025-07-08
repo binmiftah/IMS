@@ -1,41 +1,53 @@
-import React from 'react'
-import { MdSearch, MdNotifications } from 'react-icons/md'
+import React, {useState, useEffect} from 'react'
+import { MdNotifications, MdLogout } from 'react-icons/md'
+import { useNavigate } from 'react-router-dom'
 import Button from './Button'
 
+
 const ProfileBar = ({ onSearch }) => {
+    const navigate = useNavigate()
+    const [loggedInUser, setLoggedInUser] = useState(null);
+
+    useEffect(() => {
+        // Load user data from localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            const user = JSON.parse(userData);
+            setLoggedInUser(user);
+        }
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.clear()
+        navigate('/login')
+    }
+
     return (
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
+            {/* User Name Section */}
             <div className="flex items-center">
-                <div className="relative">
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        onChange={(e) => onSearch && onSearch(e.target.value)}  
-                        className="w-96 px-4 py-2 pr-10 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-200"
-                    />
-                    <Button
-                        variant="icon"
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                        icon={<MdSearch size={20} />}
-                    />
+                <div className="flex items-center space-x-3">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-800">
+                            {loggedInUser?.fullName || 'User'}
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                            {loggedInUser?.email || 'user@example.com'}
+                        </p>
+                    </div>
                 </div>
             </div>
 
+            {/* Right Side Actions */}
             <div className="flex items-center space-x-4">
                 <Button
-                    variant="icon"
-                    className="relative p-2"
+                    variant="secondary"
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                 >
-                    <MdNotifications size={24} />
-                    <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                        3
-                    </span>
+                    <MdLogout size={20} />
+                    <span>Logout</span>
                 </Button>
-                <img
-                    src="https://images.unsplash.com/photo-1543610892-0b1f7e6d8ac1?q=80&w=1856&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                    alt="Profile"
-                    className="w-10 h-10 rounded-full object-cover cursor-pointer"
-                />
             </div>
         </div>
     )
