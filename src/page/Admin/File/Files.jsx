@@ -330,7 +330,6 @@ const Files = () => {
         }
     };
 
-
     // Add this function to handle clicking on current folder path
     const handleCurrentPathClick = async () => {
         try {
@@ -393,8 +392,6 @@ const Files = () => {
 
     }, [activeDropdown])
 
-
-
     useEffect(() => {
         getRootFiles();
         const handleClickOutside = () => setActiveDropdown(null);
@@ -402,7 +399,6 @@ const Files = () => {
         return () => document.removeEventListener('click', handleClickOutside);
 
     }, []);
-
 
     // Add this useEffect to debug folder state changes
     useEffect(() => {
