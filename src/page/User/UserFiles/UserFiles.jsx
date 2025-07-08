@@ -433,9 +433,9 @@ const UserFiles = () => {
             });
 
             if (item.type === 'folder') {
-                await apiCall.deleteFolder(`files/folders/${item.id}?resourceType=Folder`);
+                await apiCall.deleteFolder(`files/folders/${item.id}?resourceType=FOLDER`);
             } else {
-                await apiCall.deleteFile(`files/file/${item.id}?resourceType=File`);
+                await apiCall.deleteFile(`files/file/${item.id}?resourceType=FILE`);
             }
 
             await handleRefresh();
