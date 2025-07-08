@@ -1682,42 +1682,46 @@ const MemberPermissions = () => {
                             ))}
                           </div>
 
-                          {/* Folder Permissions Section */}
-                          <h5 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mt-3 mb-1">Folder Permissions</h5>
-                          <div className="grid grid-cols-2 gap-2">
-                            {FOLDER_PERMISSIONS.map(perm => (
-                              <label key={perm} className="flex items-center text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={currentResourcePermissions.includes(perm)}
-                                  onChange={e => {
-                                    const isChecked = e.target.checked;
-                                    let newPerms = [...currentResourcePermissions];
-                                    if (isChecked) {
-                                      if (!newPerms.includes(perm)) newPerms.push(perm);
-                                    } else {
-                                      newPerms = newPerms.filter(p => p !== perm);
-                                    }
+                          {/* Folder Permissions Section - Only show for folders */}
+                          {isFolder && (
+                            <>
+                              <h5 className="text-xs font-semibold text-purple-600 uppercase tracking-wider mt-3 mb-1">Folder Permissions</h5>
+                              <div className="grid grid-cols-2 gap-2">
+                                {FOLDER_PERMISSIONS.map(perm => (
+                                  <label key={perm} className="flex items-center text-sm">
+                                    <input
+                                      type="checkbox"
+                                      checked={currentResourcePermissions.includes(perm)}
+                                      onChange={e => {
+                                        const isChecked = e.target.checked;
+                                        let newPerms = [...currentResourcePermissions];
+                                        if (isChecked) {
+                                          if (!newPerms.includes(perm)) newPerms.push(perm);
+                                        } else {
+                                          newPerms = newPerms.filter(p => p !== perm);
+                                        }
 
-                                    // ✅ FIXED: Update the correct state based on resource type
-                                    if (isFolder) {
-                                      setFolderPermissions(prev => ({
-                                        ...prev,
-                                        [resourceId]: newPerms
-                                      }));
-                                    } else {
-                                      setFilePermissions(prev => ({
-                                        ...prev,
-                                        [resourceId]: newPerms
-                                      }));
-                                    }
-                                  }}
-                                  className="form-checkbox h-4 w-4 text-purple-600 mr-2"
-                                />
-                                {perm.replace(/_/g, " ")}
-                              </label>
-                            ))}
-                          </div>
+                                        // ✅ FIXED: Update the correct state based on resource type
+                                        if (isFolder) {
+                                          setFolderPermissions(prev => ({
+                                            ...prev,
+                                            [resourceId]: newPerms
+                                          }));
+                                        } else {
+                                          setFilePermissions(prev => ({
+                                            ...prev,
+                                            [resourceId]: newPerms
+                                          }));
+                                        }
+                                      }}
+                                      className="form-checkbox h-4 w-4 text-purple-600 mr-2"
+                                    />
+                                    {perm.replace(/_/g, " ")}
+                                  </label>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </div>
                       );
                     })}
