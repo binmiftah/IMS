@@ -43,11 +43,6 @@ const UserNavbar = () => {
     }, []);
 
 
-    const handleLogout = () => {
-        localStorage.removeItem('user');
-        navigate('/login');
-    };
-
     return (
         <nav className="w-1/5 bg-black text-white flex flex-col justify-between">
             <div className="flex flex-col h-full">
