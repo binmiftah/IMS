@@ -15,6 +15,8 @@ import {useAuth} from "../../../context/AuthContext.jsx";
 const Dashboard = () => {
     const { user } = useAuth();
     const [auditLogs, setAuditLogs] = useState([]);
+    const [filteredAuditLogs, setFilteredAuditLogs] = useState([]);
+    const [auditSearchTerm, setAuditSearchTerm] = useState('');
     const uploadModalRef = useRef(null);
     const folderModalRef = useRef(null);
     const navigate = useNavigate();
@@ -35,6 +37,7 @@ const Dashboard = () => {
           const result = await apiCall.allAuditLogs("/auditlog")
           console.log(result.data.logs)
           setAuditLogs(result.data.logs);
+          setFilteredAuditLogs(result.data.logs);
       }catch (error) {
           handleError(error);
       }
@@ -95,10 +98,34 @@ const Dashboard = () => {
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = auditLogs.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(auditLogs.length / itemsPerPage);
+    const currentItems = filteredAuditLogs.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredAuditLogs.length / itemsPerPage);
     const handlePageChange = (pageNumber) => {
         setCurrentPage(pageNumber);
+    };
+
+    // Handle audit log search
+    const handleAuditSearch = (searchTerm) => {
+        setAuditSearchTerm(searchTerm);
+        setCurrentPage(1); // Reset to first page when searching
+        
+        if (searchTerm.trim()) {
+            const filtered = auditLogs.filter((log) => {
+                const email = log.actor?.email?.toLowerCase() || '';
+                const action = log.action?.toLowerCase() || '';
+                const filePath = log.file?.filePath?.toLowerCase() || '';
+                const folderPath = log.folder?.fullPath?.toLowerCase() || '';
+                const searchLower = searchTerm.toLowerCase();
+                
+                return email.includes(searchLower) || 
+                       action.includes(searchLower) || 
+                       filePath.includes(searchLower) || 
+                       folderPath.includes(searchLower);
+            });
+            setFilteredAuditLogs(filtered);
+        } else {
+            setFilteredAuditLogs(auditLogs);
+        }
     };
 
     const handleSearch = (searchTerm) => {
@@ -133,7 +160,43 @@ const Dashboard = () => {
                     <ActionButtons onActionComplete={fetchAuditLog} />
                     {/* Activity Table */}
                     <div className="bg-white rounded-lg shadow-lg p-6">
-                        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold">Recent Activity</h2>
+                            
+                            {/* Audit Log Search Bar */}
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search audit logs..."
+                                    value={auditSearchTerm}
+                                    onChange={(e) => handleAuditSearch(e.target.value)}
+                                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                                />
+                                {auditSearchTerm && (
+                                    <button
+                                        onClick={() => handleAuditSearch('')}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    >
+                                        <svg className="h-4 w-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Search Results Info */}
+                        {auditSearchTerm && (
+                            <div className="mb-4 text-sm text-gray-600">
+                                Showing {filteredAuditLogs.length} result{filteredAuditLogs.length !== 1 ? 's' : ''} for "{auditSearchTerm}"
+                            </div>
+                        )}
+                        
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -173,7 +236,9 @@ const Dashboard = () => {
                                             </td>
                                         </tr>
                                     )) : <tr>
-                                        <td colSpan={4} className="text-center w-full p-5" >No Data Found</td>
+                                        <td colSpan={4} className="text-center w-full p-5">
+                                            {auditSearchTerm ? 'No matching audit logs found' : 'No Data Found'}
+                                        </td>
                                     </tr>}
                                 </tbody>
                             </table>
@@ -203,9 +268,10 @@ const Dashboard = () => {
                                         <p className="text-sm text-gray-700">
                                             Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
                                             <span className="font-medium">
-                                                {Math.min(indexOfLastItem, auditLogs.length)}
+                                                {Math.min(indexOfLastItem, filteredAuditLogs.length)}
                                             </span>{' '}
-                                            of <span className="font-medium">{auditLogs.length}</span> results
+                                            of <span className="font-medium">{filteredAuditLogs.length}</span> results
+                                            {auditSearchTerm && <span className="text-gray-500"> (filtered from {auditLogs.length} total)</span>}
                                         </p>
                                     </div>
                                     <div>
