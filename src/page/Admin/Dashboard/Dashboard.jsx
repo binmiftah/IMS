@@ -34,12 +34,48 @@ const Dashboard = () => {
 
     // Real-time updates for audit logs
     useRealTimeFiles({
-        onFileUploaded: () => fetchAuditLog(),
-        onFileDeleted: () => fetchAuditLog(),
-        onFolderCreated: () => fetchAuditLog(),
-        onFolderDeleted: () => fetchAuditLog(),
-        onPermissionsUpdated: () => fetchAuditLog(),
-        onUserAction: () => fetchAuditLog()
+        onFileUploaded: () => {
+            try {
+                fetchAuditLog();
+            } catch (error) {
+                console.error('Error fetching audit logs after file upload:', error);
+            }
+        },
+        onFileDeleted: () => {
+            try {
+                fetchAuditLog();
+            } catch (error) {
+                console.error('Error fetching audit logs after file deletion:', error);
+            }
+        },
+        onFolderCreated: () => {
+            try {
+                fetchAuditLog();
+            } catch (error) {
+                console.error('Error fetching audit logs after folder creation:', error);
+            }
+        },
+        onFolderDeleted: () => {
+            try {
+                fetchAuditLog();
+            } catch (error) {
+                console.error('Error fetching audit logs after folder deletion:', error);
+            }
+        },
+        onPermissionsUpdated: () => {
+            try {
+                fetchAuditLog();
+            } catch (error) {
+                console.error('Error fetching audit logs after permissions update:', error);
+            }
+        },
+        onUserAction: () => {
+            try {
+                fetchAuditLog();
+            } catch (error) {
+                console.error('Error fetching audit logs after user action:', error);
+            }
+        }
     });
 
     // Fetch Audit Logs

@@ -36,28 +36,48 @@ const Files = () => {
     // Real-time file updates
     useRealTimeFiles({
         onFileUploaded: (data) => {
-            // If viewing the same folder or root, refresh the view
-            if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
-                currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+            try {
+                // If viewing the same folder or root, refresh the view
+                if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
+                    currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+                }
+            } catch (error) {
+                console.error('Error handling real-time file upload:', error);
             }
         },
         onFileDeleted: (data) => {
-            // Remove from current view if it exists
-            setItems(prev => prev.filter(item => item.id !== data.fileId));
+            try {
+                // Remove from current view if it exists
+                setItems(prev => prev.filter(item => item.id !== data.fileId));
+            } catch (error) {
+                console.error('Error handling real-time file deletion:', error);
+            }
         },
         onFolderCreated: (data) => {
-            // If viewing the same parent folder, refresh the view
-            if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
-                currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+            try {
+                // If viewing the same parent folder, refresh the view
+                if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
+                    currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+                }
+            } catch (error) {
+                console.error('Error handling real-time folder creation:', error);
             }
         },
         onFolderDeleted: (data) => {
-            // Remove from current view if it exists
-            setItems(prev => prev.filter(item => item.id !== data.folderId));
+            try {
+                // Remove from current view if it exists
+                setItems(prev => prev.filter(item => item.id !== data.folderId));
+            } catch (error) {
+                console.error('Error handling real-time folder deletion:', error);
+            }
         },
         onPermissionsUpdated: (data) => {
-            // Refresh current view to reflect permission changes
-            currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+            try {
+                // Refresh current view to reflect permission changes
+                currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+            } catch (error) {
+                console.error('Error handling real-time permissions update:', error);
+            }
         }
     });
 

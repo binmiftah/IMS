@@ -39,24 +39,44 @@ const UserFiles = () => {
     // Real-time file updates for user interface
     useRealTimeFiles({
         onFileUploaded: (data) => {
-            // Check if user has access to the file location and refresh if needed
-            getRootFiles();
+            try {
+                // Check if user has access to the file location and refresh if needed
+                getRootFiles();
+            } catch (error) {
+                console.error('Error handling real-time file upload for user:', error);
+            }
         },
         onFileDeleted: (data) => {
-            // Remove from current view if it exists
-            setItems(prev => prev.filter(item => item.id !== data.fileId));
+            try {
+                // Remove from current view if it exists
+                setItems(prev => prev.filter(item => item.id !== data.fileId));
+            } catch (error) {
+                console.error('Error handling real-time file deletion for user:', error);
+            }
         },
         onFolderCreated: (data) => {
-            // Refresh to show new accessible folders
-            getRootFiles();
+            try {
+                // Refresh to show new accessible folders
+                getRootFiles();
+            } catch (error) {
+                console.error('Error handling real-time folder creation for user:', error);
+            }
         },
         onFolderDeleted: (data) => {
-            // Remove from current view if it exists
-            setItems(prev => prev.filter(item => item.id !== data.folderId));
+            try {
+                // Remove from current view if it exists
+                setItems(prev => prev.filter(item => item.id !== data.folderId));
+            } catch (error) {
+                console.error('Error handling real-time folder deletion for user:', error);
+            }
         },
         onPermissionsUpdated: (data) => {
-            // Refresh to reflect new access permissions
-            getRootFiles();
+            try {
+                // Refresh to reflect new access permissions
+                getRootFiles();
+            } catch (error) {
+                console.error('Error handling real-time permissions update for user:', error);
+            }
         }
     });
 

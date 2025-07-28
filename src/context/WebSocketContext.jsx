@@ -17,12 +17,19 @@ export const WebSocketProvider = ({ children }) => {
     const wsRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
     const [subscribers, setSubscribers] = useState(new Map());
+    const [connectionEnabled, setConnectionEnabled] = useState(false);
 
     const connect = () => {
         try {
             const token = localStorage.getItem('token');
-            if (!token) {
-                console.log('No token found, skipping WebSocket connection');
+            if (!token || !connectionEnabled) {
+                console.log('No token found or connection disabled, skipping WebSocket connection');
+                return;
+            }
+
+            // Only connect if we don't already have an active connection
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                console.log('WebSocket already connected');
                 return;
             }
 
@@ -59,15 +66,17 @@ export const WebSocketProvider = ({ children }) => {
                 }
             };
 
-            wsRef.current.onclose = () => {
-                console.log('WebSocket disconnected');
+            wsRef.current.onclose = (event) => {
+                console.log('WebSocket disconnected', event.code, event.reason);
                 setIsConnected(false);
                 
-                // Attempt to reconnect after 3 seconds
-                reconnectTimeoutRef.current = setTimeout(() => {
-                    console.log('Attempting to reconnect WebSocket...');
-                    connect();
-                }, 3000);
+                // Only attempt to reconnect if it wasn't a deliberate close and connection is enabled
+                if (event.code !== 1000 && connectionEnabled) {
+                    reconnectTimeoutRef.current = setTimeout(() => {
+                        console.log('Attempting to reconnect WebSocket...');
+                        connect();
+                    }, 3000);
+                }
             };
 
             wsRef.current.onerror = (error) => {
@@ -77,16 +86,24 @@ export const WebSocketProvider = ({ children }) => {
 
         } catch (error) {
             console.error('Error creating WebSocket connection:', error);
+            setIsConnected(false);
         }
     };
 
     const disconnect = () => {
-        if (wsRef.current) {
-            wsRef.current.close();
+        setConnectionEnabled(false);
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.close(1000, 'Manual disconnect');
         }
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
         }
+        setIsConnected(false);
+    };
+
+    const enableConnection = () => {
+        setConnectionEnabled(true);
     };
 
     const subscribe = (callback) => {
@@ -103,19 +120,33 @@ export const WebSocketProvider = ({ children }) => {
         };
     };
 
+    // Enable connection after component mounts
     useEffect(() => {
-        connect();
+        const timer = setTimeout(() => {
+            setConnectionEnabled(true);
+        }, 1000); // Wait 1 second after app loads
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Connect when enabled
+    useEffect(() => {
+        if (connectionEnabled) {
+            connect();
+        }
         return () => {
             disconnect();
         };
-    }, []);
+    }, [connectionEnabled]);
 
     const value = {
         isConnected,
         lastMessage,
         subscribe,
         connect,
-        disconnect
+        disconnect,
+        enableConnection,
+        connectionEnabled
     };
 
     return (
