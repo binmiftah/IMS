@@ -9,6 +9,7 @@ import {toast, ToastContainer} from "react-toastify";
 import {handleError} from "../../../pkg/error/error.js";
 import {useNavigate} from "react-router-dom";
 import {useAuth} from "../../../context/AuthContext.jsx";
+import { useRealTimeFiles } from '../../../hooks/useRealTimeFiles.js';
 
 
 
@@ -30,6 +31,16 @@ const Dashboard = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [folderName, setFolderName] = useState('');
+
+    // Real-time updates for audit logs
+    useRealTimeFiles({
+        onFileUploaded: () => fetchAuditLog(),
+        onFileDeleted: () => fetchAuditLog(),
+        onFolderCreated: () => fetchAuditLog(),
+        onFolderDeleted: () => fetchAuditLog(),
+        onPermissionsUpdated: () => fetchAuditLog(),
+        onUserAction: () => fetchAuditLog()
+    });
 
     // Fetch Audit Logs
     const fetchAuditLog = async () => {

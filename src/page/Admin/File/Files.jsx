@@ -10,6 +10,7 @@ import { ToastContainer, toast } from "react-toastify";
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import FileItem from "../../../component/FileItem.jsx"
+import { useRealTimeFiles } from '../../../hooks/useRealTimeFiles.js';
 
 
 
@@ -31,6 +32,34 @@ const Files = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const dropdownRef = useRef(null);
+
+    // Real-time file updates
+    useRealTimeFiles({
+        onFileUploaded: (data) => {
+            // If viewing the same folder or root, refresh the view
+            if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
+                currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+            }
+        },
+        onFileDeleted: (data) => {
+            // Remove from current view if it exists
+            setItems(prev => prev.filter(item => item.id !== data.fileId));
+        },
+        onFolderCreated: (data) => {
+            // If viewing the same parent folder, refresh the view
+            if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
+                currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+            }
+        },
+        onFolderDeleted: (data) => {
+            // Remove from current view if it exists
+            setItems(prev => prev.filter(item => item.id !== data.folderId));
+        },
+        onPermissionsUpdated: (data) => {
+            // Refresh current view to reflect permission changes
+            currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
+        }
+    });
 
 
     const [sortBy, setSortBy] = useState({

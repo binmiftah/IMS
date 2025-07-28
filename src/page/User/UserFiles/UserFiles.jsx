@@ -9,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
+import { useRealTimeFiles } from '../../../hooks/useRealTimeFiles.js';
 
 const UserFiles = () => {
     const { user } = useAuth();
@@ -33,6 +34,30 @@ const UserFiles = () => {
         modified: "newest",
         uploadedBy: "all",
         type: "all",
+    });
+
+    // Real-time file updates for user interface
+    useRealTimeFiles({
+        onFileUploaded: (data) => {
+            // Check if user has access to the file location and refresh if needed
+            getRootFiles();
+        },
+        onFileDeleted: (data) => {
+            // Remove from current view if it exists
+            setItems(prev => prev.filter(item => item.id !== data.fileId));
+        },
+        onFolderCreated: (data) => {
+            // Refresh to show new accessible folders
+            getRootFiles();
+        },
+        onFolderDeleted: (data) => {
+            // Remove from current view if it exists
+            setItems(prev => prev.filter(item => item.id !== data.folderId));
+        },
+        onPermissionsUpdated: (data) => {
+            // Refresh to reflect new access permissions
+            getRootFiles();
+        }
     });
 
 
