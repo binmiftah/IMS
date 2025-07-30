@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, use } from 'react';
-import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove, MdCloseFullscreen, MdRefresh } from 'react-icons/md';
+import { MdFolder, MdInsertDriveFile, MdArrowBack, MdMoreVert, MdDelete, MdOpenInNew, MdContentCopy, MdDriveFileMove, MdCloseFullscreen, MdRefresh, MdEdit } from 'react-icons/md';
 import UserNavbar from '../../../component/UserNavbar';
 import ProfileBar from '../../../component/ProfileBar';
 import ActionButtons from '../../../component/ActionButtons';
@@ -222,6 +222,53 @@ const UserFiles = () => {
 
     const handleMove = (item) => {
         setMoveModal({ open: true, file: item });
+    };
+
+    // ✅ Add rename handlers
+    const handleRename = (item) => {
+        const currentName = item.name || item.fileName;
+        const newName = prompt(`Rename ${item.type === 'folder' ? 'folder' : 'file'}:`, currentName);
+        
+        if (newName && newName.trim() && newName.trim() !== currentName) {
+            handleRenameSubmit(item, newName.trim());
+        }
+    };
+
+    const handleRenameSubmit = async (item, newName) => {
+        try {
+            console.log("=== RENAMING ITEM ===");
+            console.log("Item:", item);
+            console.log("New name:", newName);
+            
+            const isFolder = item.type === 'folder';
+            const endpoint = isFolder 
+                ? `files/folders/${item.id}/rename` 
+                : `files/${item.id}/rename`;
+            
+            const payload = {
+                newName: newName
+            };
+
+            await apiCall.put(endpoint, payload);
+            
+            toast.success(`${isFolder ? 'Folder' : 'File'} renamed successfully!`);
+            
+            // Refresh the current view
+            await handleRefresh();
+            
+        } catch (error) {
+            console.error("❌ Error renaming item:", error);
+            
+            if (error.response?.status === 403) {
+                toast.error("You don't have permission to rename this item.");
+            } else if (error.response?.status === 404) {
+                toast.error("Item not found.");
+            } else if (error.response?.status === 409) {
+                toast.error("An item with this name already exists.");
+            } else {
+                toast.error("Failed to rename item. Please try again.");
+            }
+        }
     };
 
     // Replace the checkFilePermission function with this enhanced version that uses existing data:
@@ -951,6 +998,18 @@ const UserFiles = () => {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
+                                                            handleRename(item);
+                                                            setActiveDropdown(null);
+                                                        }}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                        disabled={isDisabled}
+                                                    >
+                                                        <MdEdit className="mr-2" size={18} />
+                                                        Rename
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             handleDelete(item);
                                                             setActiveDropdown(null);
                                                         }}
@@ -1199,6 +1258,16 @@ const UserFiles = () => {
                                             >
                                                 <MdDriveFileMove size={16} />
                                                 <span>Move</span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    handleRename(clickedItem);
+                                                    setIsOpenFile(false);
+                                                }}
+                                                className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                                            >
+                                                <MdEdit size={16} />
+                                                <span>Rename</span>
                                             </button>
                                             <button
                                                 onClick={() => {

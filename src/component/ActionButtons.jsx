@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { MdUpload, MdCreateNewFolder, MdInsertDriveFile, MdFolder, MdArrowDropDown } from 'react-icons/md'; // ✅ Add MdArrowDropDown
+import { MdUpload, MdCreateNewFolder, MdInsertDriveFile, MdFolder, MdArrowDropDown } from 'react-icons/md';
 import Button from './Button.jsx';
 import { ToastContainer, toast } from "react-toastify";
 import apiCall from "../pkg/api/internal.js";

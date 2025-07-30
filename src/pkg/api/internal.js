@@ -766,6 +766,25 @@ class ApiCall {
         }
     }
 
+    // ✅ Generic PUT method for updating resources
+    async put(urlPath, data = {}) {
+        try {
+            const response = await this.instance2.put(urlPath, data, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error("PUT request error:", error);
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
 }
 
 
