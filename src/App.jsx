@@ -2,7 +2,6 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext';
 import { RoleProvider } from './context/RoleContext';
-import { WebSocketProvider } from './context/WebSocketContext';
 
 import SignUp from './page/Admin/Registration/SignUp.jsx'
 import Login from './page/Admin/login/Login.jsx'
@@ -27,38 +26,36 @@ const App = () => {
   return (
     <AuthProvider>
       <RoleProvider>
-        <WebSocketProvider>
-          <Router>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/organisation" element={<Organisation />} />
-              <Route path="/invite" element={<Invite />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/users/:userId/permissions" element={<UserPermissions />} />
-              <Route 
-                path="/members/permissions" 
-                element={
-                  <ErrorBoundary>
-                    <MemberPermissions />
-                  </ErrorBoundary>
-                } 
-              />
-              <Route path="/files" element={<Files />} />
-              <Route path="/trash" element={<Trash />} />
-              <Route path="/settings" element={<Settings />} />
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/organisation" element={<Organisation />} />
+            <Route path="/invite" element={<Invite />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/users/:userId/permissions" element={<UserPermissions />} />
+            <Route 
+              path="/members/permissions" 
+              element={
+                <ErrorBoundary>
+                  <MemberPermissions />
+                </ErrorBoundary>
+              } 
+            />
+            <Route path="/files" element={<Files />} />
+            <Route path="/trash" element={<Trash />} />
+            <Route path="/settings" element={<Settings />} />
 
-              {/* User Routes */}
-              <Route path='/user/login' element={<UserLogin />} />
-              <Route path="/user/files" element={<UserFiles />} />
+            {/* User Routes */}
+            <Route path='/user/login' element={<UserLogin />} />
+            <Route path="/user/files" element={<UserFiles />} />
 
-              {/* Redirect to login if no path is matched */}
-              <Route path="/" element={<Login />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
-        </WebSocketProvider>
+            {/* Redirect to login if no path is matched */}
+            <Route path="/" element={<Login />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
       </RoleProvider>
     </AuthProvider>
   )

@@ -9,7 +9,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import apiCall from '../../../pkg/api/internal';
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
-import { useRealTimeFiles } from '../../../hooks/useRealTimeFiles.js';
 
 const UserFiles = () => {
     const { user } = useAuth();
@@ -34,50 +33,6 @@ const UserFiles = () => {
         modified: "newest",
         uploadedBy: "all",
         type: "all",
-    });
-
-    // Real-time file updates for user interface
-    useRealTimeFiles({
-        onFileUploaded: (data) => {
-            try {
-                // Check if user has access to the file location and refresh if needed
-                getRootFiles();
-            } catch (error) {
-                console.error('Error handling real-time file upload for user:', error);
-            }
-        },
-        onFileDeleted: (data) => {
-            try {
-                // Remove from current view if it exists
-                setItems(prev => prev.filter(item => item.id !== data.fileId));
-            } catch (error) {
-                console.error('Error handling real-time file deletion for user:', error);
-            }
-        },
-        onFolderCreated: (data) => {
-            try {
-                // Refresh to show new accessible folders
-                getRootFiles();
-            } catch (error) {
-                console.error('Error handling real-time folder creation for user:', error);
-            }
-        },
-        onFolderDeleted: (data) => {
-            try {
-                // Remove from current view if it exists
-                setItems(prev => prev.filter(item => item.id !== data.folderId));
-            } catch (error) {
-                console.error('Error handling real-time folder deletion for user:', error);
-            }
-        },
-        onPermissionsUpdated: (data) => {
-            try {
-                // Refresh to reflect new access permissions
-                getRootFiles();
-            } catch (error) {
-                console.error('Error handling real-time permissions update for user:', error);
-            }
-        }
     });
 
 

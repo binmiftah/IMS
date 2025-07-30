@@ -9,7 +9,6 @@ import {toast, ToastContainer} from "react-toastify";
 import {handleError} from "../../../pkg/error/error.js";
 import {useNavigate} from "react-router-dom";
 import {useAuth} from "../../../context/AuthContext.jsx";
-import { useRealTimeFiles } from '../../../hooks/useRealTimeFiles.js';
 
 
 
@@ -31,52 +30,6 @@ const Dashboard = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
     const [folderName, setFolderName] = useState('');
-
-    // Real-time updates for audit logs
-    useRealTimeFiles({
-        onFileUploaded: () => {
-            try {
-                fetchAuditLog();
-            } catch (error) {
-                console.error('Error fetching audit logs after file upload:', error);
-            }
-        },
-        onFileDeleted: () => {
-            try {
-                fetchAuditLog();
-            } catch (error) {
-                console.error('Error fetching audit logs after file deletion:', error);
-            }
-        },
-        onFolderCreated: () => {
-            try {
-                fetchAuditLog();
-            } catch (error) {
-                console.error('Error fetching audit logs after folder creation:', error);
-            }
-        },
-        onFolderDeleted: () => {
-            try {
-                fetchAuditLog();
-            } catch (error) {
-                console.error('Error fetching audit logs after folder deletion:', error);
-            }
-        },
-        onPermissionsUpdated: () => {
-            try {
-                fetchAuditLog();
-            } catch (error) {
-                console.error('Error fetching audit logs after permissions update:', error);
-            }
-        },
-        onUserAction: () => {
-            try {
-                fetchAuditLog();
-            } catch (error) {
-                console.error('Error fetching audit logs after user action:', error);
-            }
-        }
-    });
 
     // Fetch Audit Logs
     const fetchAuditLog = async () => {

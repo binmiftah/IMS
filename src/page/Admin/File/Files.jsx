@@ -10,7 +10,6 @@ import { ToastContainer, toast } from "react-toastify";
 import { handleError } from "../../../pkg/error/error.js";
 import { useAuth } from "../../../context/AuthContext.jsx";
 import FileItem from "../../../component/FileItem.jsx"
-import { useRealTimeFiles } from '../../../hooks/useRealTimeFiles.js';
 
 
 
@@ -32,54 +31,6 @@ const Files = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const dropdownRef = useRef(null);
-
-    // Real-time file updates
-    useRealTimeFiles({
-        onFileUploaded: (data) => {
-            try {
-                // If viewing the same folder or root, refresh the view
-                if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
-                    currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
-                }
-            } catch (error) {
-                console.error('Error handling real-time file upload:', error);
-            }
-        },
-        onFileDeleted: (data) => {
-            try {
-                // Remove from current view if it exists
-                setItems(prev => prev.filter(item => item.id !== data.fileId));
-            } catch (error) {
-                console.error('Error handling real-time file deletion:', error);
-            }
-        },
-        onFolderCreated: (data) => {
-            try {
-                // If viewing the same parent folder, refresh the view
-                if (data.parentId === currentFolderId || (!data.parentId && !currentFolderId)) {
-                    currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
-                }
-            } catch (error) {
-                console.error('Error handling real-time folder creation:', error);
-            }
-        },
-        onFolderDeleted: (data) => {
-            try {
-                // Remove from current view if it exists
-                setItems(prev => prev.filter(item => item.id !== data.folderId));
-            } catch (error) {
-                console.error('Error handling real-time folder deletion:', error);
-            }
-        },
-        onPermissionsUpdated: (data) => {
-            try {
-                // Refresh current view to reflect permission changes
-                currentFolderId ? refreshFolderContents(currentFolderId) : getRootFiles();
-            } catch (error) {
-                console.error('Error handling real-time permissions update:', error);
-            }
-        }
-    });
 
 
     const [sortBy, setSortBy] = useState({
