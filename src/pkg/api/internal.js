@@ -630,12 +630,32 @@ class ApiCall {
 
     // TRASH ITEMS
     async getTrashed(url) {
-        const response = await this.instance1.get(url, {
-            headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`
+        try {
+            const response = await this.instance1.get(url, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            
+            console.log("Raw trash API response:", response.data);
+            
+            // Handle different possible response structures
+            if (response.data?.data?.trashedItems) {
+                return response.data.data.trashedItems;
+            } else if (response.data?.trashedItems) {
+                return response.data.trashedItems;
+            } else if (Array.isArray(response.data?.data)) {
+                return response.data.data;
+            } else if (Array.isArray(response.data)) {
+                return response.data;
+            } else {
+                console.log("No trash items found or unexpected structure");
+                return [];
             }
-        })
-        return response.data.data.trashedItems
+        } catch (error) {
+            console.error("Error in getTrashed API call:", error);
+            throw error;
+        }
     }
 
     async restoreItem(trashId, data) {
@@ -778,6 +798,47 @@ class ApiCall {
             return response.data;
         } catch (error) {
             console.error("PUT request error:", error);
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    // Change user password
+    async changePassword(data) {
+        try {
+            const response = await this.instance1.put('auth/change-password', {
+                currentPassword: data.currentPassword,
+                newPassword: data.newPassword
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error changing password:", error);
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    // Update profile picture
+    async updateProfilePicture(formData) {
+        try {
+            const response = await this.instance1.put('auth/profile-picture', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error updating profile picture:", error);
             if (error.response && error.response.data) {
                 console.error("API Error Details:", error.response.data);
             }

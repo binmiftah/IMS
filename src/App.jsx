@@ -16,6 +16,7 @@ import Trash from './page/Admin/Trash/Trash.jsx'
 import Settings from './page/Admin/Settings/Settings.jsx'
 
 import UserFiles from './page/User/UserFiles/UserFiles.jsx'
+import UserSettings from './page/User/Settings/UserSettings.jsx'
 
 
 import NotFound from './component/NotFound'
@@ -50,6 +51,7 @@ const App = () => {
             {/* User Routes */}
             <Route path='/user/login' element={<UserLogin />} />
             <Route path="/user/files" element={<UserFiles />} />
+            <Route path="/user/settings" element={<UserSettings />} />
 
             {/* Redirect to login if no path is matched */}
             <Route path="/" element={<Login />} />

@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { MdDashboard, MdFolder, MdSettings, MdLogout } from 'react-icons/md';
 import { useEffect } from 'react';
+import { toast } from 'react-toastify';
 import LogoUpload from './LogoUpload';
 
 const UserNavbar = () => {
@@ -12,6 +13,11 @@ const UserNavbar = () => {
             name: 'Folders/Files',
             icon: <MdFolder size={24} />,
             path: '/user/files'
+        },
+        {
+            name: 'Settings',
+            icon: <MdSettings size={24} />,
+            path: '/user/settings'
         },
     ];
 

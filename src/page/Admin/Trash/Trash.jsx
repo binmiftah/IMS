@@ -16,12 +16,58 @@ const Trash = () => {
         fetchTrashedItems();
     }, []);
 
+    const getItemName = (item) => {
+        // Use originalPath from trash endpoint - this contains the full path
+        if (item.originalPath) {
+            const pathParts = item.originalPath.split('/');
+            // Get the last part of the path (the actual file/folder name)
+            const fileName = pathParts[pathParts.length - 1];
+            if (fileName && fileName !== '') {
+                return fileName;
+            }
+        }
+        
+        // Fallback to item type if no originalPath
+        return item.itemType === 'FILE' ? 'Unnamed File' : 'Unnamed Folder';
+    };
+
     const fetchTrashedItems = async () => {
         try {
-            const result = await apiCall.getTrashed('trash'); // assuming result is grouped like: [{ user: {...}, items: [...] }]
+            const result = await apiCall.getTrashed('trash');
             console.log("Fetched Trash:", result);
-            setTrashedGroups(result);
+            console.log("Type of result:", typeof result);
+            console.log("Is array?", Array.isArray(result));
+            
+            // Ensure result is always an array, even if API returns something else
+            if (Array.isArray(result)) {
+                // Group items by the person who deleted them
+                const groupedByUser = result.reduce((groups, item) => {
+                    const userId = item.deletedBy?.id || 'unknown';
+                    const userName = item.deletedBy?.fullName || 'Unknown User';
+                    
+                    if (!groups[userId]) {
+                        groups[userId] = {
+                            user: userName,
+                            userInfo: item.deletedBy,
+                            items: []
+                        };
+                    }
+                    
+                    groups[userId].items.push(item);
+                    return groups;
+                }, {});
+                
+                // Convert grouped object to array
+                const groupedArray = Object.values(groupedByUser);
+                setTrashedGroups(groupedArray);
+                console.log("Set trashedGroups to:", groupedArray);
+            } else {
+                console.log("Result is not an array, setting empty array");
+                setTrashedGroups([]);
+            }
         } catch (error) {
+            console.error("Error fetching trash:", error);
+            setTrashedGroups([]); // Set empty array on error
             handleError(error);
         }
     };
@@ -38,7 +84,7 @@ const Trash = () => {
             // Create the restore data structure matching the API body format
             const restoreData = {
                 type: item.itemType, // "FILE" or "FOLDER" - will be mapped to "type" in API call
-                itemId: item.file?.id || item.folder?.id // Will be mapped to "itemId" in API call
+                itemId: item.folderId || item.fileId // Use folderId or fileId from the trash item
             };
 
             const res = await apiCall.restoreItem(item.id, restoreData);
@@ -85,7 +131,7 @@ const Trash = () => {
                 <div className="flex-1 p-8">
                     <h2 className="text-2xl font-bold mb-6">Trash</h2>
                     <div className="grid grid-cols-4 gap-4">
-                        {trashedGroups.length > 0 ? (
+                        {trashedGroups && trashedGroups.length > 0 ? (
                             trashedGroups.map((group, idx) => (
                                 <div
                                     key={idx}
@@ -94,9 +140,11 @@ const Trash = () => {
                                 >
                                     <MdFolder size={32} className="text-yellow-500 mb-2" />
                                     <span className="font-medium text-center">
-                                        {group?.user}
+                                        {group.user}
                                     </span>
-                                    <span className="text-sm text-gray-500">{group.items.length} item(s)</span>
+                                    <span className="text-xs text-gray-400 mt-1">
+                                        {group.items.length} item(s)
+                                    </span>
                                 </div>
                             ))
                         ) : (
@@ -109,42 +157,50 @@ const Trash = () => {
             {/* Trash Modal */}
             {trashModalOpen && selectedGroup && (
                 <div className="absolute inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50">
-                    <div className="bg-white rounded shadow p-6  max-h-[80vh] overflow-y-auto">
+                    <div className="bg-white rounded shadow p-6 max-w-4xl max-h-[80vh] overflow-y-auto">
                         <h3 className="text-xl font-bold mb-4">
-                            Trashed by {selectedGroup.user}
+                            Items deleted by {selectedGroup.user}
                         </h3>
                         <div className="grid grid-cols-4 gap-4">
-                            {selectedGroup.items.map((item) => (
-                                <div key={item.id} className="border p-4 rounded-lg flex flex-col">
-                                    {item.itemType === 'FOLDER' && (
-                                        <MdFolder size={32} className="text-yellow-500 mb-2" />
-                                    )}
-
-                                    {item.itemType === 'FILE' && (<div></div>)}
-                                    <span className="font-medium">
-                                        {item.file?.fileName || item.folder?.name || 'Unnamed'}
-                                    </span>
-                                    <span className="text-sm text-gray-500">
-                                        Deleted on: {new Date(item.deletedAt).toLocaleDateString()}
-                                    </span>
-                                    <div className="mt-2 flex space-x-2">
-                                        <Button
-                                            icon={<MdRestore size={20} />}
-                                            onClick={() => handleRestore(item)}
-                                            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                                        >
-                                            Restore
-                                        </Button>
-                                        <Button
-                                            icon={<MdDeleteForever size={20} />}
-                                            onClick={() => handlePermanentDelete(item)}
-                                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                                        >
-                                            Delete
-                                        </Button>
+                            {selectedGroup.items && selectedGroup.items.length > 0 ? (
+                                selectedGroup.items.map((item) => (
+                                    <div key={item.id} className="border p-4 rounded-lg flex flex-col">
+                                        {item.itemType === 'FOLDER' ? (
+                                            <MdFolder size={32} className="text-yellow-500 mb-2" />
+                                        ) : (
+                                            <div className="mb-2">
+                                                <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <span className="font-medium">
+                                            {getItemName(item)}
+                                        </span>
+                                        <span className="text-sm text-gray-500">
+                                            Deleted on: {new Date(item.deletedAt).toLocaleDateString()}
+                                        </span>
+                                        <div className="mt-2 flex space-x-2">
+                                            <Button
+                                                icon={<MdRestore size={20} />}
+                                                onClick={() => handleRestore(item)}
+                                                className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                                            >
+                                                Restore
+                                            </Button>
+                                            <Button
+                                                icon={<MdDeleteForever size={20} />}
+                                                onClick={() => handlePermanentDelete(item)}
+                                                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                                            >
+                                                Delete
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="col-span-4 text-center text-gray-400">No items found.</p>
+                            )}
                         </div>
                         <div className="mt-6 text-right">
                             <Button
