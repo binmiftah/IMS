@@ -35,8 +35,8 @@ const Users = () => {
         }
     };
 
-    const handlePermissionModel = (user) => {
-        navigate(`/users/${user.id}/permissions`);
+    const handleUserClick = (user) => {
+        navigate(`/users/${user.id}/detail`);
     };
 
     const fetchUsers = async () => {
@@ -131,7 +131,10 @@ const Users = () => {
                 <div className="p-6">
                     <ToastContainer />
                     <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800">View and Manage Users</h1>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-800">View and Manage Users</h1>
+                            <p className="text-gray-600 text-sm mt-1">Click on any user to view and edit their details</p>
+                        </div>
                         <Button
                             onClick={() => setIsAddModalOpen(true)}
                             className="bg-black text-white px-4 py-2 rounded-lg flex items-center"
@@ -225,22 +228,25 @@ const Users = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition duration-200"
                                     onClick={() => handleSort('email')}
                                 >
                                     Email {sortBy.field === 'email' && (sortBy.order === 'asc' ? '▲' : '▼')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition duration-200"
                                     onClick={() => handleSort('role')}
                                 >
                                     Role {sortBy.field === 'role' && (sortBy.order === 'asc' ? '▲' : '▼')}
                                 </th>
                                 <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer"
+                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition duration-200"
                                     onClick={() => handleSort('updatedAt')}
                                 >
                                     Recently Active {sortBy.field === 'updatedAt' && (sortBy.order === 'asc' ? '▲' : '▼')}
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Action
                                 </th>
                             </tr>
                         </thead>
@@ -249,19 +255,37 @@ const Users = () => {
                                 paginatedUsers.map((user, id) => (
                                     <tr
                                         key={user.id}
-                                        className="hover:bg-gray-50 cursor-pointer"
-                                        onClick={() => handlePermissionModel(user)}
+                                        className="hover:bg-gray-50 cursor-pointer transition duration-200 border-l-4 border-transparent hover:border-blue-500"
+                                        onClick={() => handleUserClick(user)}
                                     >
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm ">{user.role || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {user.email}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
+                                                user.role === 'MEMBER' ? 'bg-blue-100 text-blue-800' :
+                                                'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {user.role || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {user.updatedAt ? new Date(user.updatedAt).toLocaleString() : 'N/A'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                                            View Details →
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">No users found.</td>
+                                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                                        <div className="flex flex-col items-center">
+                                            <p className="text-lg mb-2">No users found.</p>
+                                            <p className="text-sm">Add your first user to get started.</p>
+                                        </div>
+                                    </td>
                                 </tr>
                             )}
                         </tbody>

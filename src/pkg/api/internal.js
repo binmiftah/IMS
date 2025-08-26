@@ -418,6 +418,55 @@ class ApiCall {
         }
     }
 
+    // User Detail Management API Methods
+    async getUserById(userId) {
+        const response = await this.instance1.get(`users/${userId}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        return response.data;
+    }
+
+    async updateUserProfile(userId, profileData) {
+        const response = await this.instance1.put(`users/${userId}/profile`, profileData, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        return response.data;
+    }
+
+    async updateUserRole(userId, roleData) {
+        const response = await this.instance1.put(`users/${userId}/role`, roleData, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        return response.data;
+    }
+
+    async updateUserStatus(userId, statusData) {
+        const response = await this.instance1.put(`users/${userId}/status`, statusData, {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        return response.data;
+    }
+
+    async deleteUser(userId) {
+        const response = await this.instance1.delete(`users/${userId}`, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        return response.data;
+    }
+
     /**
      * Create group folder permissions
      * Assigns permissions to folders for a specific security group
@@ -839,6 +888,25 @@ class ApiCall {
             return response.data;
         } catch (error) {
             console.error("Error updating profile picture:", error);
+            if (error.response && error.response.data) {
+                console.error("API Error Details:", error.response.data);
+            }
+            throw error;
+        }
+    }
+
+    // Update general profile information
+    async updateProfile(profileData) {
+        try {
+            const response = await this.instance1.put('auth/profile', profileData, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error updating profile:", error);
             if (error.response && error.response.data) {
                 console.error("API Error Details:", error.response.data);
             }
